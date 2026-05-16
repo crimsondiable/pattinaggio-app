@@ -76,6 +76,7 @@
     /* ── Header ── */
     header { background: rgba(8,17,22,.9); border-bottom: 1px solid var(--bordo); padding: .55rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 54px; position: sticky; top: 0; z-index: 100; box-shadow: 0 12px 30px rgba(0,0,0,.22); backdrop-filter: blur(14px); }
     .logo { font-weight: 700; color: var(--testo); font-size: 1.05rem; }
+    .logo img { border-radius: 4px; }
     nav { display: flex; gap: .2rem; margin-left: auto; }
     nav button { background: none; border: none; padding: .38rem .75rem; border-radius: var(--r); font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; }
     nav button.active, nav button:hover { background: var(--blu-chiaro); color: var(--blu); }
@@ -107,12 +108,25 @@
     .card { background: rgba(16,27,34,.92); border: 1px solid var(--bordo); border-radius: var(--r); padding: 1.1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
 
     /* ── Table ── */
-    .table-wrap { overflow-x: auto; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.025); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter: blur(12px); }
+    .table-wrap { overflow-x: auto; border: 1px solid rgba(148,163,184,.12); border-radius: var(--r); background: rgba(255,255,255,.014); box-shadow: inset 0 1px 0 rgba(255,255,255,.025); backdrop-filter: blur(12px); }
     table { width: 100%; border-collapse: collapse; font-size: .86rem; line-height: 1.15; }
-    th { text-align: left; padding: .3rem .5rem; font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--bordo); background: rgba(255,255,255,.035); }
-    td { padding: .3rem .5rem; border-bottom: 1px solid rgba(148,163,184,.16); }
+    th { text-align: left; padding: .3rem .5rem; font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid rgba(148,163,184,.14); background: rgba(255,255,255,.022); }
+    td { padding: .3rem .5rem; border-bottom: 1px solid rgba(148,163,184,.11); }
     tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: var(--blu-chiaro); cursor: pointer; }
+    tbody tr:hover td { background: rgba(110,231,249,.09); cursor: pointer; }
+    .group-member-row td { background: rgba(110,231,249,.032); }
+    .group-member-row td:first-child { box-shadow: inset 1.5px 0 0 rgba(110,231,249,.38); }
+    .group-member-row td:last-child { box-shadow: inset -1.5px 0 0 rgba(110,231,249,.38); }
+    .group-member-first td { box-shadow: inset 0 1.5px 0 rgba(110,231,249,.38); }
+    .group-member-last td { box-shadow: inset 0 -1.5px 0 rgba(110,231,249,.38); }
+    .group-member-first td:first-child { box-shadow: inset 1.5px 0 0 rgba(110,231,249,.38), inset 0 1.5px 0 rgba(110,231,249,.38); }
+    .group-member-first td:last-child { box-shadow: inset -1.5px 0 0 rgba(110,231,249,.38), inset 0 1.5px 0 rgba(110,231,249,.38); }
+    .group-member-last td:first-child { box-shadow: inset 1.5px 0 0 rgba(110,231,249,.38), inset 0 -1.5px 0 rgba(110,231,249,.38); }
+    .group-member-last td:last-child { box-shadow: inset -1.5px 0 0 rgba(110,231,249,.38), inset 0 -1.5px 0 rgba(110,231,249,.38); }
+    .group-member-first td:first-child { border-top-left-radius: calc(var(--r) - 1px); }
+    .group-member-first td:last-child { border-top-right-radius: calc(var(--r) - 1px); }
+    .group-member-last td:first-child { border-bottom-left-radius: calc(var(--r) - 1px); }
+    .group-member-last td:last-child { border-bottom-right-radius: calc(var(--r) - 1px); }
 
     /* ── Stadio badge ── */
     .st { display: inline-block; padding: .12rem .45rem; border-radius: 20px; font-size: .76rem; font-weight: 700; }
@@ -186,8 +200,11 @@
     /* ── VIP star ── */
     .vip-toggle { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
     .vip-toggle label { font-size: .83rem; font-weight: 600; }
-    .star-btn { font-size: 1.6rem; cursor: pointer; line-height: 1; user-select: none; filter: grayscale(1) opacity(.35); transition: filter .15s; }
-    .star-btn.on { filter: none; }
+    .vip-star { color: var(--blu); text-shadow: 0 0 10px rgba(110,231,249,.28); }
+    .star-btn { font-size: 1.6rem; cursor: pointer; line-height: 1; user-select: none; color: var(--muted); filter: grayscale(1) opacity(.35); transition: color .15s, filter .15s, text-shadow .15s; }
+    .star-btn.on { color: var(--blu); filter: none; text-shadow: 0 0 10px rgba(110,231,249,.28); }
+    .group-count { color: var(--blu); font-weight: 800; font-size: .8rem; }
+    .edit-icon { width: 18px; height: 18px; color: var(--blu); vertical-align: -3px; }
     /* ── Scheda info grid ── */
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem 1.5rem; font-size: .88rem; margin-bottom: .5rem; }
     .info-row { display: flex; flex-direction: column; }
@@ -304,14 +321,16 @@
       backdrop-filter: blur(24px);
     }
     .table-wrap {
-      background: rgba(255,255,255,.06);
-      border-color: rgba(190,242,255,.22);
-      box-shadow: 0 14px 38px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.1);
+      background: rgba(7,17,22,.46);
+      border-color: rgba(148,163,184,.18);
+      box-shadow: 0 14px 38px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.035);
       backdrop-filter: blur(24px);
     }
     th { padding: .2rem .38rem; font-size: .67rem; }
     td { padding: .18rem .38rem; font-size: .78rem; }
-    .btn { padding: .4rem .8rem; font-size: .81rem; background-color: rgba(255,255,255,.07); border-color: rgba(190,242,255,.24); box-shadow: 0 12px 30px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.12); }
+    .btn { padding: .4rem .8rem; font-size: .81rem; background-color: rgba(7,17,22,.38); border-color: rgba(148,163,184,.22); box-shadow: 0 12px 30px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.045); }
+    .btn.btn-ghost { background-color: rgba(7,17,22,.46); border-color: rgba(148,163,184,.24); box-shadow: inset 0 1px 0 rgba(255,255,255,.035); }
+    .btn.btn-ghost:hover { background-color: rgba(110,231,249,.08); border-color: rgba(110,231,249,.34); }
     .btn-sm { padding: .26rem .56rem; font-size: .75rem; }
     .card { padding: .78rem; margin-bottom: .7rem; }
     .section-header h2 { font-size: 1rem; }
@@ -416,7 +435,7 @@
     <!-- VIEW: nuova lezione -->
     <section id="view-nuova-lezione" hidden>
       <button class="back-btn" onclick="showView('lezioni')">← Lezioni</button>
-      <h2 style="margin-bottom:1.2rem">Nuova lezione</h2>
+      <h2 id="lz-title" style="margin-bottom:1.2rem">Nuova lezione</h2>
 
       <div class="card">
         <div class="form-grid">
@@ -478,10 +497,10 @@
           <div class="form-grid">
             <div class="field"><label>Nome *</label><input type="text" id="na-nome" placeholder="Mario"></div>
             <div class="field"><label>Cognome *</label><input type="text" id="na-cognome" placeholder="Rossi"></div>
-            <div class="field"><label>Data di nascita</label><input type="date" id="na-nascita" oninput="calcolaEtaForm()"></div>
+            <div class="field"><label>Data di nascita</label><input type="text" id="na-nascita" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this); calcolaEtaForm()"></div>
             <div class="field"><label>Età</label><input type="text" id="na-eta" readonly placeholder="—" style="background:#e8f0fc;color:var(--blu);font-weight:600"></div>
-            <div class="field"><label>Data iscrizione</label><input type="date" id="na-iscrizione"></div>
-            <div class="field"><label>Scad. certificato medico</label><input type="date" id="na-cert"></div>
+            <div class="field"><label>Data iscrizione</label><input type="text" id="na-iscrizione" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this)"></div>
+            <div class="field"><label>Scad. certificato medico</label><input type="text" id="na-cert" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this)"></div>
             <div class="field">
               <label>Blocco</label>
               <select id="na-blocco">
@@ -747,7 +766,7 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], appInited = false, editingAllieviId = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, lezionePresetAllievoId = null
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], appInited = false, editingAllieviId = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set()
 let godMode = false, godScope = 'all', shareContext = null
 const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
 
@@ -848,11 +867,6 @@ const motion = (() => {
 document.addEventListener('pointerdown', e => {
   const target = e.target.closest('.btn, .chip, nav button, .scheda-tab')
   motion.press(target)
-})
-
-document.addEventListener('mouseover', e => {
-  const row = e.target.closest('tbody tr')
-  if (row) motion.softFocus(row)
 })
 
 // ── Auth ──────────────────────────────────────────────────────────────
@@ -1015,7 +1029,7 @@ function renderAllievi() {
   const baseLista = allieviVisibiliGod()
   if (!baseLista.length) {
     el.innerHTML = mostraArchiviati
-      ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button onclick="setArchivio(false)" class="chip">Tutti</button><button onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>'
+      ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>'
       : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>'
     return
   }
@@ -1024,40 +1038,95 @@ function renderAllievi() {
   const gruppi = [...new Set(baseLista.map(a => a.gruppo).filter(Boolean))].sort()
   const chipsHtml = `
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
-      <button onclick="setArchivio(false)" class="chip${!mostraArchiviati && filtroGruppo === null ? ' chip-on' : ''}">Tutti</button>
-      ${gruppi.map(g => `<button onclick="setFiltroGruppo('${g.replace(/'/g,"\\'")}\')" class="chip${filtroGruppo === g ? ' chip-on' : ''}">${esc(g)}</button>`).join('')}
-      <button onclick="setArchivio(true)" class="chip${mostraArchiviati ? ' chip-on' : ''}" style="margin-left:auto">Archivio</button>
+      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null ? ' chip-on' : ''}">Tutti</button>
+      ${gruppi.map(g => `<button type="button" onclick="setFiltroGruppo('${g.replace(/'/g,"\\'")}\')" class="chip${filtroGruppo === g ? ' chip-on' : ''}">${esc(g)}</button>`).join('')}
+      <button type="button" onclick="setArchivio(true)" class="chip${mostraArchiviati ? ' chip-on' : ''}" style="margin-left:auto">Archivio</button>
     </div>`
 
   const lista = ordinaAllieviLista(filtroGruppo ? baseLista.filter(a => a.gruppo === filtroGruppo) : baseLista)
+  const allieviColgroup = `
+    <colgroup>
+      <col style="width:32px">
+      <col style="width:28%">
+      <col style="width:19%">
+      <col style="width:14%">
+      <col style="width:6%">
+      <col>
+      <col style="width:52px">
+    </colgroup>`
+  const renderAllievoRow = (a, extraClass = '') => `
+    <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
+      <td style="width:28px;text-align:center">${a.vip ? '<span class="vip-star">★</span>' : ''}</td>
+      <td>
+        <strong>${esc(a.nome)}</strong>
+        ${a.tipo === 'associazione' ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ''}
+        ${a.stato === 'archiviato' ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ''}
+      </td>
+      <td>${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
+      <td style="color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ''}</td>
+      <td>${a.livello_attuale}</td>
+      <td>${esc(a.blocco_attuale)}</td>
+      <td style="width:40px;text-align:center">
+        <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
+          ${godMode && !a.maestro_id ? `<button class="btn btn-ghost btn-sm" title="Assegna a me" onclick="event.stopPropagation(); assegnaAllievoAMe('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Assegna</button>` : ''}
+          ${godMode ? `<button class="btn btn-ghost btn-sm" title="Condividi" onclick="event.stopPropagation(); apriCondividiAllievo('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Condividi</button>` : ''}
+          ${godMode && a.gruppo ? `<button class="btn btn-ghost btn-sm" title="Condividi gruppo" onclick="event.stopPropagation(); apriCondividiGruppo('${a.gruppo.replace(/'/g,"\\'")}')" style="padding:.2rem .45rem;font-size:.82rem">Gruppo</button>` : ''}
+          ${a.stato !== 'archiviato' ? `<button class="btn btn-ghost btn-sm" title="Modifica" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>` : ''}
+        </div>
+      </td>
+    </tr>`
+
+  if (!filtroGruppo) {
+    const senzaGruppo = lista.filter(a => !a.gruppo)
+    const gruppiRows = gruppi.map(gruppo => {
+      const membri = ordinaAllieviLista(lista.filter(a => a.gruppo === gruppo))
+      const expanded = gruppiEspansi.has(gruppo)
+      const livelli = [...new Set(membri.map(a => a.livello_attuale).filter(v => v !== null && v !== undefined))].sort((a, b) => a - b).join(', ') || '—'
+      const blocchi = [...new Set(membri.map(a => a.blocco_attuale).filter(Boolean))].join(', ') || '—'
+      const editTarget = membri[0]?.id
+      return `
+        <tr onclick="toggleGruppoLista('${gruppo.replace(/'/g,"\\'")}')" style="cursor:pointer">
+          <td style="width:28px;text-align:center"><span class="group-count">[${membri.length}]</span></td>
+          <td><strong>${esc(gruppo)}</strong></td>
+          <td></td>
+          <td></td>
+          <td>${esc(livelli)}</td>
+          <td>${esc(blocchi)}</td>
+          <td style="width:40px;text-align:center">
+            <div style="display:flex;justify-content:flex-end">
+              ${editTarget ? `<button class="btn btn-ghost btn-sm" title="Modifica primo allievo del gruppo" onclick="event.stopPropagation(); showView('nuovo-allievo','${editTarget}')" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>` : ''}
+            </div>
+          </td>
+        </tr>
+        ${expanded ? membri.map((m, i) => renderAllievoRow(m, [
+          'group-member-row',
+          i === 0 ? 'group-member-first' : '',
+          i === membri.length - 1 ? 'group-member-last' : '',
+        ].filter(Boolean).join(' '))).join('') : ''}`
+    }).join('')
+
+    el.innerHTML = chipsHtml + `
+      <div class="table-wrap">
+        <table>
+          ${allieviColgroup}
+          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
+          <tbody>
+            ${senzaGruppo.map(renderAllievoRow).join('')}
+            ${gruppiRows}
+          </tbody>
+        </table>
+      </div>`
+    requestAnimationFrame(() => motion.tableRows(el))
+    return
+  }
 
   el.innerHTML = chipsHtml + `
     <div class="table-wrap">
       <table>
-        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th>Gruppo</th><th></th></tr></thead>
+        ${allieviColgroup}
+        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
         <tbody>
-          ${lista.map(a => `
-            <tr style="${a.stato === 'archiviato' ? 'opacity:.55' : ''}">
-              <td style="width:28px;text-align:center">${a.vip ? '⭐' : ''}</td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer">
-                <strong>${esc(a.nome)}</strong>
-                ${a.tipo === 'associazione' ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ''}
-                ${a.stato === 'archiviato' ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ''}
-              </td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer">${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer;color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ''}</td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer">${a.livello_attuale}</td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer">${esc(a.blocco_attuale)}</td>
-              <td onclick="loadScheda('${a.id}')" style="cursor:pointer;color:var(--muted);font-size:.85rem">${a.gruppo ? esc(a.gruppo) : ''}</td>
-              <td style="width:40px;text-align:center">
-                <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
-                  ${godMode && !a.maestro_id ? `<button class="btn btn-ghost btn-sm" title="Assegna a me" onclick="assegnaAllievoAMe('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Assegna</button>` : ''}
-                  ${godMode ? `<button class="btn btn-ghost btn-sm" title="Condividi" onclick="apriCondividiAllievo('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Condividi</button>` : ''}
-                  ${godMode && a.gruppo ? `<button class="btn btn-ghost btn-sm" title="Condividi gruppo" onclick="apriCondividiGruppo('${a.gruppo.replace(/'/g,"\\'")}')" style="padding:.2rem .45rem;font-size:.82rem">Gruppo</button>` : ''}
-                  ${a.stato !== 'archiviato' ? `<button class="btn btn-ghost btn-sm" title="Modifica" onclick="showView('nuovo-allievo','${a.id}')" style="padding:.2rem .45rem;font-size:1rem">✏️</button>` : ''}
-                </div>
-              </td>
-            </tr>`).join('')}
+          ${lista.map(renderAllievoRow).join('')}
         </tbody>
       </table>
     </div>`
@@ -1066,12 +1135,35 @@ function renderAllievi() {
 
 function setFiltroGruppo(g) {
   filtroGruppo = g
+  if (g === null) gruppiEspansi.clear()
+  renderAllievi()
+}
+
+async function mostraTuttiAllievi() {
+  const serveRicarica = mostraArchiviati
+  mostraArchiviati = false
+  filtroGruppo = null
+  gruppiEspansi.clear()
+  if (serveRicarica) await ricaricaAllievi()
+  else renderAllievi()
+}
+
+function toggleGruppoLista(gruppo) {
+  if (gruppiEspansi.has(gruppo)) gruppiEspansi.delete(gruppo)
+  else gruppiEspansi.add(gruppo)
   renderAllievi()
 }
 
 async function setArchivio(on) {
+  if (mostraArchiviati === on) {
+    filtroGruppo = null
+    gruppiEspansi.clear()
+    renderAllievi()
+    return
+  }
   mostraArchiviati = on
   filtroGruppo = null
+  gruppiEspansi.clear()
   await ricaricaAllievi()
 }
 
@@ -1115,8 +1207,8 @@ function initNuovoAllievo(id) {
   document.getElementById('na-nickname').value   = allievo?.nickname        || ''
   document.getElementById('na-nome').value        = allievo?.nome            || ''
   document.getElementById('na-cognome').value     = allievo?.cognome         || ''
-  document.getElementById('na-nascita').value     = allievo?.data_nascita    || ''
-  document.getElementById('na-iscrizione').value  = allievo?.data_iscrizione || new Date().toISOString().slice(0,10)
+  document.getElementById('na-nascita').value     = dateIsoToInput(allievo?.data_nascita)
+  document.getElementById('na-iscrizione').value  = dateIsoToInput(allievo?.data_iscrizione || new Date().toISOString().slice(0,10))
   document.getElementById('na-email').value       = allievo?.email           || ''
   document.getElementById('na-tel').value         = allievo?.telefono        || ''
   document.getElementById('na-note').value        = allievo?.note_generali   || ''
@@ -1131,7 +1223,7 @@ function initNuovoAllievo(id) {
   // Profilo logistica
   document.getElementById('na-indirizzo').value    = p.indirizzo     || ''
   document.getElementById('na-cultura').value      = p.cultura       || ''
-  document.getElementById('na-cert').value          = p.scadenza_cert  || ''
+  document.getElementById('na-cert').value          = dateIsoToInput(p.scadenza_cert)
   document.getElementById('na-durata').value    = p.durata_lezione || ''
   document.getElementById('na-compenso').value  = p.compenso       || ''
   document.getElementById('na-appuntamento').value  = p.appuntamento   || ''
@@ -1326,14 +1418,21 @@ function aggiungiAccompagnatore() {
 }
 
 function calcolaEtaForm() {
-  const dn = document.getElementById('na-nascita').value
+  const dn = dateInputToIso(document.getElementById('na-nascita').value)
   const el = document.getElementById('na-eta')
   if (!dn) { el.value = ''; return }
-  const oggi = new Date(), nascita = new Date(dn)
+  const [y, m, d] = dn.split('-').map(Number)
+  const oggi = new Date(), nascita = new Date(y, m - 1, d)
   let anni = oggi.getFullYear() - nascita.getFullYear()
   if (oggi.getMonth() < nascita.getMonth() || (oggi.getMonth() === nascita.getMonth() && oggi.getDate() < nascita.getDate())) anni--
   const mesi = Math.round((oggi - nascita) / (1000*60*60*24*30.44))
   el.value = anni >= 2 ? anni + ' anni' : mesi + ' mesi'
+}
+
+function formatDateField(input) {
+  const digits = input.value.replace(/\D/g, '').slice(0, 8)
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean)
+  input.value = parts.join('/')
 }
 
 function getDot(id) {
@@ -1371,7 +1470,7 @@ async function salvaAllievo() {
     profilo = {
       indirizzo:        document.getElementById('na-indirizzo').value.trim()    || null,
       cultura:          document.getElementById('na-cultura').value.trim()      || null,
-      scadenza_cert:    document.getElementById('na-cert').value                   || null,
+      scadenza_cert:    dateInputToIso(document.getElementById('na-cert').value)        || null,
       durata_lezione:   parseInt(document.getElementById('na-durata').value)        || null,
       compenso:         parseFloat(document.getElementById('na-compenso').value)   || null,
       appuntamento:     document.getElementById('na-appuntamento').value.trim()    || null,
@@ -1412,8 +1511,8 @@ async function salvaAllievo() {
     vip:             isAss ? false : document.getElementById('na-vip').value === 'true',
     blocco_attuale:  isAss ? 'Base' : document.getElementById('na-blocco').value,
     gruppo:          isAss ? (document.getElementById('ass-gruppo').value.trim() || null) : (gruppoAttivo ? (document.getElementById('na-gruppo').value.trim() || null) : null),
-    data_nascita:    isAss ? null : (document.getElementById('na-nascita').value || null),
-    data_iscrizione: isAss ? null : (document.getElementById('na-iscrizione').value || null),
+    data_nascita:    isAss ? null : (dateInputToIso(document.getElementById('na-nascita').value) || null),
+    data_iscrizione: isAss ? null : (dateInputToIso(document.getElementById('na-iscrizione').value) || null),
     email:           isAss ? null : (document.getElementById('na-email').value.trim() || null),
     telefono:        isAss ? null : (document.getElementById('na-tel').value.trim() || null),
     note_generali:   isAss ? (document.getElementById('ass-note').value.trim() || null) : (document.getElementById('na-note').value.trim() || null),
@@ -1810,9 +1909,9 @@ async function loadScheda(id) {
   function dotsRo(val) {
     return [1,2,3].map(i => `<span class="dot-ro${i <= val ? ' filled' : ''}"></span>`).join('')
   }
-  function infoRow(label, val) {
+  function infoRow(label, val, allowHtml = false) {
     if (!val) return ''
-    return `<div><div class="info-label">${label}</div><div>${esc(String(val))}</div></div>`
+    return `<div><div class="info-label">${label}</div><div>${allowHtml ? val : esc(String(val))}</div></div>`
   }
 
   const famHtml = (p.familiari || []).length
@@ -1840,12 +1939,12 @@ async function loadScheda(id) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
           <div class="scheda-nome">
-            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' ⭐' : ''}
+            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' <span class="vip-star">★</span>' : ''}
           </div>
           ${headerExtra}
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="showView('nuovo-allievo','${id}')">✏️ Modifica</button>
+          <button class="btn btn-outline btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
           <button class="btn btn-outline btn-sm" onclick="eliminaAllievo('${id}')">🗑 Elimina</button>
           <button class="btn btn-outline btn-sm" onclick="esportaAllievo('${id}')">⬇ JSON</button>
           <button class="btn btn-outline btn-sm" onclick="stampaScheda('${id}')">🖨 Stampa</button>
@@ -1866,8 +1965,8 @@ async function loadScheda(id) {
       <div class="card">
         ${(p.familiari||[]).length ? `<div style="margin-bottom:.75rem"><div class="info-label" style="margin-bottom:.3rem">Familiari / Tutori</div>${famHtml}</div>` : ''}
         <div class="info-grid">
-          ${infoRow('Email', allievo.email ? `<a href="mailto:${esc(allievo.email)}" style="color:var(--blu)">${esc(allievo.email)}</a>` : null)}
-          ${infoRow('Telefono', allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null)}
+          ${infoRow('Email', allievo.email ? `<a href="mailto:${esc(allievo.email)}" style="color:var(--blu)">${esc(allievo.email)}</a>` : null, true)}
+          ${infoRow('Telefono', allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
           ${infoRow('Iscritto il', allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
           ${infoRow('Indirizzo', p.indirizzo)}
           ${infoRow('Cultura / lingua', p.cultura)}
@@ -2237,7 +2336,7 @@ function stampaScheda(id) {
 
 <div class="header">
   <div>
-    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ''}${allievo.vip ? ' ⭐' : ''}</h1>
+    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ''}${allievo.vip ? ' <span style="color:#22b8cf">★</span>' : ''}</h1>
     <div class="meta">
       Iscritto il ${fmtDate(allievo.data_iscrizione)}${allievo.data_nascita ? ` · Nato il ${fmtDate(allievo.data_nascita)}` : ''}${allievo.gruppo ? ` · Gruppo: ${allievo.gruppo}` : ''}
     </div>
@@ -2373,7 +2472,7 @@ async function loadLezioni() {
         <tbody>
           ${lezioni.map(l => {
             const nomi = l.lezioni_allievi?.map(la => `${la.allievi?.nome} ${la.allievi?.cognome}`).join(', ') || '—'
-            return `<tr>
+            return `<tr onclick="showView('nuova-lezione','lezione:${l.id}')" style="cursor:pointer">
               <td><strong>${formatDate(l.data)}</strong></td>
               <td>${tipoLabel(l.tipo)}</td>
               <td>${l.durata_min ? l.durata_min + ' min' : '—'}</td>
@@ -2388,8 +2487,14 @@ async function loadLezioni() {
 
 // ── Nuova lezione ─────────────────────────────────────────────────────
 
-function initNuovaLezione(presetAllievoId = null) {
-  lezionePresetAllievoId = presetAllievoId
+async function initNuovaLezione(presetAllievoId = null) {
+  editingLezioneId = null
+  editingLezioneAllieviIds = []
+  editingLezioneSkillRows = {}
+  const editId = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('lezione:')
+    ? presetAllievoId.slice('lezione:'.length)
+    : null
+  lezionePresetAllievoId = editId ? null : presetAllievoId
   // Data di default = oggi
   document.getElementById('lz-data').value    = new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value  = ''
@@ -2400,6 +2505,39 @@ function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-skills-container').innerHTML = ''
   document.getElementById('lz-gruppo-panel').hidden = true
   document.getElementById('lz-gruppo-panel').innerHTML = ''
+  document.getElementById('lz-title').textContent = editId ? 'Modifica lezione' : 'Nuova lezione'
+  document.getElementById('btn-salva-lz').textContent = editId ? 'Salva modifiche' : 'Salva lezione'
+
+  if (editId) {
+    const { data: lezione, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto)')
+      .eq('id', editId)
+      .single()
+    if (error || !lezione) {
+      const errEl = document.getElementById('lz-err')
+      errEl.textContent = error?.message || 'Lezione non trovata.'
+      errEl.classList.add('show')
+      renderLezionePartecipanti()
+      return
+    }
+
+    editingLezioneId = editId
+    editingLezioneAllieviIds = (lezione.lezioni_allievi || []).map(r => r.allievo_id).filter(Boolean)
+    ;(lezione.lezioni_skills || []).forEach(r => {
+      if (!r.allievo_id) return
+      if (!editingLezioneSkillRows[r.allievo_id]) editingLezioneSkillRows[r.allievo_id] = []
+      editingLezioneSkillRows[r.allievo_id].push({
+        skillId: r.skill_id,
+        stadio: r.stadio_raggiunto || 1,
+      })
+    })
+
+    document.getElementById('lz-data').value = lezione.data || ''
+    document.getElementById('lz-durata').value = lezione.durata_min || ''
+    document.getElementById('lz-luogo').value = lezione.luogo || ''
+    document.getElementById('lz-note').value = lezione.note || ''
+    document.getElementById('lz-tipo').value = lezione.tipo || 'individuale'
+  }
 
   renderLezionePartecipanti()
 }
@@ -2421,7 +2559,7 @@ function renderLezionePartecipanti() {
   if (tipo === 'individuale') {
     const selected = lezionePresetAllievoId && attivi.some(a => a.id === lezionePresetAllievoId)
       ? lezionePresetAllievoId
-      : ''
+      : (editingLezioneAllieviIds.length === 1 ? editingLezioneAllieviIds[0] : '')
     listEl.innerHTML = `
       <div class="field" style="margin:0">
         <label>Allievo attivo</label>
@@ -2447,15 +2585,32 @@ function renderLezionePartecipanti() {
           ${gruppi.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
         </select>
       </div>` : '<div class="empty">Nessun gruppo attivo ancora.</div>'
-    listEl.innerHTML = '<div class="empty">Seleziona un gruppo per vedere gli allievi.</div>'
+    if (editingLezioneId && editingLezioneAllieviIds.length) {
+      const presenti = allAllievi.filter(a => editingLezioneAllieviIds.includes(a.id))
+      listEl.innerHTML = presenti.map(a => `
+        <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
+          <input type="checkbox" value="${a.id}" checked onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
+          ${esc([a.cognome, a.nome].filter(Boolean).join(' '))}
+        </label>`).join('')
+      ;[...listEl.querySelectorAll('input[type=checkbox]')].forEach(cb => {
+        const a = presenti.find(m => m.id === cb.value)
+        if (a) toggleAllievo(cb, [a.nome, a.cognome].filter(Boolean).join(' '))
+      })
+    } else {
+      listEl.innerHTML = '<div class="empty">Seleziona un gruppo per vedere gli allievi.</div>'
+    }
     return
   }
 
   listEl.innerHTML = attivi.map(a => `
     <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;cursor:pointer;font-size:.9rem">
-      <input type="checkbox" value="${a.id}" onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
+      <input type="checkbox" value="${a.id}" ${editingLezioneAllieviIds.includes(a.id) ? 'checked' : ''} onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
       ${esc([a.cognome, a.nome].filter(Boolean).join(' '))}
     </label>`).join('')
+  ;[...listEl.querySelectorAll('input[type=checkbox]:checked')].forEach(cb => {
+    const a = attivi.find(x => x.id === cb.value)
+    if (a) toggleAllievo(cb, [a.nome, a.cognome].filter(Boolean).join(' '))
+  })
 }
 
 function renderAllieviGruppoLezione(gruppo) {
@@ -2502,19 +2657,24 @@ function toggleAllievo(cb, nomeCompleto) {
       <div id="skill-rows-${cb.value}"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:.4rem" onclick="aggiungiSkillRow('${cb.value}')">+ Aggiungi skill</button>`
     container.appendChild(div)
-    aggiungiSkillRow(cb.value)
+    const savedRows = editingLezioneSkillRows[cb.value] || []
+    if (savedRows.length) {
+      savedRows.forEach(row => aggiungiSkillRow(cb.value, row.skillId, row.stadio))
+    } else {
+      aggiungiSkillRow(cb.value)
+    }
   } else {
     document.getElementById(`block-${cb.value}`)?.remove()
   }
 }
 
-function aggiungiSkillRow(allieviId) {
+function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1) {
   const container = document.getElementById(`skill-rows-${allieviId}`)
   const row = document.createElement('div')
   row.className = 'skill-row'
 
   const skillOpts = allSkills.length
-    ? allSkills.map(s => `<option value="${s.id}">${esc(s.nome)}${s.ramo ? ' · ' + s.ramo : ''} (Lv.${s.livello})</option>`).join('')
+    ? allSkills.map(s => `<option value="${s.id}" ${s.id === selectedSkillId ? 'selected' : ''}>${esc(s.nome)}${s.ramo ? ' · ' + s.ramo : ''} (Lv.${s.livello})</option>`).join('')
     : '<option value="">Catalogo vuoto</option>'
 
   row.innerHTML = `
@@ -2523,9 +2683,9 @@ function aggiungiSkillRow(allieviId) {
       ${skillOpts}
     </select>
     <select class="stadio-select">
-      <option value="1">1 — In lavorazione</option>
-      <option value="2">2 — Raffinamento</option>
-      <option value="3">3 — Completato</option>
+      <option value="1" ${selectedStadio === 1 ? 'selected' : ''}>1 — In lavorazione</option>
+      <option value="2" ${selectedStadio === 2 ? 'selected' : ''}>2 — Raffinamento</option>
+      <option value="3" ${selectedStadio === 3 ? 'selected' : ''}>3 — Completato</option>
     </select>
     <button class="btn btn-ghost btn-sm" onclick="this.closest('.skill-row').remove()">✕</button>`
   container.appendChild(row)
@@ -2548,9 +2708,19 @@ async function salvaLezione() {
   const btn = document.getElementById('btn-salva-lz')
   btn.disabled = true; btn.textContent = 'Salvataggio…'
 
-  // 1 — crea lezione
-  const { data: lz, error: e1 } = await sb.from('lezioni').insert({ data, durata_min: durata, tipo, luogo, note }).select().single()
+  // 1 — crea o aggiorna lezione
+  let lz, e1
+  if (editingLezioneId) {
+    ;({ data: lz, error: e1 } = await sb.from('lezioni').update({ data, durata_min: durata, tipo, luogo, note }).eq('id', editingLezioneId).select().single())
+  } else {
+    ;({ data: lz, error: e1 } = await sb.from('lezioni').insert({ data, durata_min: durata, tipo, luogo, note }).select().single())
+  }
   if (e1) { errEl.textContent = e1.message; errEl.classList.add('show'); btn.disabled = false; btn.textContent = 'Salva lezione'; return }
+
+  if (editingLezioneId) {
+    await sb.from('lezioni_skills').delete().eq('lezione_id', editingLezioneId)
+    await sb.from('lezioni_allievi').delete().eq('lezione_id', editingLezioneId)
+  }
 
   // 2 — allievi + skill
   for (const cb of checkedAllievi) {
@@ -2568,6 +2738,9 @@ async function salvaLezione() {
   }
 
   btn.disabled = false; btn.textContent = 'Salva lezione'
+  editingLezioneId = null
+  editingLezioneAllieviIds = []
+  editingLezioneSkillRows = {}
   showView('lezioni')
 }
 
@@ -3182,12 +3355,35 @@ function formatDate(d) {
   return `${g}/${m}/${y}`
 }
 
+function dateIsoToInput(d) {
+  if (!d) return ''
+  const match = String(d).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(d)
+}
+
+function dateInputToIso(d) {
+  if (!d) return ''
+  const raw = String(d).trim()
+  let match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (match) {
+    const day = match[1].padStart(2, '0')
+    const month = match[2].padStart(2, '0')
+    return `${match[3]}-${month}-${day}`
+  }
+  match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? raw : ''
+}
+
 function stadioLabel(s) {
   return ['Mai fatto','In lavorazione','Raffinamento','Completato'][s] ?? s
 }
 
 function tipoLabel(t) {
   return { individuale: 'Individuale', gruppo: 'Gruppo', campo_libero: 'Campo libero' }[t] ?? t
+}
+
+function editIcon() {
+  return '<svg class="edit-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 }
 
 function esc(s) {
