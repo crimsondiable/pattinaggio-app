@@ -49,6 +49,7 @@
     .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
     .field input::placeholder, .field textarea::placeholder { color: #5f737d; }
     .field input[readonly] { background: var(--blu-chiaro) !important; color: var(--blu) !important; }
+    .inline-select { padding: .36rem .6rem; border-radius: var(--r); border: 1.5px solid var(--bordo); background: rgba(7,17,22,.46); color: var(--testo); font-weight: 600; font-size: .81rem; min-width: 230px; }
     .field textarea { resize: vertical; min-height: 72px; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
     @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
@@ -146,6 +147,17 @@
     .allievo-block h4 { font-size: .9rem; margin-bottom: .6rem; }
     .skill-row { display: grid; grid-template-columns: 1fr auto auto; gap: .4rem; align-items: center; margin-bottom: .4rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); }
+    .lezione-detail-cell { padding: .45rem .55rem .75rem; background: rgba(110,231,249,.035); border-top: 0; }
+    .lezione-detail-grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(180px,.95fr); gap: .75rem; align-items: start; }
+    .lezione-detail-title { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .35rem; }
+    .lezione-skill-list { display: flex; flex-wrap: wrap; gap: .28rem; }
+    .lezione-note-preview { color: var(--testo); font-size: .82rem; line-height: 1.35; white-space: pre-wrap; }
+    .lezione-note-cell { max-width: 260px; color: var(--muted); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lezione-empty-detail { color: var(--muted); font-size: .8rem; }
+    .lezioni-year-row td { background: rgba(110,231,249,.045); color: var(--blu); font-weight: 800; }
+    .lezioni-year-row .year-count { color: var(--muted); font-weight: 700; font-size: .82rem; }
+    .lezione-placeholder-row { min-height: 38px; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); background: rgba(255,255,255,.012); color: var(--muted); font-size: .82rem; display: flex; align-items: center; padding: .55rem .7rem; margin-bottom: .75rem; }
+    @media (max-width: 700px) { .lezione-detail-grid { grid-template-columns: 1fr; } }
 
     /* ── Scheda allievo ── */
     .back-btn { display: inline-flex; align-items: center; gap: .3rem; color: var(--blu); background: none; border: none; font-size: .86rem; font-weight: 600; cursor: pointer; margin-bottom: 1rem; padding: 0; }
@@ -161,6 +173,7 @@
     .form-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 1rem; }
     @media (max-width: 600px) { .form-grid3 { grid-template-columns: 1fr 1fr; } }
     .familiare-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; margin-bottom: .5rem; align-items: end; }
+    .familiare-row-contatto { grid-template-columns: minmax(130px,1.2fr) minmax(130px,1.2fr) minmax(120px,.75fr) minmax(150px,1fr); }
     @media (max-width: 600px) { .familiare-row { grid-template-columns: 1fr; } }
     .group-student { border: 1px solid var(--bordo); border-radius: var(--r); margin-bottom: .65rem; background: var(--panel-soft); overflow: hidden; }
     .group-student-head { width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .75rem; padding: .65rem .75rem; background: rgba(255,255,255,.025); border: 0; color: var(--testo); text-align: left; cursor: pointer; }
@@ -201,8 +214,8 @@
     .vip-toggle { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
     .vip-toggle label { font-size: .83rem; font-weight: 600; }
     .vip-star { color: var(--blu); text-shadow: 0 0 10px rgba(110,231,249,.28); }
-    .star-btn { font-size: 1.6rem; cursor: pointer; line-height: 1; user-select: none; color: var(--muted); filter: grayscale(1) opacity(.35); transition: color .15s, filter .15s, text-shadow .15s; }
-    .star-btn.on { color: var(--blu); filter: none; text-shadow: 0 0 10px rgba(110,231,249,.28); }
+    .star-btn { font-size: 1.6rem; cursor: pointer; line-height: 1; user-select: none; color: var(--muted); opacity: .45; transition: color .15s, opacity .15s, text-shadow .15s; }
+    .star-btn.on { color: var(--blu); opacity: 1; text-shadow: 0 0 10px rgba(110,231,249,.28); }
     .group-count { color: var(--blu); font-weight: 800; font-size: .8rem; }
     .edit-icon { width: 18px; height: 18px; color: var(--blu); vertical-align: -3px; }
     /* ── Scheda info grid ── */
@@ -210,6 +223,11 @@
     .info-row { display: flex; flex-direction: column; }
     .info-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
     .info-val { color: var(--testo); }
+    .psy-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(220px,.72fr); gap: 1.6rem; align-items: start; }
+    .psy-col { display: grid; gap: .5rem; font-size: .87rem; }
+    .psy-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .9rem; align-items: center; padding: .18rem 0; }
+    .psy-dots { display: flex; gap: 4px; justify-content: flex-end; }
+    @media (max-width: 700px) { .psy-grid { grid-template-columns: 1fr; } }
     /* dot read-only nella scheda */
     .dot-ro { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--bordo); display: inline-block; flex-shrink: 0; }
     .dot-ro.filled { background: var(--blu); border-color: var(--blu); }
@@ -425,7 +443,13 @@
     <section id="view-lezioni" hidden>
       <div class="section-header">
         <h2>Lezioni</h2>
-        <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <select id="lezioni-filtro" class="inline-select" onchange="setFiltroLezioni(this.value)">
+            <option value="all">Tutte le lezioni</option>
+          </select>
+          <button class="btn btn-outline btn-sm" id="lezioni-dettagli-btn" onclick="toggleDettagliLezioni()" type="button">Espandi</button>
+          <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
+        </div>
       </div>
       <div class="card">
         <div id="lezioni-content"><div class="loading">Caricamento…</div></div>
@@ -451,6 +475,12 @@
           </div>
           <div class="field"><label>Luogo</label><input type="text" id="lz-luogo" placeholder="es. Pista centrale"></div>
         </div>
+        <p class="form-sec">Lezione</p>
+        <div class="lezione-placeholder-row">Spazio per struttura della lezione.</div>
+        <p class="form-sec">Esercizi individuali</p>
+        <div class="lezione-placeholder-row">Spazio per esercizi e lavoro individuale.</div>
+        <p class="form-sec">Note speciali</p>
+        <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
         <div class="field"><label>Note</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
       </div>
 
@@ -490,7 +520,7 @@
             <div class="field" style="margin:0"><label>Nickname</label><input type="text" id="na-nickname" placeholder="Es. Mamy, Freccia…"></div>
             <div class="vip-toggle">
               <label>VIP</label>
-              <span class="star-btn" id="na-vip-btn" onclick="toggleVip()" title="Allievo VIP">⭐</span>
+              <span class="star-btn" id="na-vip-btn" onclick="toggleVip()" title="Allievo VIP">★</span>
               <input type="hidden" id="na-vip" value="false">
             </div>
           </div>
@@ -766,7 +796,7 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], appInited = false, editingAllieviId = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set()
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], appInited = false, editingAllieviId = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set()
 let godMode = false, godScope = 'all', shareContext = null
 const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
 
@@ -1036,10 +1066,13 @@ function renderAllievi() {
 
   // Chip gruppi (solo gruppi presenti nella lista corrente)
   const gruppi = [...new Set(baseLista.map(a => a.gruppo).filter(Boolean))].sort()
+  const mostraToggleGruppi = !mostraArchiviati && filtroGruppo === null && gruppi.length > 0
+  const tuttiGruppiEspansi = mostraToggleGruppi && gruppi.every(g => gruppiEspansi.has(g))
   const chipsHtml = `
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
       <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null ? ' chip-on' : ''}">Tutti</button>
       ${gruppi.map(g => `<button type="button" onclick="setFiltroGruppo('${g.replace(/'/g,"\\'")}\')" class="chip${filtroGruppo === g ? ' chip-on' : ''}">${esc(g)}</button>`).join('')}
+      ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? 'Raggruppa tutti i gruppi' : 'Espandi tutti i gruppi'}">${tuttiGruppiEspansi ? '▴ Raggruppa' : '▾ Espandi'}</button>` : ''}
       <button type="button" onclick="setArchivio(true)" class="chip${mostraArchiviati ? ' chip-on' : ''}" style="margin-left:auto">Archivio</button>
     </div>`
 
@@ -1081,7 +1114,6 @@ function renderAllievi() {
     const gruppiRows = gruppi.map(gruppo => {
       const membri = ordinaAllieviLista(lista.filter(a => a.gruppo === gruppo))
       const expanded = gruppiEspansi.has(gruppo)
-      const livelli = [...new Set(membri.map(a => a.livello_attuale).filter(v => v !== null && v !== undefined))].sort((a, b) => a - b).join(', ') || '—'
       const blocchi = [...new Set(membri.map(a => a.blocco_attuale).filter(Boolean))].join(', ') || '—'
       const editTarget = membri[0]?.id
       return `
@@ -1090,7 +1122,7 @@ function renderAllievi() {
           <td><strong>${esc(gruppo)}</strong></td>
           <td></td>
           <td></td>
-          <td>${esc(livelli)}</td>
+          <td></td>
           <td>${esc(blocchi)}</td>
           <td style="width:40px;text-align:center">
             <div style="display:flex;justify-content:flex-end">
@@ -1151,6 +1183,14 @@ async function mostraTuttiAllievi() {
 function toggleGruppoLista(gruppo) {
   if (gruppiEspansi.has(gruppo)) gruppiEspansi.delete(gruppo)
   else gruppiEspansi.add(gruppo)
+  renderAllievi()
+}
+
+function toggleTuttiGruppi() {
+  const gruppi = [...new Set(allieviVisibiliGod().map(a => a.gruppo).filter(Boolean))].sort()
+  const tuttiEspansi = gruppi.length > 0 && gruppi.every(g => gruppiEspansi.has(g))
+  gruppiEspansi.clear()
+  if (!tuttiEspansi) gruppi.forEach(g => gruppiEspansi.add(g))
   renderAllievi()
 }
 
@@ -1263,18 +1303,7 @@ function initNuovoAllievo(id) {
   const famContainer = document.getElementById('na-familiari')
   famContainer.innerHTML = ''
   ;(p.familiari || []).forEach(f => {
-    const n = famContainer.children.length + 1
-    const row = document.createElement('div')
-    row.className = 'familiare-row'
-    row.style.cssText = 'align-items:end;position:relative'
-    row.innerHTML = `
-      <div class="field" style="margin:0"><label>Familiare ${n} — Nome</label><input type="text" placeholder="Nome e cognome" value="${esc(f.nome||'')}"></div>
-      <div class="field" style="margin:0"><label>Relazione</label><input type="text" placeholder="Es. Madre, Padre, Tutore…" value="${esc(f.relazione||'')}"></div>
-      <div class="field" style="margin:0;display:grid;grid-template-columns:1fr auto;gap:.3rem;align-items:end">
-        <div><label>Telefono</label><input type="tel" placeholder="+39 …" value="${esc(f.telefono||'')}"></div>
-        <button type="button" class="btn btn-ghost btn-sm" style="padding:.4rem .5rem;color:var(--danger)" onclick="this.closest('.familiare-row').remove()">✕</button>
-      </div>`
-    famContainer.appendChild(row)
+    famContainer.appendChild(creaFamiliareRow(f))
   })
 
   // Dot ratings
@@ -1358,18 +1387,36 @@ function cercaCompagni() {
 
 function aggiungiFamiliare() {
   const container = document.getElementById('na-familiari')
+  container.appendChild(creaFamiliareRow())
+}
+
+function normalizzaFamiliare(f = {}) {
+  let nome = f.nome || ''
+  let cognome = f.cognome || ''
+  if (nome && !cognome && nome.trim().includes(' ')) {
+    const parts = nome.trim().split(/\s+/)
+    cognome = parts.pop()
+    nome = parts.join(' ')
+  }
+  return { nome, cognome, relazione: f.relazione || '', telefono: f.telefono || '' }
+}
+
+function creaFamiliareRow(f = {}) {
+  const container = document.getElementById('na-familiari')
+  const data = normalizzaFamiliare(f)
   const n = container.children.length + 1
   const row = document.createElement('div')
-  row.className = 'familiare-row'
+  row.className = 'familiare-row familiare-row-contatto'
   row.style.cssText = 'align-items:end;position:relative'
   row.innerHTML = `
-    <div class="field" style="margin:0"><label>Familiare ${n} — Nome</label><input type="text" placeholder="Nome e cognome"></div>
-    <div class="field" style="margin:0"><label>Relazione</label><input type="text" placeholder="Es. Madre, Padre, Tutore…"></div>
+    <div class="field" style="margin:0"><label>Familiare ${n} — Nome</label><input type="text" class="fam-nome" placeholder="Nome" value="${esc(data.nome)}"></div>
+    <div class="field" style="margin:0"><label>Cognome</label><input type="text" class="fam-cognome" placeholder="Cognome" value="${esc(data.cognome)}"></div>
+    <div class="field" style="margin:0"><label>Relazione</label><input type="text" class="fam-relazione" placeholder="Madre, padre..." value="${esc(data.relazione)}"></div>
     <div class="field" style="margin:0;display:grid;grid-template-columns:1fr auto;gap:.3rem;align-items:end">
-      <div><label>Telefono</label><input type="tel" placeholder="+39 …"></div>
+      <div><label>Telefono</label><input type="tel" class="fam-telefono" placeholder="+39 …" value="${esc(data.telefono)}"></div>
       <button type="button" class="btn btn-ghost btn-sm" style="padding:.4rem .5rem;color:var(--danger)" onclick="this.closest('.familiare-row').remove()">✕</button>
     </div>`
-  container.appendChild(row)
+  return row
 }
 
 function cercaLogisticaAssoc() {
@@ -1463,9 +1510,13 @@ async function salvaAllievo() {
   } else {
     const famRows = document.querySelectorAll('#na-familiari .familiare-row')
     const familiari = [...famRows].map(row => {
-      const inputs = row.querySelectorAll('input')
-      return { nome: inputs[0].value.trim(), relazione: inputs[1].value.trim(), telefono: inputs[2].value.trim() }
-    }).filter(f => f.nome || f.telefono)
+      return {
+        nome: row.querySelector('.fam-nome')?.value.trim() || '',
+        cognome: row.querySelector('.fam-cognome')?.value.trim() || '',
+        relazione: row.querySelector('.fam-relazione')?.value.trim() || '',
+        telefono: row.querySelector('.fam-telefono')?.value.trim() || '',
+      }
+    }).filter(f => f.nome || f.cognome || f.telefono)
 
     profilo = {
       indirizzo:        document.getElementById('na-indirizzo').value.trim()    || null,
@@ -1867,7 +1918,7 @@ async function loadScheda(id) {
         const skills = l.lezioni_skills?.map(ls =>
           `<span class="st st${ls.stadio_raggiunto}">${esc(ls.skills?.nome)}</span>`
         ).join(' ') || '—'
-        return `<div style="padding:.5rem 0;border-bottom:1px solid var(--bordo);font-size:.87rem">
+        return `<div onclick="showView('nuova-lezione','lezione:${l.id}')" style="padding:.5rem 0;border-bottom:1px solid var(--bordo);font-size:.87rem;cursor:pointer">
           <span style="font-weight:600">${formatDate(l.data)}</span>
           <span style="color:var(--muted);margin:0 .4rem">·</span>${esc(tipoLabel(l.tipo))}
           ${l.durata_min ? `<span style="color:var(--muted)"> · ${l.durata_min} min</span>` : ''}
@@ -1990,19 +2041,23 @@ async function loadScheda(id) {
 
       <p class="sec-title">Profilo psicomotorio</p>
       <div class="card">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem">Capacità motorie</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 2rem;font-size:.87rem">
-          <div><div class="info-label">Coordinazione</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.capacita?.coordinazione||0)}</div></div>
-          <div><div class="info-label">Propriocezione</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.capacita?.propriocezione||0)}</div></div>
-          <div><div class="info-label">Vel. apprendimento</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.capacita?.velocita_apprendimento||0)}</div></div>
-          <div><div class="info-label">Bilateralità</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.capacita?.bilateralita||0)}</div></div>
-        </div>
-        <div style="border-top:1px solid var(--bordo);margin-top:1rem;padding-top:1rem">
-          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem">Canale di apprendimento</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;font-size:.87rem">
-            <div><div class="info-label">Visivo</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.apprendimento?.visivo||0)}</div></div>
-            <div><div class="info-label">Teorico</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.apprendimento?.teorico||0)}</div></div>
-            <div><div class="info-label">Pratico</div><div style="display:flex;gap:4px;margin-top:4px">${dotsRo(p.apprendimento?.pratico||0)}</div></div>
+        <div class="psy-grid">
+          <div>
+            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem">Capacità motorie</div>
+            <div class="psy-col">
+              <div class="psy-row"><div class="info-label">Coordinazione</div><div class="psy-dots">${dotsRo(p.capacita?.coordinazione||0)}</div></div>
+              <div class="psy-row"><div class="info-label">Propriocezione</div><div class="psy-dots">${dotsRo(p.capacita?.propriocezione||0)}</div></div>
+              <div class="psy-row"><div class="info-label">Vel. apprendimento</div><div class="psy-dots">${dotsRo(p.capacita?.velocita_apprendimento||0)}</div></div>
+              <div class="psy-row"><div class="info-label">Bilateralità</div><div class="psy-dots">${dotsRo(p.capacita?.bilateralita||0)}</div></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem">Canale di apprendimento</div>
+            <div class="psy-col">
+              <div class="psy-row"><div class="info-label">Visivo</div><div class="psy-dots">${dotsRo(p.apprendimento?.visivo||0)}</div></div>
+              <div class="psy-row"><div class="info-label">Teorico</div><div class="psy-dots">${dotsRo(p.apprendimento?.teorico||0)}</div></div>
+              <div class="psy-row"><div class="info-label">Pratico</div><div class="psy-dots">${dotsRo(p.apprendimento?.pratico||0)}</div></div>
+            </div>
           </div>
         </div>
         <div style="border-top:1px solid var(--bordo);margin-top:1rem;padding-top:1rem">
@@ -2443,11 +2498,23 @@ ${allievo.note_generali ? `<div class="box-full"><div class="sec-title">Note gen
 
 // ── Lezioni ───────────────────────────────────────────────────────────
 
+function isMissingNoteSpecialiError(error) {
+  return !!error && /note_speciali/i.test(error.message || error.details || error.hint || '')
+}
+
 async function loadLezioni() {
+  aggiornaFiltroLezioni()
+  aggiornaToggleDettagliLezioni()
   document.getElementById('lezioni-content').innerHTML = '<div class="loading">Caricamento…</div>'
-  const { data, error } = await sb.from('lezioni')
-    .select('id, data, tipo, durata_min, luogo, lezioni_allievi(allievi(id, nome, cognome, maestro_id))')
+  let { data, error } = await sb.from('lezioni')
+    .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
     .order('data', { ascending: false })
+  if (isMissingNoteSpecialiError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
+      .order('data', { ascending: false }))
+    data = (data || []).map(l => ({ ...l, note_speciali: null }))
+  }
 
   const el = document.getElementById('lezioni-content')
   if (error || !data?.length) {
@@ -2459,30 +2526,161 @@ async function loadLezioni() {
   const lezioni = godMode && godScope !== 'all'
     ? data.filter(l => l.lezioni_allievi?.some(la => scopeIds.has(la.allievi?.id)))
     : data
+  const lezioniFiltrate = filtraLezioniPerSelezione(lezioni)
 
-  if (!lezioni.length) {
-    el.innerHTML = '<div class="empty">Nessuna lezione per questo account.</div>'
+  if (!lezioniFiltrate.length) {
+    el.innerHTML = `<div class="empty">${filtroLezioni === 'all' ? 'Nessuna lezione per questo account.' : 'Nessuna lezione per questa selezione.'}</div>`
     return
   }
 
   el.innerHTML = `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Durata</th><th>Allievi</th></tr></thead>
+        <thead><tr><th>Data e orario</th><th>Allievi</th><th>Location</th><th>Note speciali</th></tr></thead>
         <tbody>
-          ${lezioni.map(l => {
-            const nomi = l.lezioni_allievi?.map(la => `${la.allievi?.nome} ${la.allievi?.cognome}`).join(', ') || '—'
-            return `<tr onclick="showView('nuova-lezione','lezione:${l.id}')" style="cursor:pointer">
-              <td><strong>${formatDate(l.data)}</strong></td>
-              <td>${tipoLabel(l.tipo)}</td>
-              <td>${l.durata_min ? l.durata_min + ' min' : '—'}</td>
-              <td style="font-size:.84rem">${esc(nomi)}</td>
-            </tr>`
-          }).join('')}
+          ${renderRowsLezioni(lezioniFiltrate)}
         </tbody>
       </table>
     </div>`
   requestAnimationFrame(() => motion.tableRows(el))
+}
+
+function renderRowsLezioni(lezioni) {
+  const annoCorrente = new Date().getFullYear()
+  const passate = new Map()
+  const rows = []
+
+  lezioni.forEach(l => {
+    const anno = Number(String(l.data || '').slice(0, 4)) || annoCorrente
+    if (anno < annoCorrente) {
+      if (!passate.has(anno)) passate.set(anno, [])
+      passate.get(anno).push(l)
+    } else {
+      rows.push(renderLezioneListaRow(l))
+    }
+  })
+
+  ;[...passate.keys()].sort((a, b) => b - a).forEach(anno => {
+    const lezioniAnno = passate.get(anno)
+    const expanded = lezioniAnniEspansi.has(anno)
+    rows.push(`
+      <tr class="lezioni-year-row" onclick="toggleAnnoLezioni(${anno})" style="cursor:pointer">
+        <td>${expanded ? '▾' : '▸'} ${anno}</td>
+        <td><span class="year-count">${lezioniAnno.length} lezion${lezioniAnno.length === 1 ? 'e' : 'i'}</span></td>
+        <td></td>
+        <td></td>
+      </tr>`)
+    if (expanded) rows.push(...lezioniAnno.map(renderLezioneListaRow))
+  })
+
+  return rows.join('')
+}
+
+function renderLezioneListaRow(l) {
+  const nomi = labelPartecipantiLezione(l)
+  const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l) : ''
+  return `<tr onclick="showView('nuova-lezione','lezione:${l.id}')" style="cursor:pointer">
+    <td><strong>${formatDate(l.data)}</strong></td>
+    <td style="font-size:.84rem">${esc(nomi)}</td>
+    <td>${l.luogo ? esc(l.luogo) : '—'}</td>
+    <td><div class="lezione-note-cell">${l.note_speciali ? esc(l.note_speciali) : '—'}</div></td>
+  </tr>${detail}`
+}
+
+function toggleAnnoLezioni(anno) {
+  if (lezioniAnniEspansi.has(anno)) lezioniAnniEspansi.delete(anno)
+  else lezioniAnniEspansi.add(anno)
+  loadLezioni()
+}
+
+function labelPartecipantiLezione(lezione) {
+  const allievi = (lezione.lezioni_allievi || []).map(la => la.allievi).filter(Boolean)
+  if (!allievi.length) return '—'
+  const gruppi = [...new Set(allievi.map(a => a.gruppo).filter(Boolean))]
+  if (lezione.tipo === 'gruppo' && gruppi.length === 1) return gruppi[0]
+  return allievi.map(a => [a.nome, a.cognome].filter(Boolean).join(' ')).join(', ')
+}
+
+function toggleDettagliLezioni() {
+  lezioniDettagliEspansi = !lezioniDettagliEspansi
+  loadLezioni()
+}
+
+function aggiornaToggleDettagliLezioni() {
+  const btn = document.getElementById('lezioni-dettagli-btn')
+  if (!btn) return
+  btn.textContent = lezioniDettagliEspansi ? 'Compatta' : 'Espandi'
+  btn.classList.toggle('btn-primary', lezioniDettagliEspansi)
+  btn.classList.toggle('btn-outline', !lezioniDettagliEspansi)
+}
+
+function renderDettaglioLezione(lezione) {
+  const skillRows = lezione.lezioni_skills || []
+  const viste = new Set()
+  const skills = skillRows
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0 }))
+    .filter(s => {
+      const key = `${s.nome || ''}-${s.stadio}`
+      if (!s.nome || viste.has(key)) return false
+      viste.add(key)
+      return true
+    })
+  const skillsHtml = skills.length
+    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}</span>`).join('')
+    : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
+  const noteHtml = lezione.note
+    ? `<div class="lezione-note-preview">${esc(lezione.note)}</div>`
+    : '<span class="lezione-empty-detail">Nessuna nota.</span>'
+
+  return `
+    <tr class="lezione-detail-row" onclick="showView('nuova-lezione','lezione:${lezione.id}')" style="cursor:pointer">
+      <td colspan="4" class="lezione-detail-cell">
+        <div class="lezione-detail-grid">
+          <div>
+            <div class="lezione-detail-title">Skill lavorate</div>
+            <div class="lezione-skill-list">${skillsHtml}</div>
+          </div>
+          <div>
+            <div class="lezione-detail-title">Note</div>
+            ${noteHtml}
+          </div>
+        </div>
+      </td>
+    </tr>`
+}
+
+function aggiornaFiltroLezioni() {
+  const sel = document.getElementById('lezioni-filtro')
+  if (!sel) return
+  const attivi = ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato'))
+  const gruppi = [...new Set(attivi.map(a => a.gruppo).filter(Boolean))].sort()
+  const valoriValidi = new Set(['all', ...gruppi.map(g => `gruppo:${g}`), ...attivi.map(a => `allievo:${a.id}`)])
+  if (!valoriValidi.has(filtroLezioni)) filtroLezioni = 'all'
+
+  sel.innerHTML = `
+    <option value="all">Tutte le lezioni</option>
+    ${gruppi.length ? `<optgroup label="Gruppi">${gruppi.map(g => `<option value="gruppo:${esc(g)}">${esc(g)}</option>`).join('')}</optgroup>` : ''}
+    ${attivi.length ? `<optgroup label="Allievi">${attivi.map(a => `<option value="allievo:${a.id}">${esc([a.nome, a.cognome].filter(Boolean).join(' '))}</option>`).join('')}</optgroup>` : ''}
+  `
+  sel.value = filtroLezioni
+}
+
+function setFiltroLezioni(value) {
+  filtroLezioni = value || 'all'
+  loadLezioni()
+}
+
+function filtraLezioniPerSelezione(lezioni) {
+  if (filtroLezioni === 'all') return lezioni
+  if (filtroLezioni.startsWith('allievo:')) {
+    const id = filtroLezioni.slice('allievo:'.length)
+    return lezioni.filter(l => l.lezioni_allievi?.some(la => la.allievi?.id === id))
+  }
+  if (filtroLezioni.startsWith('gruppo:')) {
+    const gruppo = filtroLezioni.slice('gruppo:'.length)
+    return lezioni.filter(l => l.lezioni_allievi?.some(la => la.allievi?.gruppo === gruppo))
+  }
+  return lezioni
 }
 
 // ── Nuova lezione ─────────────────────────────────────────────────────
@@ -2499,6 +2697,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-data').value    = new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
+  document.getElementById('lz-note-speciali').value = ''
   document.getElementById('lz-note').value    = ''
   document.getElementById('lz-tipo').value     = 'individuale'
   document.getElementById('lz-err').classList.remove('show')
@@ -2509,10 +2708,17 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('btn-salva-lz').textContent = editId ? 'Salva modifiche' : 'Salva lezione'
 
   if (editId) {
-    const { data: lezione, error } = await sb.from('lezioni')
-      .select('id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto)')
+    let { data: lezione, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto)')
       .eq('id', editId)
       .single()
+    if (isMissingNoteSpecialiError(error)) {
+      ;({ data: lezione, error } = await sb.from('lezioni')
+        .select('id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto)')
+        .eq('id', editId)
+        .single())
+      if (lezione) lezione.note_speciali = null
+    }
     if (error || !lezione) {
       const errEl = document.getElementById('lz-err')
       errEl.textContent = error?.message || 'Lezione non trovata.'
@@ -2535,6 +2741,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     document.getElementById('lz-data').value = lezione.data || ''
     document.getElementById('lz-durata').value = lezione.durata_min || ''
     document.getElementById('lz-luogo').value = lezione.luogo || ''
+    document.getElementById('lz-note-speciali').value = lezione.note_speciali || ''
     document.getElementById('lz-note').value = lezione.note || ''
     document.getElementById('lz-tipo').value = lezione.tipo || 'individuale'
   }
@@ -2576,26 +2783,18 @@ function renderLezionePartecipanti() {
 
   if (tipo === 'gruppo') {
     const gruppi = gruppiEsistenti()
+    const gruppoEditing = gruppoDaAllieviLezione(editingLezioneAllieviIds)
     groupPanel.hidden = false
     groupPanel.innerHTML = gruppi.length ? `
       <div class="field" style="margin:0">
         <label>Gruppo</label>
         <select id="lz-gruppo-select" onchange="renderAllieviGruppoLezione(this.value)">
           <option value="">— Seleziona gruppo —</option>
-          ${gruppi.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
+          ${gruppi.map(g => `<option value="${esc(g)}" ${g === gruppoEditing ? 'selected' : ''}>${esc(g)}</option>`).join('')}
         </select>
       </div>` : '<div class="empty">Nessun gruppo attivo ancora.</div>'
-    if (editingLezioneId && editingLezioneAllieviIds.length) {
-      const presenti = allAllievi.filter(a => editingLezioneAllieviIds.includes(a.id))
-      listEl.innerHTML = presenti.map(a => `
-        <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
-          <input type="checkbox" value="${a.id}" checked onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
-          ${esc([a.cognome, a.nome].filter(Boolean).join(' '))}
-        </label>`).join('')
-      ;[...listEl.querySelectorAll('input[type=checkbox]')].forEach(cb => {
-        const a = presenti.find(m => m.id === cb.value)
-        if (a) toggleAllievo(cb, [a.nome, a.cognome].filter(Boolean).join(' '))
-      })
+    if (gruppoEditing) {
+      renderAllieviGruppoLezione(gruppoEditing, new Set(editingLezioneAllieviIds))
     } else {
       listEl.innerHTML = '<div class="empty">Seleziona un gruppo per vedere gli allievi.</div>'
     }
@@ -2613,7 +2812,13 @@ function renderLezionePartecipanti() {
   })
 }
 
-function renderAllieviGruppoLezione(gruppo) {
+function gruppoDaAllieviLezione(ids) {
+  if (!ids?.length) return ''
+  const gruppi = [...new Set(allAllievi.filter(a => ids.includes(a.id)).map(a => a.gruppo).filter(Boolean))]
+  return gruppi.length === 1 ? gruppi[0] : ''
+}
+
+function renderAllieviGruppoLezione(gruppo, presentiSet = null) {
   const listEl = document.getElementById('lz-allievi-list')
   document.getElementById('lz-skills-container').innerHTML = ''
   if (!gruppo) {
@@ -2627,10 +2832,10 @@ function renderAllieviGruppoLezione(gruppo) {
   }
   listEl.innerHTML = membri.map(a => `
     <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
-      <input type="checkbox" value="${a.id}" checked onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
+      <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? '' : 'checked'} onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
       ${esc([a.cognome, a.nome].filter(Boolean).join(' '))}
     </label>`).join('')
-  ;[...listEl.querySelectorAll('input[type=checkbox]')].forEach(cb => {
+  ;[...listEl.querySelectorAll('input[type=checkbox]:checked')].forEach(cb => {
     const a = membri.find(m => m.id === cb.value)
     if (a) toggleAllievo(cb, [a.nome, a.cognome].filter(Boolean).join(' '))
   })
@@ -2696,6 +2901,7 @@ async function salvaLezione() {
   const durata = parseInt(document.getElementById('lz-durata').value) || null
   const tipo   = document.getElementById('lz-tipo').value
   const luogo  = document.getElementById('lz-luogo').value.trim() || null
+  const noteSpeciali = document.getElementById('lz-note-speciali').value.trim() || null
   const note   = document.getElementById('lz-note').value.trim()  || null
   const errEl  = document.getElementById('lz-err')
   errEl.classList.remove('show')
@@ -2710,10 +2916,18 @@ async function salvaLezione() {
 
   // 1 — crea o aggiorna lezione
   let lz, e1
+  const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note }
+  const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
   if (editingLezioneId) {
-    ;({ data: lz, error: e1 } = await sb.from('lezioni').update({ data, durata_min: durata, tipo, luogo, note }).eq('id', editingLezioneId).select().single())
+    ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezione).eq('id', editingLezioneId).select().single())
+    if (isMissingNoteSpecialiError(e1)) {
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezioneCompat).eq('id', editingLezioneId).select().single())
+    }
   } else {
-    ;({ data: lz, error: e1 } = await sb.from('lezioni').insert({ data, durata_min: durata, tipo, luogo, note }).select().single())
+    ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezione).select().single())
+    if (isMissingNoteSpecialiError(e1)) {
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneCompat).select().single())
+    }
   }
   if (e1) { errEl.textContent = e1.message; errEl.classList.add('show'); btn.disabled = false; btn.textContent = 'Salva lezione'; return }
 
