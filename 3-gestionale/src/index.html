@@ -156,7 +156,13 @@
     .skill-suggest:hover { border-color: var(--blu); color: var(--blu); background: var(--blu-chiaro); }
     .lesson-suggestion-title.shared-work { color: #facc15; text-shadow: 0 0 12px rgba(250,204,21,.35); }
     .skill-suggest.skill-suggest-shared-work { border-color: rgba(250,204,21,.95); color: #fff7c2; background: rgba(250,204,21,.2); box-shadow: 0 0 0 1px rgba(250,204,21,.32), 0 0 22px rgba(250,204,21,.52); }
-    .skill-row { display: grid; grid-template-columns: minmax(130px,.48fr) minmax(180px,1fr) auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
+    .place-suggest-wrap { position: relative; }
+    .place-suggest-panel { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + .28rem); border: 1px solid var(--bordo); border-radius: var(--r); background: #07151b; box-shadow: var(--shadow); padding: .35rem; display: grid; gap: .25rem; }
+    .place-suggest-panel[hidden] { display: none; }
+    .place-suggest-btn { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .42rem .5rem; font: inherit; font-size: .84rem; cursor: pointer; }
+    .place-suggest-btn:hover { background: var(--blu-chiaro); color: var(--blu); }
+    .place-suggest-empty { color: var(--muted); font-size: .78rem; padding: .35rem .5rem; }
+    .skill-row { display: grid; grid-template-columns: minmax(120px,.42fr) minmax(180px,1fr) auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); min-width: 0; }
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
     .fakie-toggle { min-width: 82px; justify-content: center; white-space: nowrap; }
@@ -164,6 +170,16 @@
     .dimensions-toggle { min-width: 102px; justify-content: center; white-space: nowrap; }
     .dimensions-toggle.is-on { border-color: rgba(110,231,249,.75); color: var(--blu); background: var(--blu-chiaro); }
     .stadio-toggle { min-width: 122px; justify-content: center; white-space: nowrap; }
+    .exercise-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
+    .exercise-toggle.is-on { border-color: rgba(52,211,153,.75); color: var(--success); background: rgba(52,211,153,.1); }
+    .skill-exercises { grid-column: 1 / -1; display: flex; gap: .35rem; flex-wrap: wrap; padding: .45rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
+    .skill-exercises[hidden] { display: none; }
+    .exercise-chip { border: 1px solid var(--bordo); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: .24rem .58rem; font-size: .78rem; font-weight: 750; cursor: pointer; }
+    .exercise-chip.is-on { border-color: rgba(52,211,153,.75); background: rgba(52,211,153,.13); color: #bbf7d0; }
+    .group-exclusion-box { grid-column: 1 / -1; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; padding: .4rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
+    .group-exclusion-label { color: var(--muted); font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .045em; margin-right: .15rem; }
+    .group-exclude-chip { border: 1px solid var(--bordo); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: .22rem .55rem; font-size: .78rem; font-weight: 700; cursor: pointer; }
+    .group-exclude-chip.is-excluded { border-color: rgba(248,113,113,.75); background: rgba(248,113,113,.16); color: #fecaca; }
     .skill-dimensions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); gap: .35rem; }
     .skill-dimensions[hidden] { display: none; }
     .skill-dimensions select { font-size: .76rem; padding: .3rem .42rem; color: var(--muted); }
@@ -181,10 +197,18 @@
     .lezione-read-title { font-size: 1.45rem; font-weight: 750; margin-bottom: .25rem; line-height: 1.15; }
     .lezione-read-kicker { color: var(--muted); font-size: .86rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
     .lezione-read-when { text-align: right; color: var(--muted); font-size: .88rem; line-height: 1.45; }
+    .lezione-when-nav { display: grid; grid-template-columns: 34px minmax(0,auto) 34px; gap: .38rem; align-items: center; }
+    .lezione-when-main { min-width: 0; }
+    .lezione-nav-arrow { width: 34px; height: 34px; display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--bordo); background: rgba(255,255,255,.035); color: var(--blu); font-size: 1.25rem; line-height: 1; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+    .lezione-nav-arrow:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .lezione-nav-arrow:disabled { opacity: .28; cursor: default; color: var(--muted); }
+    .lezione-nav-arrow:disabled:hover { border-color: var(--bordo); background: rgba(255,255,255,.035); }
     .lezione-read-date { color: var(--testo); font-weight: 800; font-size: 1rem; }
     .lezione-read-grid { display: grid; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); gap: 1rem; align-items: start; }
     .lezione-read-list { display: grid; gap: .1rem; }
     .lezione-read-person { display: flex; align-items: baseline; gap: .35rem; flex-wrap: wrap; padding: .22rem 0; border-bottom: 1px solid rgba(148,163,184,.14); font-size: .86rem; line-height: 1.25; }
+    .lezione-read-person.clickable { cursor: pointer; border-radius: calc(var(--r) - 2px); padding: .34rem .45rem; }
+    .lezione-read-person.clickable:hover { background: var(--blu-chiaro); border-color: rgba(110,231,249,.28); }
     .lezione-read-person:last-child { border-bottom: 0; }
     .lezione-read-person strong { color: var(--testo); font-weight: 750; }
     .lezione-read-person span { color: var(--muted); }
@@ -208,7 +232,7 @@
     .lezioni-year-row td { background: rgba(110,231,249,.045); color: var(--blu); font-weight: 800; }
     .lezioni-year-row .year-count { color: var(--muted); font-weight: 700; font-size: .82rem; }
     .lezione-placeholder-row { min-height: 38px; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); background: rgba(255,255,255,.012); color: var(--muted); font-size: .82rem; display: flex; align-items: center; padding: .55rem .7rem; margin-bottom: .75rem; }
-    @media (max-width: 700px) { .lezione-detail-grid, .lezione-read-grid, .lezione-read-head { grid-template-columns: 1fr; } .lezione-read-when { text-align: left; } }
+    @media (max-width: 700px) { .lezione-detail-grid, .lezione-read-grid, .lezione-read-head { grid-template-columns: 1fr; } .lezione-read-when { text-align: left; } .lezione-when-nav { grid-template-columns: 34px minmax(0, max-content) 34px; justify-content: start; } }
 
     /* ── Scheda allievo ── */
     .back-btn { display: inline-flex; align-items: center; gap: .3rem; color: var(--blu); background: none; border: none; font-size: .86rem; font-weight: 600; cursor: pointer; margin-bottom: 1rem; padding: 0; }
@@ -300,13 +324,15 @@
     .skill-tree-head, .lesson-years-tools { display: flex; align-items: center; justify-content: space-between; gap: .7rem; flex-wrap: wrap; margin-bottom: .8rem; }
     .skill-tree-actions, .lesson-years-actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
     .skill-col-header { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-bottom: .35rem; margin-bottom: .6rem; border-bottom: 1px solid var(--bordo); }
-    .skill-node { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: .18rem; padding: .45rem .6rem; border-radius: var(--r); border: 1px solid var(--bordo); background: var(--panel-soft); color: var(--testo); margin-bottom: .4rem; text-align: left; }
+    .skill-node { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: .18rem; padding: .45rem .6rem; border-radius: var(--r); border: 1px solid var(--bordo); background: var(--panel-soft); color: var(--testo); margin-bottom: .4rem; text-align: left; position: relative; cursor: pointer; }
     .skill-node.sn0 { opacity: .45; }
     .skill-node.sn1 { border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.06); }
     .skill-node.sn2 { border-color: rgba(110,231,249,.35); background: rgba(110,231,249,.06); }
     .skill-node.sn3 { border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.06); }
-    .skill-tree-wrap.is-editing .skill-node { cursor: pointer; opacity: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
-    .skill-tree-wrap.is-editing .skill-node:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .skill-node.variant { border-style: dashed; }
+    .skill-node.variant .sn-name::after { content: ' variante'; color: #facc15; font-size: .62rem; font-weight: 800; text-transform: uppercase; margin-left: .35rem; white-space: nowrap; }
+    .skill-node:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .skill-tree-wrap.is-editing .skill-node { opacity: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
     .skill-node-main { display: flex; align-items: baseline; gap: .45rem; min-width: 0; flex: 1; }
     .skill-node-tracks { display: flex; gap: .28rem; flex-wrap: wrap; width: 100%; margin-top: .38rem; }
     .skill-track-btn { border: 1px solid rgba(148,163,184,.22); border-radius: 999px; padding: .16rem .42rem; background: rgba(255,255,255,.025); color: var(--muted); font-size: .66rem; font-weight: 800; cursor: default; }
@@ -319,6 +345,31 @@
     .sn-icon { font-size: .9rem; flex-shrink: 0; line-height: 1.4; }
     .sn-name { font-size: .84rem; font-weight: 600; flex: 1; min-width: 0; word-break: break-word; line-height: 1.3; }
     .sn-lv { font-size: .68rem; font-weight: 700; padding: .08rem .28rem; border-radius: 3px; background: rgba(255,255,255,.07); color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+    .skill-delete-btn { position: absolute; top: .3rem; right: .3rem; width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 50%; border: 1px solid rgba(251,113,133,.35); background: rgba(251,113,133,.1); color: #fecaca; cursor: pointer; font-weight: 800; line-height: 1; }
+    .skill-delete-btn:hover { border-color: var(--danger); color: #fff; background: rgba(251,113,133,.2); }
+    .skill-catalog-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(120px,.45fr); gap: .75rem; }
+    .skill-catalog-danger { border-top: 1px solid var(--bordo); margin-top: 1rem; padding-top: 1rem; }
+    .skill-catalog-danger h4 { font-size: .86rem; margin-bottom: .65rem; color: #fecaca; }
+    .skill-detail-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1rem; align-items: start; margin-bottom: 1rem; }
+    .skill-detail-title { font-size: 1.2rem; line-height: 1.15; font-weight: 800; }
+    .skill-detail-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+    .skill-detail-chip { border: 1px solid rgba(148,163,184,.24); border-radius: 999px; padding: .18rem .5rem; color: var(--muted); background: rgba(255,255,255,.025); font-size: .75rem; font-weight: 800; }
+    .skill-detail-stage { display: grid; gap: .35rem; justify-items: end; font-size: .78rem; color: var(--muted); }
+    .skill-detail-section { border-top: 1px solid var(--bordo); padding-top: .85rem; margin-top: .85rem; }
+    .skill-detail-section h4 { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .055em; margin-bottom: .5rem; }
+    .skill-detail-text { color: var(--testo); font-size: .9rem; line-height: 1.45; white-space: pre-wrap; }
+    .skill-detail-list { display: grid; gap: .38rem; }
+    .skill-detail-item { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: var(--panel-soft); padding: .5rem .6rem; display: grid; gap: .18rem; }
+    .skill-detail-item[onclick] { cursor: pointer; }
+    .skill-detail-item[onclick]:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .skill-detail-item strong { font-size: .86rem; }
+    .skill-detail-item span { color: var(--muted); font-size: .76rem; line-height: 1.3; }
+    .skill-detail-help { color: var(--muted); font-size: .82rem; line-height: 1.4; margin-top: .45rem; }
+    .skill-characteristics { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .skill-characteristic { border: 1px solid rgba(110,231,249,.24); background: rgba(110,231,249,.06); color: var(--testo); border-radius: 999px; padding: .24rem .55rem; font-size: .76rem; font-weight: 750; }
+    .skill-param-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .55rem .75rem; }
+    .skill-param-grid .field { margin-bottom: 0; }
+    @media (max-width: 520px) { .skill-catalog-grid { grid-template-columns: 1fr; } }
     /* ── Tuning cards ── */
     .tuning-shell { display: grid; gap: 1rem; }
     .tuning-top { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
@@ -457,6 +508,7 @@
     <nav>
       <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
       <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
+      <button id="nav-skills" onclick="showView('skills')">Skills</button>
       <button id="nav-tuning" onclick="showView('tuning')">Tuning</button>
       <button onclick="location.href='./skill-questionario.html'">Questionario skill</button>
     </nav>
@@ -549,7 +601,11 @@
               <option value="">Caricamento...</option>
             </select>
           </div>
-          <div class="field"><label>Luogo</label><input type="text" id="lz-luogo" placeholder="es. Pista centrale"></div>
+          <div class="field place-suggest-wrap">
+            <label>Luogo</label>
+            <input type="text" id="lz-luogo" placeholder="es. Pista centrale" autocomplete="off" onfocus="mostraSuggerimentiLuogo()" oninput="mostraSuggerimentiLuogo()" onblur="nascondiSuggerimentiLuogoSoon()">
+            <div id="lz-luogo-suggest" class="place-suggest-panel" hidden></div>
+          </div>
         </div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
@@ -788,6 +844,23 @@
       </div>
     </section>
 
+    <!-- VIEW: skills catalogo -->
+    <section id="view-skills" hidden>
+      <div class="section-header">
+        <div>
+          <h2>Skills</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:.25rem">Catalogo metodologico: clicca una skill per dettagli, requisiti e caratteristiche.</p>
+        </div>
+        <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('catalog')">+ Nuova skill</button>
+          <button class="btn btn-outline btn-sm" id="skills-edit-toggle" onclick="setCatalogSkillEditMode(!catalogSkillEditMode)">Modifica</button>
+        </div>
+      </div>
+      <div class="card">
+        <div id="skills-catalog-content"><div class="loading">Caricamento skill…</div></div>
+      </div>
+    </section>
+
     <!-- VIEW: tuning metodologia -->
     <section id="view-tuning" hidden>
       <div class="section-header">
@@ -863,6 +936,98 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal gestione catalogo skill -->
+  <div id="modal-skill-catalog" class="overlay" hidden onclick="if(event.target===this) chiudiSkillCatalogModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Gestisci skill</h3>
+      <div id="skill-catalog-status" class="msg"></div>
+      <p class="form-sec" style="margin-top:0">Nuova skill</p>
+      <div class="field">
+        <label>Nome *</label>
+        <input type="text" id="skill-new-name" placeholder="Es. Transizione tallone-punta">
+      </div>
+      <div class="skill-catalog-grid">
+        <div class="field">
+          <label>Ramo</label>
+          <select id="skill-new-branch"></select>
+        </div>
+        <div class="field">
+          <label>Livello</label>
+          <input type="number" id="skill-new-level" min="1" max="10" value="1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Blocco</label>
+        <select id="skill-new-block">
+          <option value="Base">Base</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Avanzato">Avanzato</option>
+          <option value="Master">Master</option>
+        </select>
+      </div>
+      <div class="skill-catalog-grid">
+        <div class="field">
+          <label>Natura</label>
+          <select id="skill-new-open-closed">
+            <option value="OPEN">Open</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tag</label>
+          <label style="display:flex;align-items:center;gap:.45rem;font-size:.86rem;font-weight:650">
+            <input type="checkbox" id="skill-new-required"> Obbligatoria
+          </label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Descrizione</label>
+        <textarea id="skill-new-description" placeholder="Nota tecnica o didattica breve"></textarea>
+      </div>
+      <div class="field">
+        <label>Varianti</label>
+        <textarea id="skill-new-variants" placeholder="Una variante per riga: dx/sx, switch, ostacolo basso..."></textarea>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:.45rem;font-size:.86rem;font-weight:650">
+          <input type="checkbox" id="skill-new-is-variant" onchange="toggleNewSkillVariantParent()"> Questa skill e una variante di un'altra skill
+        </label>
+      </div>
+      <div class="field" id="skill-new-variant-parent-field" hidden>
+        <label>Skill madre</label>
+        <select id="skill-new-variant-parent"></select>
+      </div>
+      <p class="form-sec">8 caratteristiche</p>
+      <div class="skill-param-grid" id="skill-new-params"></div>
+
+      <div class="skill-catalog-danger">
+        <h4>Cancella skill esistente</h4>
+        <div class="field">
+          <label>Skill</label>
+          <select id="skill-delete-select"></select>
+        </div>
+        <button type="button" class="btn btn-outline btn-full" onclick="openSelectedSkillDetailFromCatalog()">Vedi dettaglio skill</button>
+        <button type="button" class="btn btn-delete-soft btn-full" onclick="cancellaSkillCatalogo()">Cancella skill dal catalogo</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="chiudiSkillCatalogModal()">Chiudi</button>
+        <button class="btn btn-primary" id="btn-create-skill" onclick="creaSkillCatalogo()">Crea skill</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal dettaglio skill -->
+  <div id="modal-skill-detail" class="overlay" hidden onclick="if(event.target===this) chiudiSkillDetailModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div id="skill-detail-content"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="chiudiSkillDetailModal()">Chiudi</button>
+        <button class="btn btn-primary" onclick="openSkillCatalogFromDetail()">Gestisci skill</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════ JS ════════════════════════════════ -->
@@ -873,10 +1038,29 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, currentSchedaId = null, skillTreeEditMode = false, pendingSpecialGuestId = null
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null
+let luoghiLezioneCache = new Map(), luogoSuggestTimer = null
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
+const GROUP_SKILL_ROWS_KEY = '__group__'
 let godMode = false, godScope = 'all', shareContext = null
 const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
+
+const safeStorage = (() => {
+  try {
+    const storage = window.localStorage
+    const testKey = '__blading_manager_storage_test__'
+    storage.setItem(testKey, '1')
+    storage.removeItem(testKey)
+    return storage
+  } catch {
+    const memory = new Map()
+    return {
+      getItem: key => memory.has(key) ? memory.get(key) : null,
+      setItem: (key, value) => { memory.set(key, String(value)) },
+      removeItem: key => { memory.delete(key) },
+    }
+  }
+})()
 
 function isSuperMaestro() {
   return currentEmail === SUPER_MAESTRO_EMAIL
@@ -890,6 +1074,7 @@ try {
       autoRefreshToken: true,
       detectSessionInUrl: false,
       storageKey: 'blading-manager-auth',
+      storage: safeStorage,
     }
   })
 } catch(e) {
@@ -1045,9 +1230,20 @@ async function initApp() {
   allSkills  = s || []
   allPrereqs = p || []
   allProgressi = pr || []
+  skillDefinitions = await loadSkillDefinitions()
   renderGodPanel()
   renderAllievi()
   showView('allievi')
+}
+
+async function loadSkillDefinitions() {
+  const { data, error } = await sb.from('skill_definizioni').select('*')
+  if (error) {
+    const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
+    if (!/skill_definizioni|schema cache|could not find the table|does not exist/i.test(text)) console.warn('skill_definizioni non caricata', error)
+    return []
+  }
+  return data || []
 }
 
 async function ricaricaAllievi() {
@@ -1061,12 +1257,49 @@ async function ricaricaAllievi() {
 
 // ── Views ─────────────────────────────────────────────────────────────
 
+function visibleViewName() {
+  return ['allievi','scheda','gruppo','lezioni','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning']
+    .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
+}
+
+function currentReturnTarget() {
+  const view = visibleViewName()
+  if (view === 'scheda' && currentSchedaId) return { name: 'scheda', id: currentSchedaId }
+  if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
+  if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
+  if (view === 'allievi' || view === 'lezioni' || view === 'skills' || view === 'tuning') return { name: view, id: null }
+  return null
+}
+
+async function goToReturnTarget(target, fallback) {
+  const destination = target || fallback
+  if (!destination) return
+  if (destination.name === 'scheda' && destination.id) {
+    await loadScheda(destination.id)
+    return
+  }
+  if (destination.name === 'gruppo' && destination.id) {
+    showView('gruppo', destination.id)
+    return
+  }
+  if (destination.name === 'lezione' && destination.id) {
+    showView('lezione', destination.id)
+    return
+  }
+  showView(destination.name, destination.id || undefined)
+}
+
 function showView(name, id) {
-  ['allievi','scheda','gruppo','lezioni','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','tuning'].forEach(v => {
+  if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
+    const returnTarget = currentReturnTarget()
+    if (returnTarget) editReturnTarget = returnTarget
+  }
+  ['allievi','scheda','gruppo','lezioni','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name))
+  document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
 
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
@@ -1077,13 +1310,22 @@ function showView(name, id) {
   if (name === 'nuovo-gruppo')  initNuovoGruppo(id || null)
   if (name === 'gruppo' && id)  loadGruppo(id)
   if (name === 'scheda' && id)  loadScheda(id)
+  if (name === 'skills')        renderSkillsCatalog()
   if (name === 'tuning')        initTuning()
   requestAnimationFrame(() => motion.view(name))
 }
 
-function openLezione(id, fromAllievoId = null) {
+function openLezione(id, fromAllievoId = null, fromGruppoNome = null) {
   lezioneBackAllievoId = fromAllievoId || null
+  lezioneBackGruppoNome = fromGruppoNome || null
   showView('lezione', id)
+}
+
+async function apriSchedaAllievoDaLezione(allievoId) {
+  lezioneBackAllievoId = allievoId || null
+  lezioneBackGruppoNome = null
+  await loadScheda(allievoId)
+  switchSchedaTab('lezioni')
 }
 
 async function tornaDaLezione() {
@@ -1093,11 +1335,17 @@ async function tornaDaLezione() {
     switchSchedaTab('lezioni')
     return
   }
+  if (lezioneBackGruppoNome) {
+    showView('gruppo', lezioneBackGruppoNome)
+    return
+  }
   showView('lezioni')
 }
 
 function lezioneBackLabel() {
-  return lezioneBackAllievoId ? '← Scheda allievo' : '← Lezioni'
+  if (lezioneBackAllievoId) return '← Scheda allievo'
+  if (lezioneBackGruppoNome) return '← Scheda gruppo'
+  return '← Lezioni'
 }
 
 function allieviAttivi() {
@@ -1351,6 +1599,8 @@ function initNuovoAllievo(id) {
   editingAllieviId = id || null
   const allievo = id ? allAllievi.find(a => a.id === id) : null
   const p = allievo?.profilo || {}
+  const hasGruppo = !!allievo?.gruppo
+  const logisticaIndividuale = logisticaIndividualeProfilo(p, hasGruppo)
 
   // Titolo e bottone back
   document.getElementById('na-titolo').textContent = allievo
@@ -1391,10 +1641,10 @@ function initNuovoAllievo(id) {
   document.getElementById('na-indirizzo').value    = p.indirizzo     || ''
   document.getElementById('na-cultura').value      = p.cultura       || ''
   document.getElementById('na-cert').value          = dateIsoToInput(p.scadenza_cert)
-  document.getElementById('na-durata').value    = p.durata_lezione || ''
-  document.getElementById('na-compenso').value  = p.compenso       || ''
-  document.getElementById('na-appuntamento').value  = p.appuntamento   || ''
-  document.getElementById('na-luogo-incontro').value= p.luogo_incontro || ''
+  document.getElementById('na-durata').value    = logisticaIndividuale.durata_lezione || ''
+  document.getElementById('na-compenso').value  = logisticaIndividuale.compenso       || ''
+  document.getElementById('na-appuntamento').value  = logisticaIndividuale.appuntamento   || ''
+  document.getElementById('na-luogo-incontro').value= logisticaIndividuale.luogo_incontro || ''
   document.getElementById('na-disponibilita').value = p.disponibilita  || ''
 
   // Profilo tecnico
@@ -1418,7 +1668,6 @@ function initNuovoAllievo(id) {
   document.getElementById('ass-note').value         = allievo?.note_generali || ''
 
   // Gruppo
-  const hasGruppo = !!allievo?.gruppo
   document.getElementById('na-gruppo-cb').checked = hasGruppo
   document.getElementById('na-gruppo-panel').hidden = !hasGruppo
   document.getElementById('na-gruppo').value = allievo?.gruppo || ''
@@ -1595,7 +1844,7 @@ function cercaLogisticaAssoc() {
     return
   }
 
-  const p = primo.profilo || {}
+  const p = logisticaGruppoProfilo(primo.profilo || {})
   const assAppuntamento = document.getElementById('ass-appuntamento')
   const assDurata = document.getElementById('ass-durata')
   const assLuogo = document.getElementById('ass-luogo')
@@ -1641,6 +1890,33 @@ function getDot(id) {
   return parseInt(document.getElementById(id)?.dataset.val || '0')
 }
 
+const LOGISTICA_KEYS = ['appuntamento', 'luogo_incontro', 'durata_lezione', 'compenso', 'pagamento_metodo', 'pagamento_stato', 'pagamento_note']
+
+function estraiLogistica(profilo = {}) {
+  return Object.fromEntries(LOGISTICA_KEYS.map(key => [key, profilo[key] ?? null]))
+}
+
+function logisticaHaValori(logistica = {}) {
+  return LOGISTICA_KEYS.some(key => logistica[key] !== undefined && logistica[key] !== null && logistica[key] !== '')
+}
+
+function profiloSenzaLogisticaTopLevel(profilo = {}) {
+  const clean = { ...profilo }
+  LOGISTICA_KEYS.forEach(key => delete clean[key])
+  return clean
+}
+
+function logisticaGruppoProfilo(profilo = {}) {
+  const dedicata = profilo.logistica_gruppo || {}
+  return logisticaHaValori(dedicata) ? dedicata : estraiLogistica(profilo)
+}
+
+function logisticaIndividualeProfilo(profilo = {}, inGruppo = false) {
+  if (!inGruppo) return estraiLogistica(profilo)
+  const dedicata = profilo.logistica_individuale || {}
+  return logisticaHaValori(dedicata) ? dedicata : {}
+}
+
 async function salvaAllievo() {
   const tipo    = document.getElementById('na-tipo').value
   const isAss   = tipo === 'associazione'
@@ -1655,6 +1931,8 @@ async function salvaAllievo() {
     return
   }
 
+  const gruppoAttivo = !isAss && document.getElementById('na-gruppo-cb').checked
+  const profiloOriginale = editingAllieviId ? (allAllievi.find(a => a.id === editingAllieviId)?.profilo || {}) : {}
   let profilo
   if (isAss) {
     profilo = {
@@ -1673,14 +1951,17 @@ async function salvaAllievo() {
       }
     }).filter(f => f.nome || f.cognome || f.telefono)
 
-    profilo = {
-      indirizzo:        document.getElementById('na-indirizzo').value.trim()    || null,
-      cultura:          document.getElementById('na-cultura').value.trim()      || null,
-      scadenza_cert:    dateInputToIso(document.getElementById('na-cert').value)        || null,
+    const logisticaIndividuale = {
       durata_lezione:   parseInt(document.getElementById('na-durata').value)        || null,
       compenso:         parseFloat(document.getElementById('na-compenso').value)   || null,
       appuntamento:     document.getElementById('na-appuntamento').value.trim()    || null,
       luogo_incontro:   document.getElementById('na-luogo-incontro').value.trim()  || null,
+    }
+    const baseProfilo = {
+      ...profiloSenzaLogisticaTopLevel(profiloOriginale),
+      indirizzo:        document.getElementById('na-indirizzo').value.trim()    || null,
+      cultura:          document.getElementById('na-cultura').value.trim()      || null,
+      scadenza_cert:    dateInputToIso(document.getElementById('na-cert').value)        || null,
       disponibilita:    document.getElementById('na-disponibilita').value.trim()   || null,
       competenze:       document.getElementById('na-competenze').value.trim()   || null,
       obiettivi:        document.getElementById('na-obiettivi').value.trim()    || null,
@@ -1702,6 +1983,22 @@ async function salvaAllievo() {
         pratico: getDot('dot-pratico'),
       }
     }
+
+    if (gruppoAttivo) {
+      const logisticaGruppo = profiloOriginale.logistica_gruppo || {}
+      profilo = {
+        ...baseProfilo,
+        ...(logisticaHaValori(logisticaGruppo) ? { logistica_gruppo: logisticaGruppo } : {}),
+        ...(logisticaHaValori(logisticaIndividuale) ? { logistica_individuale: logisticaIndividuale } : {}),
+      }
+    } else {
+      profilo = {
+        ...baseProfilo,
+        ...logisticaIndividuale,
+      }
+      delete profilo.logistica_gruppo
+      delete profilo.logistica_individuale
+    }
   }
 
   const btn    = document.getElementById('btn-salva-al')
@@ -1710,7 +2007,6 @@ async function salvaAllievo() {
   btn.disabled = true;    btn.textContent    = 'Salvataggio…'
   btnTop.disabled = true; btnTop.textContent = 'Salvataggio…'
 
-  const gruppoAttivo = !isAss && document.getElementById('na-gruppo-cb').checked
   const payload = {
     nome, cognome, tipo,
     nickname:        isAss ? (document.getElementById('ass-nick').value.trim() || null) : (document.getElementById('na-nickname').value.trim() || null),
@@ -1750,8 +2046,11 @@ async function salvaAllievo() {
     }
 
     if (savedId) {
-      loadScheda(savedId)
+      const destination = editReturnTarget
+      editReturnTarget = null
+      await goToReturnTarget(destination, { name: 'scheda', id: savedId })
     } else {
+      editReturnTarget = null
       showView('allievi')
     }
   } catch (e) {
@@ -2019,7 +2318,7 @@ async function salvaGruppo() {
   btnTop.disabled = true; btnTop.textContent = 'Salvataggio…'
 
   const oggi = new Date().toISOString().slice(0,10)
-  const commonProfile = {
+  const commonLogistica = {
     appuntamento: orario || null,
     luogo_incontro: luogo || null,
     durata_lezione: durata,
@@ -2027,6 +2326,10 @@ async function salvaGruppo() {
     pagamento_metodo: pagamentoMetodo,
     pagamento_stato: pagamentoStato,
     pagamento_note: pagamentoNote,
+  }
+  const commonProfile = {
+    ...commonLogistica,
+    logistica_gruppo: commonLogistica,
   }
 
   if (editingGruppoNome) {
@@ -2072,9 +2375,11 @@ async function salvaGruppo() {
 
       filtroGruppo = nomeGruppo
       const nextGroup = nomeGruppo
+      const destination = editReturnTarget
+      editReturnTarget = null
       editingGruppoNome = null
       await ricaricaAllievi()
-      showView('gruppo', nextGroup)
+      await goToReturnTarget(destination, { name: 'gruppo', id: nextGroup })
     } catch (e) {
       errEl.textContent = e.message || 'Errore di rete. Riprova.'
       errEl.classList.add('show')
@@ -2103,6 +2408,7 @@ async function salvaGruppo() {
     const { error } = await sb.from('allievi').insert(payload)
     if (error) throw error
     filtroGruppo = nomeGruppo
+    editReturnTarget = null
     await ricaricaAllievi()
     showView('allievi')
   } catch (e) {
@@ -2124,7 +2430,7 @@ function gruppoMembri(nomeGruppo, { includeArchived = false } = {}) {
 }
 
 function profiloComuneGruppo(membri) {
-  const profili = membri.map(a => a.profilo || {})
+  const profili = membri.map(a => logisticaGruppoProfilo(a.profilo || {}))
   const firstValue = key => profili.find(p => p[key] !== undefined && p[key] !== null && p[key] !== '')?.[key] || ''
   return {
     appuntamento: firstValue('appuntamento'),
@@ -2139,6 +2445,7 @@ function profiloComuneGruppo(membri) {
 
 async function loadGruppo(nomeGruppo) {
   showView('gruppo')
+  currentGruppoNome = nomeGruppo
   const el = document.getElementById('gruppo-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
 
@@ -2150,9 +2457,23 @@ async function loadGruppo(nomeGruppo) {
 
   const profilo = profiloComuneGruppo(membri)
   const ids = membri.map(a => a.id)
-  const { data: laRows } = await sb.from('lezioni_allievi')
-    .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
+  let { data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
+    .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome)))')
     .in('allievo_id', ids)
+  if (isMissingDimensioniError(lzErr)) {
+    ;({ data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
+      .in('allievo_id', ids))
+  }
+  if (isMissingNoteSpecialiError(lzErr)) {
+    ;({ data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
+      .in('allievo_id', ids))
+    laRows = (laRows || []).map(row => ({
+      ...row,
+      lezioni: row.lezioni ? { ...row.lezioni, note_speciali: null } : row.lezioni
+    }))
+  }
   const viste = new Set()
   const lezioniGruppo = (laRows || [])
     .map(row => row.lezioni)
@@ -2174,8 +2495,8 @@ async function loadGruppo(nomeGruppo) {
     </div>`).join('')
 
   const lezioniHtml = lezioniGruppo.length
-    ? renderLezioniTable(lezioniGruppo, { variant: 'lista' })
-    : '<div class="empty">Nessuna lezione registrata per questo gruppo.</div>'
+    ? renderLezioniTable(lezioniGruppo, { variant: 'lista', gruppoNome: nomeGruppo })
+    : `<div class="empty">${lzErr ? esc(lzErr.message || 'Errore nel caricamento lezioni gruppo.') : 'Nessuna lezione registrata per questo gruppo.'}</div>`
   const info = (label, val) => val ? `<div><div class="info-label">${esc(label)}</div><div>${esc(String(val))}</div></div>` : ''
   const compenso = profilo.compenso ? `€ ${Number(profilo.compenso).toFixed(2)}` : ''
 
@@ -2259,8 +2580,13 @@ async function loadScheda(id) {
   let lezioniScheda = []
   if (laRows?.length) {
     let { data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
-      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome)))')
       .eq('allievo_id', id)
+    if (isMissingDimensioniError(lzErr)) {
+      ;({ data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
+        .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
+        .eq('allievo_id', id))
+    }
     if (isMissingNoteSpecialiError(lzErr)) {
       ;({ data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
         .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
@@ -2312,6 +2638,7 @@ async function loadScheda(id) {
     : '<div class="empty">Nessuna skill registrata ancora.</div>'
 
   const p = allievo.profilo || {}
+  const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo)
 
   function dotsRo(val) {
     return [1,2,3].map(i => `<span class="dot-ro${i <= val ? ' filled' : ''}"></span>`).join('')
@@ -2327,8 +2654,8 @@ async function loadScheda(id) {
       </div>`).join('')
     : '<span style="color:var(--muted);font-size:.87rem">Nessun familiare registrato.</span>'
 
-  const compenso  = p.compenso ? '€ ' + Number(p.compenso).toFixed(2) : null
-  const hasPagamento = !!(compenso || p.pagamento_metodo || p.pagamento_stato || p.pagamento_note)
+  const compenso  = logisticaScheda.compenso ? '€ ' + Number(logisticaScheda.compenso).toFixed(2) : null
+  const hasPagamento = !!(compenso || logisticaScheda.pagamento_metodo || logisticaScheda.pagamento_stato || logisticaScheda.pagamento_note)
   const isAss     = allievo.tipo === 'associazione'
 
   const headerExtra = isAss
@@ -2381,17 +2708,17 @@ async function loadScheda(id) {
         </div>
       </div>
 
-      ${(p.appuntamento || p.luogo_incontro || p.durata_lezione || hasPagamento) ? `
+      ${(logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento) ? `
       <p class="sec-title">Logistica</p>
       <div class="card">
         <div class="info-grid">
-          ${infoRow('Appuntamento', p.appuntamento)}
-          ${infoRow('Durata lezione', p.durata_lezione ? p.durata_lezione + ' min' : null)}
-          ${infoRow('Luogo', p.luogo_incontro)}
+          ${infoRow('Appuntamento', logisticaScheda.appuntamento)}
+          ${infoRow('Durata lezione', logisticaScheda.durata_lezione ? logisticaScheda.durata_lezione + ' min' : null)}
+          ${infoRow('Luogo', logisticaScheda.luogo_incontro)}
           ${infoRow('Compenso lezione', compenso)}
-          ${infoRow('Metodo pagamento', p.pagamento_metodo)}
-          ${infoRow('Stato pagamento', p.pagamento_stato)}
-          ${infoRow('Note pagamento', p.pagamento_note)}
+          ${infoRow('Metodo pagamento', logisticaScheda.pagamento_metodo)}
+          ${infoRow('Stato pagamento', logisticaScheda.pagamento_stato)}
+          ${infoRow('Note pagamento', logisticaScheda.pagamento_note)}
         </div>
       </div>` : ''}
 
@@ -2457,6 +2784,80 @@ function switchSchedaTab(name) {
   requestAnimationFrame(() => motion.cards(document.getElementById('scheda-panel-' + name)))
 }
 
+function renderSkillsCatalog() {
+  const el = document.getElementById('skills-catalog-content')
+  if (!el) return
+  const total = allSkills?.length || 0
+  const required = (allSkills || []).filter(skill => skill.obbligatoria).length
+  el.innerHTML = `
+    <div class="skill-tree-head">
+      <div class="skill-tree-legend">
+        <span style="font-weight:700;color:var(--testo)">${total} skill catalogo</span>
+        <span>${required} nodi chiave</span>
+        <span>${allPrereqs?.length || 0} prerequisiti</span>
+      </div>
+      <div class="skill-tree-actions">
+        ${catalogSkillEditMode
+          ? `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(false)">Fine modifica</button>
+             <button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('catalog')">+ Skill</button>`
+          : `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(true)">${editIcon()} Modifica catalogo</button>`}
+      </div>
+    </div>
+    <div id="skills-catalog-status" class="msg" style="display:none"></div>
+    ${renderCatalogSkillTree()}`
+  const btn = document.getElementById('skills-edit-toggle')
+  if (btn) {
+    btn.textContent = catalogSkillEditMode ? 'Fine modifica' : 'Modifica'
+    btn.classList.toggle('btn-primary', catalogSkillEditMode)
+    btn.classList.toggle('btn-outline', !catalogSkillEditMode)
+  }
+  requestAnimationFrame(() => motion.cards(el))
+}
+
+function setCatalogSkillEditMode(on) {
+  catalogSkillEditMode = !!on
+  renderSkillsCatalog()
+}
+
+function renderCatalogSkillTree() {
+  const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione']
+  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Altro: [] }
+  ;(allSkills || []).forEach(skill => {
+    const ramo = RAMI.includes(skill.ramo) ? skill.ramo : 'Altro'
+    byRamo[ramo].push(skill)
+  })
+  const cols = [...RAMI, 'Altro'].filter(ramo => byRamo[ramo].length)
+  if (!cols.length) return '<div class="empty">Nessuna skill nel catalogo.</div>'
+
+  const colsHtml = cols.map(ramo => {
+    const nodes = byRamo[ramo]
+      .sort((a, b) => Number(a.livello || 0) - Number(b.livello || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' }))
+      .map(skill => {
+        const reqCount = allPrereqs.filter(row => row.skill_id === skill.id).length
+        const unlockCount = allPrereqs.filter(row => row.richiede_skill_id === skill.id).length
+        const variantInfo = variantParentInfoForSkill(skill)
+        const nodeClass = [skill.obbligatoria ? 'sn2' : 'sn0', variantInfo ? 'variant' : ''].filter(Boolean).join(' ')
+        return `<div class="skill-node ${nodeClass}" data-skill-id="${skill.id}" onclick="openSkillDetailModal('${skill.id}')">
+          <div class="skill-node-main">
+            <span class="sn-icon" style="${skill.obbligatoria ? 'color:var(--blu)' : 'color:var(--muted)'}">${skill.obbligatoria ? '●' : '○'}</span>
+            <span class="sn-name">${esc(skill.nome)}</span>
+            <span class="sn-lv">Lv ${esc(skill.livello || '-')}</span>
+          </div>
+          <div class="skill-node-tracks">
+            <span class="skill-track-btn">${esc(openClosedLabel(skill.open_closed) || 'Open/Closed n.d.')}</span>
+            ${variantInfo ? `<span class="skill-track-btn">Variante di ${esc(variantInfo.parentSkill?.nome || variantInfo.parentName || '-')}</span>` : ''}
+            <span class="skill-track-btn">Req ${reqCount}</span>
+            <span class="skill-track-btn">Sblocca ${unlockCount}</span>
+          </div>
+          ${catalogSkillEditMode ? `<button type="button" class="skill-delete-btn" title="Cancella skill" onclick="event.stopPropagation(); openSkillCatalogModal('catalog', null, '${skill.id}')">×</button>` : ''}
+        </div>`
+      }).join('')
+    return `<div><div class="skill-col-header">${esc(ramo)}</div>${nodes}</div>`
+  }).join('')
+
+  return `<div class="skill-tree-wrap${catalogSkillEditMode ? ' is-editing' : ''}">${colsHtml}</div>`
+}
+
 function renderSkillTree(allSkills, progressiMap, allievoId, fakieProgressMap = {}) {
   const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione']
   const ICONS = ['○', '◐', '●', '★']
@@ -2485,6 +2886,7 @@ function renderSkillTree(allSkills, progressiMap, allievoId, fakieProgressMap = 
       <div class="skill-tree-actions">
         ${skillTreeEditMode
           ? `<button type="button" class="btn btn-outline btn-sm" onclick="setSkillTreeEditMode('${allievoId}',false)">Annulla</button>
+             <button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('tree')">+ Skill</button>
              <button type="button" class="btn btn-primary btn-sm" onclick="salvaSkillTreeManuale('${allievoId}')">Salva skill tree</button>`
           : `<button type="button" class="btn btn-outline btn-sm" onclick="setSkillTreeEditMode('${allievoId}',true)">${editIcon()} Modifica manualmente</button>`}
       </div>
@@ -2495,7 +2897,8 @@ function renderSkillTree(allSkills, progressiMap, allievoId, fakieProgressMap = 
       const stadio = progressiMap[s.id] ?? 0
       const fakieStadio = Number(fakieProgressMap[s.id]?.stadio || 0)
       const nodeStadio = Math.max(stadio, fakieStadio)
-      return `<div class="skill-node sn${nodeStadio}" data-skill-id="${s.id}" data-current-stadio="${stadio}" data-stadio="${stadio}" data-current-fakie-stadio="${fakieStadio}" data-fakie-stadio="${fakieStadio}">
+      const variantInfo = variantParentInfoForSkill(s)
+      return `<div class="skill-node sn${nodeStadio}${variantInfo ? ' variant' : ''}" data-skill-id="${s.id}" data-current-stadio="${stadio}" data-stadio="${stadio}" data-current-fakie-stadio="${fakieStadio}" data-fakie-stadio="${fakieStadio}" onclick="openSkillDetailFromNode(this)">
         <div class="skill-node-main">
           <span class="sn-icon" style="${ICON_COLORS[nodeStadio]}">${ICONS[nodeStadio]}</span>
           <span class="sn-name">${esc(s.nome)}</span>
@@ -2504,7 +2907,9 @@ function renderSkillTree(allSkills, progressiMap, allievoId, fakieProgressMap = 
         <div class="skill-node-tracks">
           ${renderSkillTrackButton('frontale', stadio, skillTreeEditMode)}
           ${renderSkillTrackButton('fakie', fakieStadio, skillTreeEditMode)}
+          ${variantInfo ? `<span class="skill-track-btn">Variante</span>` : ''}
         </div>
+        ${skillTreeEditMode ? `<button type="button" class="skill-delete-btn" title="Cancella skill" onclick="event.stopPropagation(); openSkillCatalogModal('tree', null, '${s.id}')">×</button>` : ''}
       </div>`
     }).join('')
     return `<div><div class="skill-col-header">${esc(ramo)}</div>${nodes}</div>`
@@ -2547,6 +2952,276 @@ function updateSkillTreeNodeVisual(node) {
     icon.textContent = icons[next]
     icon.setAttribute('style', iconColors[next])
   }
+}
+
+function stageLabelShort(stadio) {
+  return stadio ? stadioLabel(stadio) : 'Non iniziata'
+}
+
+function skillDetailMeta(skill) {
+  return [
+    skill.ramo || 'Altro',
+    skill.blocco,
+    skill.livello ? `Livello ${skill.livello}` : '',
+    openClosedLabel(skill.open_closed),
+    skill.obbligatoria ? 'Obbligatoria' : '',
+    isVariantSkill(skill) ? 'Variante' : '',
+  ].filter(Boolean)
+}
+
+function openClosedLabel(value) {
+  const raw = String(value || '').toUpperCase()
+  if (raw === 'CLOSED') return 'Closed: gesto definito'
+  if (raw === 'OPEN') return 'Open: adattiva'
+  return value || ''
+}
+
+function openClosedHelp(value) {
+  const raw = String(value || '').toUpperCase()
+  if (raw === 'CLOSED') return 'Closed significa che la skill ha una forma abbastanza precisa: partenza, gesto e criterio di riuscita sono chiari.'
+  if (raw === 'OPEN') return 'Open significa che la skill si adatta molto al contesto: velocita, spazio, traiettoria o lettura della situazione contano piu di una forma unica.'
+  return ''
+}
+
+function skillCharacteristicTags(skill) {
+  const tags = []
+  const nature = openClosedLabel(skill.open_closed)
+  if (nature) tags.push(nature)
+  if (skill.obbligatoria) tags.push('Nodo chiave')
+  if (skill.lato_sx_nome || skill.lato_dx_nome) tags.push('Lavoro per lato')
+  const params = declaredParamSnapshot(skill)
+  params
+    .filter(([, value,, declared]) => declared && value !== 'Non dichiarato')
+    .forEach(([label, value]) => tags.push(`${label}: ${value}`))
+  const hasAsimmetria = params.some(([, value, key, declared]) => key === 'asimmetria' && declared && value !== 'Non dichiarato')
+  if (!hasAsimmetria && skill.e_bilaterale) tags.push('Asimmetria: Bilateralita richiesta')
+  return [...new Set(tags)]
+}
+
+function renderSkillCharacteristicTags(skill) {
+  const tags = skillCharacteristicTags(skill)
+  if (!tags.length) return '<div class="empty">Nessuna caratteristica registrata.</div>'
+  return `<div class="skill-characteristics">${tags.map(tag => `<span class="skill-characteristic">${esc(tag)}</span>`).join('')}</div>`
+}
+
+function splitVariantText(value) {
+  return String(value || '')
+    .split(/\n|,/)
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+function skillVariants(skill) {
+  const explicit = Array.isArray(skill.varianti) ? skill.varianti : []
+  const fromDescription = String(skill.descrizione || '').match(/Varianti:\s*([^.\n]+)/i)
+  return [...new Set([
+    ...explicit,
+    ...(fromDescription ? splitVariantText(fromDescription[1]) : []),
+  ].map(item => String(item).trim()).filter(Boolean))]
+}
+
+function renderSkillVariants(skill) {
+  const variants = skillVariants(skill)
+  if (!variants.length) return '<div class="empty">Nessuna variante registrata.</div>'
+  return `<div class="skill-characteristics">${variants.map(variant => `<span class="skill-characteristic">${esc(variant)}</span>`).join('')}</div>`
+}
+
+function skillDefinitionForSkill(skill) {
+  if (!skill) return null
+  const skillName = normalizeText(skill.nome)
+  return (skillDefinitions || []).find(def =>
+    (def.skill_id && String(def.skill_id) === String(skill.id)) ||
+    normalizeText(def.skill_nome) === skillName
+  ) || null
+}
+
+function variantMotherName(def) {
+  return def?.variante_match?.skill_nome || def?.variante_di || ''
+}
+
+function variantMotherSkillId(def) {
+  return def?.variante_match?.skill_id || null
+}
+
+function findSkillByDefinition(def) {
+  if (!def) return null
+  if (def.skill_id) {
+    const byId = allSkills.find(skill => String(skill.id) === String(def.skill_id))
+    if (byId) return byId
+  }
+  const name = normalizeText(def.skill_nome)
+  return allSkills.find(skill => normalizeText(skill.nome) === name) || null
+}
+
+function variantParentInfoForSkill(skill) {
+  const def = skillDefinitionForSkill(skill)
+  if (!def?.e_variante) return null
+  const parentId = variantMotherSkillId(def)
+  const parentName = variantMotherName(def)
+  const parentSkill = parentId
+    ? allSkills.find(row => String(row.id) === String(parentId))
+    : allSkills.find(row => normalizeText(row.nome) === normalizeText(parentName))
+  return { def, parentSkill, parentName }
+}
+
+function variantChildrenForSkill(skill) {
+  if (!skill) return []
+  const targetId = String(skill.id)
+  const targetName = normalizeText(skill.nome)
+  return (skillDefinitions || [])
+    .filter(def => def.e_variante)
+    .filter(def => {
+      const parentId = variantMotherSkillId(def)
+      const parentName = variantMotherName(def)
+      return (parentId && String(parentId) === targetId) || normalizeText(parentName) === targetName
+    })
+    .map(def => ({ def, skill: findSkillByDefinition(def) }))
+    .filter(row => row.skill?.id !== skill.id)
+    .sort((a, b) => String(a.skill?.nome || a.def.skill_nome || '').localeCompare(String(b.skill?.nome || b.def.skill_nome || ''), 'it', { sensitivity: 'base' }))
+}
+
+function isVariantSkill(skill) {
+  return !!variantParentInfoForSkill(skill)
+}
+
+function renderVariantSkillList(rows) {
+  if (!rows.length) return '<div class="empty">Nessuna skill variante collegata.</div>'
+  return `<div class="skill-detail-list">${rows.map(row => {
+    const name = row.skill?.nome || row.def.skill_nome || 'Variante senza nome'
+    const meta = row.skill ? skillMetaLabel(row.skill) : 'Definita nel questionario, non ancora nel catalogo skill'
+    const click = row.skill ? ` onclick="openSkillDetailModal('${row.skill.id}')"` : ''
+    return `<div class="skill-detail-item"${click}>
+      <strong>${esc(name)}</strong>
+      <span>${esc(meta)}</span>
+    </div>`
+  }).join('')}</div>`
+}
+
+function relatedSkillRows(skillId, direction) {
+  const rows = direction === 'requires'
+    ? allPrereqs.filter(row => row.skill_id === skillId).map(row => ({ ...row, skill: allSkills.find(skill => skill.id === row.richiede_skill_id) }))
+    : allPrereqs.filter(row => row.richiede_skill_id === skillId).map(row => ({ ...row, skill: allSkills.find(skill => skill.id === row.skill_id) }))
+  return rows
+    .filter(row => row.skill)
+    .sort((a, b) => Number(a.skill.livello || 0) - Number(b.skill.livello || 0) || String(a.skill.nome || '').localeCompare(String(b.skill.nome || ''), 'it', { sensitivity: 'base' }))
+}
+
+function renderSkillDetailList(rows, emptyText) {
+  if (!rows.length) return `<div class="empty">${esc(emptyText)}</div>`
+  return `<div class="skill-detail-list">${rows.map(row => `
+    <div class="skill-detail-item">
+      <strong>${esc(row.skill.nome)}</strong>
+      <span>${esc(skillMetaLabel(row.skill))}${row.stadio_minimo ? ` · stadio minimo ${esc(row.stadio_minimo)}` : ''}${row.note ? ` · ${esc(row.note)}` : ''}</span>
+    </div>`).join('')}</div>`
+}
+
+function renderSkillDetailInfoRow(label, value) {
+  if (value === undefined || value === null || value === '') return ''
+  return `<div><div class="info-label">${esc(label)}</div><div>${esc(String(value))}</div></div>`
+}
+
+function openSkillDetailFromNode(node) {
+  if (!node?.dataset.skillId) return
+  openSkillDetailModal(node.dataset.skillId, {
+    allievoId: currentSchedaId,
+    stadio: parseInt(node.dataset.stadio || '0', 10) || 0,
+    fakieStadio: parseInt(node.dataset.fakieStadio || '0', 10) || 0,
+  })
+}
+
+function openSkillDetailModal(skillId, context = {}) {
+  const skill = allSkills.find(s => s.id === skillId)
+  const content = document.getElementById('skill-detail-content')
+  if (!skill || !content) return
+  const requires = relatedSkillRows(skillId, 'requires')
+  const unlocks = relatedSkillRows(skillId, 'unlocks')
+  const variantParent = variantParentInfoForSkill(skill)
+  const variantChildren = variantChildrenForSkill(skill)
+  const stadio = Number(context.stadio ?? (context.allievoId ? progressMapForAllievo(context.allievoId).get(skillId) : 0) ?? 0)
+  const fakieStadio = Number(context.fakieStadio ?? (context.allievoId ? fakieProgressMapForAllievo(context.allievoId)[skillId]?.stadio : 0) ?? 0)
+  const sideNames = [skill.lato_sx_nome && `sx: ${skill.lato_sx_nome}`, skill.lato_dx_nome && `dx: ${skill.lato_dx_nome}`].filter(Boolean).join(' · ')
+  skillDetailContext = { skillId }
+
+  content.innerHTML = `
+    <div class="skill-detail-head">
+      <div>
+        <div class="skill-detail-title">${esc(skill.nome)}</div>
+        <div class="skill-detail-meta">
+          ${skillDetailMeta(skill).map(item => `<span class="skill-detail-chip">${esc(item)}</span>`).join('')}
+        </div>
+      </div>
+      <div class="skill-detail-stage">
+        <span class="st st${stadio}">Frontale: ${esc(stageLabelShort(stadio))}</span>
+        <span class="st st${fakieStadio}">Fakie: ${esc(stageLabelShort(fakieStadio))}</span>
+      </div>
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Descrizione</h4>
+      <div class="skill-detail-text">${skill.descrizione ? esc(skill.descrizione) : '<span class="empty">Nessuna descrizione registrata.</span>'}</div>
+      ${openClosedHelp(skill.open_closed) ? `<div class="skill-detail-help">${esc(openClosedHelp(skill.open_closed))}</div>` : ''}
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Caratteristiche</h4>
+      ${renderSkillCharacteristicTags(skill)}
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Varianti</h4>
+      ${renderSkillVariants(skill)}
+      <div class="skill-detail-help">Le varianti descrivono modi di eseguire la stessa skill. Se una variante richiede prerequisiti o progressione diversa, conviene crearla come skill autonoma e collegarla nei requisiti.</div>
+    </div>
+
+    ${variantParent ? `
+      <div class="skill-detail-section">
+        <h4>Variante di</h4>
+        <div class="skill-detail-list">
+          <div class="skill-detail-item"${variantParent.parentSkill ? ` onclick="openSkillDetailModal('${variantParent.parentSkill.id}')"` : ''}>
+            <strong>${esc(variantParent.parentSkill?.nome || variantParent.parentName || 'Skill madre non agganciata')}</strong>
+            <span>${esc(variantParent.parentSkill ? skillMetaLabel(variantParent.parentSkill) : 'Definita nel questionario')}</span>
+          </div>
+        </div>
+      </div>` : ''}
+
+    <div class="skill-detail-section">
+      <h4>Skill varianti</h4>
+      ${renderVariantSkillList(variantChildren)}
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Requisiti</h4>
+      ${renderSkillDetailList(requires, 'Nessun prerequisito registrato.')}
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Sblocca</h4>
+      ${renderSkillDetailList(unlocks, 'Nessuna skill dipendente registrata.')}
+    </div>
+
+    <div class="skill-detail-section">
+      <h4>Dettagli tecnici</h4>
+      <div class="info-grid">
+        ${renderSkillDetailInfoRow('Tipo', skill.tipo)}
+        ${renderSkillDetailInfoRow('Ramo', skill.ramo)}
+        ${renderSkillDetailInfoRow('Blocco', skill.blocco)}
+        ${renderSkillDetailInfoRow('Livello', skill.livello)}
+        ${renderSkillDetailInfoRow('Open / closed', openClosedLabel(skill.open_closed))}
+        ${renderSkillDetailInfoRow('Lati', sideNames)}
+      </div>
+    </div>`
+  document.getElementById('modal-skill-detail').hidden = false
+}
+
+function chiudiSkillDetailModal() {
+  document.getElementById('modal-skill-detail').hidden = true
+  skillDetailContext = null
+}
+
+function openSkillCatalogFromDetail() {
+  const skillId = skillDetailContext?.skillId || ''
+  chiudiSkillDetailModal()
+  openSkillCatalogModal('tree', null, skillId)
 }
 
 async function setSkillTreeEditMode(allievoId, on) {
@@ -2622,6 +3297,318 @@ async function salvaSkillTreeManuale(allievoId) {
     setSkillTreeStatus(e.message || 'Errore nel salvataggio della skill tree.', 'msg-err')
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = oldText }
+  }
+}
+
+// ── Gestione catalogo skill ──────────────────────────────────────────
+
+function skillCatalogBranchOptions(selected = '') {
+  const preferred = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Altro']
+  const found = [...new Set((allSkills || []).map(skill => skill.ramo || 'Altro').filter(Boolean))]
+  const branches = [...preferred, ...found.filter(branch => !preferred.includes(branch)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))]
+  return branches.map(branch => `<option value="${esc(branch)}" ${branch === selected ? 'selected' : ''}>${esc(branch)}</option>`).join('')
+}
+
+function setSkillCatalogStatus(text, kind = '') {
+  const el = document.getElementById('skill-catalog-status')
+  if (!el) return
+  el.className = `msg ${kind}`.trim()
+  el.style.display = text ? 'block' : 'none'
+  el.textContent = text || ''
+}
+
+function refreshSkillDeleteOptions(selectedSkillId = '') {
+  const select = document.getElementById('skill-delete-select')
+  if (!select) return
+  const skills = sortedSkillsForLesson()
+  select.innerHTML = `<option value="">— Scegli skill —</option>${skills.map(skill => `<option value="${skill.id}" ${skill.id === selectedSkillId ? 'selected' : ''}>${esc(skill.nome)} · ${esc(skillMetaLabel(skill))}</option>`).join('')}`
+  if (selectedSkillId && [...select.options].some(option => option.value === selectedSkillId)) select.value = selectedSkillId
+}
+
+function refreshSkillVariantParentOptions(selectedSkillId = '') {
+  const select = document.getElementById('skill-new-variant-parent')
+  if (!select) return
+  const skills = sortedSkillsForLesson()
+  select.innerHTML = `<option value="">— Scegli skill madre —</option>${skills.map(skill => `<option value="${skill.id}" ${skill.id === selectedSkillId ? 'selected' : ''}>${esc(skill.nome)} · ${esc(skillMetaLabel(skill))}</option>`).join('')}`
+}
+
+function toggleNewSkillVariantParent() {
+  const checked = !!document.getElementById('skill-new-is-variant')?.checked
+  const field = document.getElementById('skill-new-variant-parent-field')
+  if (field) field.hidden = !checked
+  if (checked) refreshSkillVariantParentOptions(document.getElementById('skill-new-variant-parent')?.value || '')
+}
+
+function renderSkillParamControls() {
+  const el = document.getElementById('skill-new-params')
+  if (!el) return
+  el.innerHTML = TUNING_PARAMS.map(param => `
+    <div class="field">
+      <label>${esc(param.label)}</label>
+      <select class="skill-new-param" data-param="${esc(param.key)}">
+        <option value="">— Non dichiarato —</option>
+        ${param.scale.map((label, index) => `<option value="${index + 1}">${index + 1} · ${esc(label)}</option>`).join('')}
+      </select>
+    </div>`).join('')
+}
+
+function collectSkillParamValues() {
+  const values = {}
+  document.querySelectorAll('.skill-new-param[data-param]').forEach(select => {
+    if (select.value) values[`param_${select.dataset.param}`] = Number(select.value)
+  })
+  return values
+}
+
+function resetSkillParamControls() {
+  document.querySelectorAll('.skill-new-param[data-param]').forEach(select => { select.value = '' })
+}
+
+function openSkillCatalogModal(source = 'generic', ownerId = null, deleteSkillId = '') {
+  skillCatalogContext = { source, ownerId }
+  document.getElementById('skill-new-name').value = ''
+  document.getElementById('skill-new-level').value = '1'
+  document.getElementById('skill-new-description').value = ''
+  document.getElementById('skill-new-variants').value = ''
+  document.getElementById('skill-new-branch').innerHTML = skillCatalogBranchOptions('Equilibrio')
+  document.getElementById('skill-new-block').value = 'Base'
+  document.getElementById('skill-new-open-closed').value = 'OPEN'
+  document.getElementById('skill-new-required').checked = false
+  document.getElementById('skill-new-is-variant').checked = false
+  refreshSkillVariantParentOptions()
+  toggleNewSkillVariantParent()
+  renderSkillParamControls()
+  resetSkillParamControls()
+  refreshSkillDeleteOptions(deleteSkillId)
+  setSkillCatalogStatus('', '')
+  document.getElementById('modal-skill-catalog').hidden = false
+  requestAnimationFrame(() => document.getElementById(deleteSkillId ? 'skill-delete-select' : 'skill-new-name')?.focus())
+}
+
+function chiudiSkillCatalogModal() {
+  document.getElementById('modal-skill-catalog').hidden = true
+  skillCatalogContext = null
+}
+
+function openSelectedSkillDetailFromCatalog() {
+  const skillId = document.getElementById('skill-delete-select')?.value
+  if (!skillId) { setSkillCatalogStatus('Scegli una skill da vedere.', 'msg-info'); return }
+  document.getElementById('modal-skill-catalog').hidden = true
+  openSkillDetailModal(skillId, { allievoId: currentSchedaId })
+}
+
+function collectSkillTreeEditState() {
+  return [...document.querySelectorAll('.skill-tree-wrap.is-editing .skill-node[data-skill-id]')]
+    .map(node => [node.dataset.skillId, {
+      stadio: parseInt(node.dataset.stadio || '0', 10) || 0,
+      fakieStadio: parseInt(node.dataset.fakieStadio || '0', 10) || 0,
+    }])
+}
+
+function applySkillTreeEditState(entries) {
+  const state = new Map(entries || [])
+  document.querySelectorAll('.skill-tree-wrap.is-editing .skill-node[data-skill-id]').forEach(node => {
+    const saved = state.get(node.dataset.skillId)
+    if (!saved) return
+    node.dataset.stadio = String(saved.stadio || 0)
+    node.dataset.fakieStadio = String(saved.fakieStadio || 0)
+    node.querySelectorAll('.skill-track-btn[data-track]').forEach(btn => {
+      const value = btn.dataset.track === 'fakie' ? (saved.fakieStadio || 0) : (saved.stadio || 0)
+      btn.textContent = `${btn.dataset.track === 'fakie' ? 'Fakie' : 'Frontale'} ${value ? value : '-'}`
+      btn.classList.remove('sn0', 'sn1', 'sn2', 'sn3')
+      btn.classList.add(`sn${value}`)
+    })
+    updateSkillTreeNodeVisual(node)
+  })
+}
+
+async function refreshSkillCatalogConsumers(newSkillId = '') {
+  refreshLessonSkillRows(newSkillId)
+  refreshSkillDeleteOptions()
+  refreshSkillVariantParentOptions()
+  renderTuningStats()
+  if (!document.getElementById('view-skills')?.hidden) renderSkillsCatalog()
+  if (currentSchedaId && !document.getElementById('view-scheda')?.hidden && skillTreeEditMode) {
+    const state = collectSkillTreeEditState()
+    await loadScheda(currentSchedaId)
+    switchSchedaTab('skill-tree')
+    applySkillTreeEditState(state)
+  }
+}
+
+function refreshLessonSkillRows(newSkillId = '') {
+  const rows = [...document.querySelectorAll('.skill-row')]
+  rows.forEach(row => {
+    const branchSelect = row.querySelector('.skill-branch')
+    const skillSelect = row.querySelector('.skill-select')
+    if (!branchSelect || !skillSelect) return
+    const selected = skillSelect.value
+    const selectedSkill = allSkills.find(skill => skill.id === selected)
+    const branch = selectedSkill?.ramo || branchSelect.value || ''
+    branchSelect.innerHTML = renderLessonBranchOptions(branch)
+    branchSelect.value = [...branchSelect.options].some(option => option.value === branch) ? branch : ''
+    skillSelect.innerHTML = `<option value="">— Skill —</option>${renderLessonSkillOptions(selected, '', branchSelect.value)}`
+    if ([...skillSelect.options].some(option => option.value === selected)) skillSelect.value = selected
+  })
+
+  const ownerId = skillCatalogContext?.source === 'lesson' ? skillCatalogContext.ownerId : null
+  if (newSkillId && ownerId) selectNewSkillInLessonOwner(ownerId, newSkillId)
+}
+
+function selectNewSkillInLessonOwner(ownerId, skillId) {
+  const skill = allSkills.find(s => s.id === skillId)
+  const container = document.getElementById(`skill-rows-${ownerId}`)
+  if (!skill || !container) return
+  let row = [...container.querySelectorAll('.skill-row')].find(item => !item.querySelector('.skill-select')?.value)
+  if (!row) {
+    aggiungiSkillRow(ownerId)
+    row = [...container.querySelectorAll('.skill-row')].at(-1)
+  }
+  const branchSelect = row?.querySelector('.skill-branch')
+  const skillSelect = row?.querySelector('.skill-select')
+  if (!branchSelect || !skillSelect) return
+  branchSelect.value = skill.ramo || ''
+  filterSkillRow(branchSelect)
+  skillSelect.value = skillId
+  onLessonSkillSelected(skillSelect)
+}
+
+async function creaSkillCatalogo() {
+  const btn = document.getElementById('btn-create-skill')
+  const oldText = btn?.textContent
+  const nome = document.getElementById('skill-new-name')?.value.trim()
+  const ramo = document.getElementById('skill-new-branch')?.value || 'Altro'
+  const livello = parseInt(document.getElementById('skill-new-level')?.value || '1', 10) || 1
+  const blocco = document.getElementById('skill-new-block')?.value || 'Base'
+  const openClosed = document.getElementById('skill-new-open-closed')?.value || 'OPEN'
+  const obbligatoria = !!document.getElementById('skill-new-required')?.checked
+  const descrizione = document.getElementById('skill-new-description')?.value.trim() || null
+  const varianti = splitVariantText(document.getElementById('skill-new-variants')?.value || '')
+  const isVariant = !!document.getElementById('skill-new-is-variant')?.checked
+  const parentSkillId = document.getElementById('skill-new-variant-parent')?.value || ''
+  const parentSkill = allSkills.find(skill => skill.id === parentSkillId)
+  const paramValues = collectSkillParamValues()
+
+  if (!nome) { setSkillCatalogStatus('Inserisci il nome della skill.', 'msg-err'); return }
+  if (allSkills.some(skill => normalizeText(skill.nome) === normalizeText(nome))) {
+    setSkillCatalogStatus('Esiste gia una skill con questo nome.', 'msg-err')
+    return
+  }
+  if (isVariant && !parentSkill) {
+    setSkillCatalogStatus('Scegli la skill madre della variante.', 'msg-err')
+    return
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Creo...' }
+  setSkillCatalogStatus('', '')
+  try {
+    const descrizioneFinale = [
+      descrizione,
+      varianti.length ? `Varianti: ${varianti.join(', ')}.` : '',
+    ].filter(Boolean).join('\n')
+    let payload = {
+      nome,
+      ramo,
+      livello,
+      blocco,
+      descrizione: descrizioneFinale || null,
+      tipo: 'RAMO',
+      open_closed: openClosed,
+      obbligatoria,
+      e_bilaterale: false,
+      lato_sx_nome: null,
+      lato_dx_nome: null,
+      ...paramValues,
+    }
+    let { data, error } = await sb.from('skills').insert(payload).select('*').single()
+    if (error && Object.keys(paramValues).some(key => (error.message || error.details || error.hint || '').includes(key))) {
+      Object.keys(paramValues).forEach(key => delete payload[key])
+      ;({ data, error } = await sb.from('skills').insert(payload).select('*').single())
+    }
+    if (error) throw error
+    allSkills = [...allSkills, data].sort((a, b) => Number(a.livello || 0) - Number(b.livello || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' }))
+    const variantDefinitionSaved = isVariant ? await salvaDefinizioneVarianteSkill(data, parentSkill, varianti) : true
+    document.getElementById('skill-new-name').value = ''
+    document.getElementById('skill-new-description').value = ''
+    document.getElementById('skill-new-variants').value = ''
+    document.getElementById('skill-new-is-variant').checked = false
+    toggleNewSkillVariantParent()
+    resetSkillParamControls()
+    await refreshSkillCatalogConsumers(data.id)
+    setSkillCatalogStatus(`Skill "${data.nome}" creata.${variantDefinitionSaved ? '' : ' La relazione variante resta da salvare nel questionario.'}`, 'msg-ok')
+  } catch (e) {
+    setSkillCatalogStatus(e.message || 'Errore durante la creazione della skill.', 'msg-err')
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText }
+  }
+}
+
+async function optionalDelete(table, column, value) {
+  const { error } = await sb.from(table).delete().eq(column, value)
+  if (error && !/does not exist|schema cache|column/i.test(error.message || '')) throw error
+}
+
+async function salvaDefinizioneVarianteSkill(skill, parentSkill, variants = []) {
+  if (!skill || !parentSkill) return true
+  const payload = {
+    skill_id: skill.id,
+    skill_nome: skill.nome,
+    ramo: skill.ramo || 'Altro',
+    fascia_livello: skill.blocco || '',
+    livello_num: Number(skill.livello || 0) || null,
+    prerequisiti: [],
+    prerequisiti_match: [],
+    sblocca: [],
+    sblocca_match: [],
+    e_variante: true,
+    variante_di: parentSkill.nome,
+    variante_match: { skill_id: parentSkill.id, skill_nome: parentSkill.nome },
+    cosa_fa: skill.descrizione || '',
+    come_si_fa: '',
+    varianti: variants,
+    alias_nomi: [],
+    catalog_note: '',
+    note_revisione: null,
+    stato: 'bozza',
+    maestro_id: currentUid || null,
+    aggiornato_il: new Date().toISOString()
+  }
+  const { error } = await sb.from('skill_definizioni').upsert(payload, { onConflict: 'skill_nome' })
+  if (error) {
+    const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
+    if (/skill_definizioni|schema cache|could not find the table|does not exist/i.test(text)) return false
+    throw error
+  }
+  skillDefinitions = await loadSkillDefinitions()
+  return true
+}
+
+async function cancellaSkillCatalogo() {
+  const select = document.getElementById('skill-delete-select')
+  const skillId = select?.value
+  const skill = allSkills.find(s => s.id === skillId)
+  if (!skill) { setSkillCatalogStatus('Scegli una skill da cancellare.', 'msg-err'); return }
+  if (!confirm(`Cancellare "${skill.nome}" dal catalogo? Verranno rimossi anche progressi, lezioni collegate e prerequisiti.`)) return
+
+  setSkillCatalogStatus('Cancellazione in corso...', 'msg-info')
+  try {
+    await optionalDelete('prerequisiti_skill', 'skill_id', skillId)
+    await optionalDelete('prerequisiti_skill', 'richiede_skill_id', skillId)
+    await optionalDelete('progressi_allievo', 'skill_id', skillId)
+    await optionalDelete('lezioni_skills', 'skill_id', skillId)
+    await optionalDelete('skill_definizioni', 'skill_id', skillId)
+    await optionalDelete('tuning_risposte', 'skill_id', skillId)
+    await optionalDelete('tuning_risposte', 'skill_ref_id', skillId)
+    const { error } = await sb.from('skills').delete().eq('id', skillId)
+    if (error) throw error
+    allSkills = allSkills.filter(s => s.id !== skillId)
+    skillDefinitions = skillDefinitions.filter(def => String(def.skill_id || '') !== String(skillId) && normalizeText(def.skill_nome) !== normalizeText(skill.nome))
+    allPrereqs = allPrereqs.filter(row => row.skill_id !== skillId && row.richiede_skill_id !== skillId)
+    allProgressi = allProgressi.filter(row => row.skill_id !== skillId)
+    await refreshSkillCatalogConsumers()
+    setSkillCatalogStatus(`Skill "${skill.nome}" cancellata.`, 'msg-ok')
+  } catch (e) {
+    setSkillCatalogStatus(e.message || 'Errore durante la cancellazione della skill.', 'msg-err')
   }
 }
 
@@ -2764,7 +3751,7 @@ function salvaBackupLocale(tipo, payload) {
   const key = 'bladingManagerBackups'
   let backups = []
   try {
-    backups = JSON.parse(localStorage.getItem(key) || '[]')
+    backups = JSON.parse(safeStorage.getItem(key) || '[]')
     if (!Array.isArray(backups)) backups = []
   } catch {
     backups = []
@@ -2774,7 +3761,7 @@ function salvaBackupLocale(tipo, payload) {
     salvato_il: new Date().toISOString(),
     payload,
   })
-  localStorage.setItem(key, JSON.stringify(backups.slice(0, 50)))
+  safeStorage.setItem(key, JSON.stringify(backups.slice(0, 50)))
 }
 
 async function backupAllievoCompleto(id) {
@@ -3091,6 +4078,17 @@ function isMissingDimensioniError(error) {
   return !!error && /dimensioni/i.test(error.message || error.details || error.hint || '')
 }
 
+function hasLessonSkillMetadata(payload = {}) {
+  return !!payload?.dimensioni && Object.keys(payload.dimensioni).length > 0
+}
+
+function missingLessonSkillColumnError(column) {
+  const details = column === 'dimensioni'
+    ? 'Dimensioni ed esercizi sono salvati in lezioni_skills.dimensioni.'
+    : 'Il flag Fakie e salvato in lezioni_skills.fakie.'
+  return new Error(`${details} La colonna manca nel database: applica la migrazione lezioni_skills_meta e riprova.`)
+}
+
 async function loadLezioni(force = false) {
   if (lezioniCache && !force) {
     renderLezioni()
@@ -3100,8 +4098,13 @@ async function loadLezioni(force = false) {
   const el = document.getElementById('lezioni-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
   let { data, error } = await sb.from('lezioni')
-    .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
+    .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
     .order('data', { ascending: false })
+  if (isMissingDimensioniError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
+      .order('data', { ascending: false }))
+  }
   if (isMissingNoteSpecialiError(error)) {
     ;({ data, error } = await sb.from('lezioni')
       .select('id, data, tipo, durata_min, luogo, note, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
@@ -3144,7 +4147,7 @@ function renderLezioni({ animate = false } = {}) {
   if (animate) requestAnimationFrame(() => motion.tableRows(el))
 }
 
-function renderLezioniTable(lezioni, { showYearGroups = true, variant = 'lista', schedaId = null } = {}) {
+function renderLezioniTable(lezioni, { showYearGroups = true, variant = 'lista', schedaId = null, gruppoNome = null } = {}) {
   const isScheda = variant === 'scheda'
   const html = `
     ${!isScheda ? renderYearControlsForLezioni(lezioni, variant, schedaId) : ''}
@@ -3156,7 +4159,7 @@ function renderLezioniTable(lezioni, { showYearGroups = true, variant = 'lista',
             : '<th>Data e orario</th><th>Allievi</th><th>Location</th><th>Note speciali</th>'
         }</tr></thead>
         <tbody>
-          ${renderRowsLezioni(lezioni, { showYearGroups, variant, schedaId })}
+          ${renderRowsLezioni(lezioni, { showYearGroups, variant, schedaId, gruppoNome })}
         </tbody>
       </table>
     </div>`
@@ -3207,7 +4210,7 @@ async function lezioniPerScheda(allievoId) {
   return (data || []).map(row => row.lezioni).filter(Boolean)
 }
 
-function renderRowsLezioni(lezioni, { showYearGroups = true, variant = 'lista', schedaId = null } = {}) {
+function renderRowsLezioni(lezioni, { showYearGroups = true, variant = 'lista', schedaId = null, gruppoNome = null } = {}) {
   const annoCorrente = new Date().getFullYear()
   const passate = new Map()
   const rows = []
@@ -3218,7 +4221,7 @@ function renderRowsLezioni(lezioni, { showYearGroups = true, variant = 'lista', 
       if (!passate.has(anno)) passate.set(anno, [])
       passate.get(anno).push(l)
     } else {
-      rows.push(renderLezioneListaRow(l, { variant, schedaId }))
+      rows.push(renderLezioneListaRow(l, { variant, schedaId, gruppoNome }))
     }
   })
 
@@ -3240,7 +4243,7 @@ function renderRowsLezioni(lezioni, { showYearGroups = true, variant = 'lista', 
         <td></td>
         <td></td>
       </tr>`)
-    if (expanded) rows.push(...lezioniAnno.map(l => renderLezioneListaRow(l, { variant, schedaId })))
+    if (expanded) rows.push(...lezioniAnno.map(l => renderLezioneListaRow(l, { variant, schedaId, gruppoNome })))
   })
 
   return rows.join('')
@@ -3259,9 +4262,9 @@ function ensureUltimoAnnoLezioniAperto(anni, variant = 'lista', schedaId = null)
   lezioniAnniDefaultAperto = true
 }
 
-function renderLezioneListaRow(l, { variant = 'lista', schedaId = null } = {}) {
+function renderLezioneListaRow(l, { variant = 'lista', schedaId = null, gruppoNome = null } = {}) {
   const nomi = labelPartecipantiLezione(l)
-  const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l) : ''
+  const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : ''
   if (variant === 'scheda') {
     return `<tr onclick="openLezione('${l.id}','${schedaId}')" style="cursor:pointer">
       <td><strong>${formatDate(l.data)}</strong></td>
@@ -3270,7 +4273,7 @@ function renderLezioneListaRow(l, { variant = 'lista', schedaId = null } = {}) {
       <td>${l.luogo ? esc(l.luogo) : '—'}</td>
     </tr>`
   }
-  return `<tr onclick="openLezione('${l.id}')" style="cursor:pointer">
+  return `<tr onclick="openLezione(${jsArg(l.id)},null,${jsArg(gruppoNome)})" style="cursor:pointer">
     <td><strong>${formatDate(l.data)}</strong></td>
     <td style="font-size:.84rem">${esc(nomi)}</td>
     <td>${l.luogo ? esc(l.luogo) : '—'}</td>
@@ -3281,15 +4284,15 @@ function renderLezioneListaRow(l, { variant = 'lista', schedaId = null } = {}) {
 function renderSkillChipsLezione(lezione) {
   const viste = new Set()
   const skills = (lezione.lezioni_skills || [])
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0 }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi) }))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}`
+      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
     })
   return skills.length
-    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}</span>`).join('')
+    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`).join('')
     : '—'
 }
 
@@ -3327,26 +4330,26 @@ function aggiornaToggleDettagliLezioni() {
   btn.classList.toggle('btn-outline', !lezioniDettagliEspansi)
 }
 
-function renderDettaglioLezione(lezione) {
+function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || []
   const viste = new Set()
   const skills = skillRows
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0 }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi) }))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}`
+      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
     })
   const skillsHtml = skills.length
-    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}</span>`).join('')
+    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
   const noteHtml = lezione.note
     ? `<div class="lezione-note-preview">${esc(lezione.note)}</div>`
     : '<span class="lezione-empty-detail">Nessuna nota.</span>'
 
   return `
-    <tr class="lezione-detail-row" onclick="openLezione('${lezione.id}')" style="cursor:pointer">
+    <tr class="lezione-detail-row" onclick="openLezione(${jsArg(lezione.id)},null,${jsArg(gruppoNome)})" style="cursor:pointer">
       <td colspan="4" class="lezione-detail-cell">
         <div class="lezione-detail-grid">
           <div>
@@ -3423,6 +4426,41 @@ async function fetchLezioneCompleta(id) {
   return { lezione, error }
 }
 
+async function lezioneNavStessoAllievo(lezione, partecipanti) {
+  const contextAllievoId = lezioneBackAllievoId && partecipanti.some(a => a.id === lezioneBackAllievoId)
+    ? lezioneBackAllievoId
+    : (partecipanti.length === 1 ? partecipanti[0].id : null)
+  const gruppiLezione = [...new Set(partecipanti.map(a => a.gruppo).filter(Boolean))]
+  const contextGruppoNome = contextAllievoId
+    ? null
+    : (lezioneBackGruppoNome && partecipanti.some(a => a.gruppo === lezioneBackGruppoNome)
+      ? lezioneBackGruppoNome
+      : (lezione.tipo === 'gruppo' && gruppiLezione.length === 1 ? gruppiLezione[0] : null))
+  if (!contextAllievoId && !contextGruppoNome) return { allievoId: null, gruppoNome: null, prev: null, next: null }
+
+  const query = sb.from('lezioni_allievi').select('lezione_id, lezioni(id, data)')
+  const membriGruppo = contextGruppoNome ? gruppoMembri(contextGruppoNome, { includeArchived: true }) : []
+  const { data, error } = contextAllievoId
+    ? await query.eq('allievo_id', contextAllievoId)
+    : await query.in('allievo_id', membriGruppo.map(a => a.id))
+  if (error) return { allievoId: contextAllievoId, gruppoNome: contextGruppoNome, prev: null, next: null }
+
+  const byId = new Map()
+  ;(data || []).forEach(row => {
+    const l = row.lezioni
+    if (l?.id) byId.set(l.id, l)
+  })
+  const lezioni = [...byId.values()]
+    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.id).localeCompare(String(b.id)))
+  const index = lezioni.findIndex(l => l.id === lezione.id)
+  return {
+    allievoId: contextAllievoId,
+    gruppoNome: contextGruppoNome,
+    prev: index > 0 ? lezioni[index - 1] : null,
+    next: index >= 0 && index < lezioni.length - 1 ? lezioni[index + 1] : null,
+  }
+}
+
 async function cancellaLezioneInModifica() {
   if (!editingLezioneId) return
   if (!confirm('Cancellare questa lezione? Prima verra salvata una copia nel backup locale.')) return
@@ -3458,6 +4496,7 @@ async function cancellaLezioneInModifica() {
 }
 
 async function loadLezione(id) {
+  currentLezioneId = id
   const el = document.getElementById('lezione-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
 
@@ -3478,11 +4517,19 @@ async function loadLezione(id) {
     lezione.durata_min ? `${lezione.durata_min} min` : '',
     lezione.luogo ? esc(lezione.luogo) : '',
   ].filter(Boolean).join('<br>')
+  const navStessoAllievo = await lezioneNavStessoAllievo(lezione, partecipanti)
+  const navArrow = (target, direction) => {
+    const isPrev = direction === 'prev'
+    const label = isPrev ? 'Lezione precedente' : 'Lezione successiva'
+    const arrow = isPrev ? '‹' : '›'
+    if (!target) return `<button type="button" class="lezione-nav-arrow" disabled aria-label="${label}">${arrow}</button>`
+    return `<button type="button" class="lezione-nav-arrow" onclick="openLezione(${jsArg(target.id)},${jsArg(navStessoAllievo.allievoId)},${jsArg(navStessoAllievo.gruppoNome)})" title="${label}: ${esc(formatDateWithWeekday(target.data))}" aria-label="${label}">${arrow}</button>`
+  }
   const partecipantiHtml = partecipanti.length
     ? partecipanti.map(a => {
         const nomeCompleto = [a.nome, a.cognome].filter(Boolean).join(' ')
         return `
-          <div class="lezione-read-person">
+          <div class="lezione-read-person clickable" onclick="apriSchedaAllievoDaLezione('${a.id}')" title="Apri scheda allievo">
             ${a.nickname ? `<strong>${esc(a.nickname)}</strong>` : ''}
             ${nomeCompleto ? `<span>${a.nickname ? '· ' : ''}${esc(nomeCompleto)}</span>` : ''}
             ${a.gruppo ? `<span>· ${esc(a.gruppo)}</span>` : ''}
@@ -3505,7 +4552,8 @@ async function loadLezione(id) {
           .filter(r => r.skills?.nome)
           .map(r => {
             const direzione = r.dimensioni?.direzione || (r.fakie ? 'fakie' : '')
-            const extra = [direzione, r.dimensioni?.lato].filter(Boolean).join(' · ')
+            const esercizi = normalizeExerciseList(r.dimensioni?.esercizi)
+            const extra = [direzione, r.dimensioni?.lato, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
             return `<span class="st st${r.stadio_raggiunto || 0}">${esc(r.skills.nome)}${extra ? ` · ${esc(extra)}` : ''}${r.skills.livello ? ` · Lv.${r.skills.livello}` : ''}</span>`
           })
           .join('')
@@ -3553,8 +4601,14 @@ async function loadLezione(id) {
           <div class="lezione-read-title">${esc(titoloLezione)}</div>
         </div>
         <div class="lezione-read-when">
-          <div class="lezione-read-date">${formatDateWithWeekday(lezione.data)}</div>
-          ${dettagliQuando || '<span>Orario e luogo non indicati</span>'}
+          <div class="lezione-when-nav">
+            ${navArrow(navStessoAllievo.prev, 'prev')}
+            <div class="lezione-when-main">
+              <div class="lezione-read-date">${formatDateWithWeekday(lezione.data)}</div>
+              ${dettagliQuando || '<span>Orario e luogo non indicati</span>'}
+            </div>
+            ${navArrow(navStessoAllievo.next, 'next')}
+          </div>
         </div>
       </div>
       ${lezione.note_speciali ? `<div style="margin-top:.75rem"><span class="ramo">${esc(lezione.note_speciali)}</span></div>` : ''}
@@ -3593,11 +4647,16 @@ async function initNuovaLezione(presetAllievoId = null) {
     ? presetAllievoId.slice('gruppo:'.length)
     : null
   lezionePresetAllievoId = editId || groupPreset ? null : presetAllievoId
-  if (!editId) lezioneBackAllievoId = groupPreset ? null : (presetAllievoId || null)
+  if (!editId) {
+    lezioneBackAllievoId = groupPreset ? null : (presetAllievoId || null)
+    lezioneBackGruppoNome = groupPreset || null
+  }
   // Data di default = oggi
   document.getElementById('lz-data').value    = new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
+  document.getElementById('lz-luogo-suggest').hidden = true
+  document.getElementById('lz-luogo-suggest').innerHTML = ''
   document.getElementById('lz-note-speciali').value = ''
   document.getElementById('lz-note').value    = ''
   document.getElementById('lz-err').classList.remove('show')
@@ -3671,6 +4730,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   else if (groupPreset) document.getElementById('lz-tipo').value = `gruppo:${groupPreset}`
   else if (lezionePresetAllievoId) document.getElementById('lz-tipo').value = `allievo:${lezionePresetAllievoId}`
   else document.getElementById('lz-tipo').value = ''
+  if (editId && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds)
 
   const draft = !editId ? loadLezioneDraft() : null
   const draftSelectedIds = draft ? restoreLezioneDraft(draft) : []
@@ -3713,9 +4773,26 @@ function renderLezionePartecipanti() {
     const gruppo = target.slice('gruppo:'.length)
     const ids = allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo).map(a => a.id)
     setLezioneAllievi(ids)
+    renderGroupLessonPanel(gruppo)
+    renderGroupSkillWorkspace()
   }
   lezionePresetAllievoId = null
   renderSpecialGuestPanel()
+  refreshSuggerimentiLuogoSeAperti()
+}
+
+function currentLessonTargetIsGroup() {
+  return document.getElementById('lz-tipo')?.value?.startsWith('gruppo:')
+}
+
+function allievoById(id) {
+  return allAllievi.find(a => a.id === id) || null
+}
+
+function allievoDisplayName(id) {
+  const a = allievoById(id)
+  if (!a) return id
+  return [a.cognome, a.nome].filter(Boolean).join(' ') || a.nickname || id
 }
 
 function allieviSelezionabiliLezione({ includeArchived = false } = {}) {
@@ -3750,7 +4827,7 @@ function setLezioneTargetFromEditing() {
   const gruppo = gruppoDaAllieviLezione(editingLezioneAllieviIds)
   const membriGruppo = gruppo ? allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo).map(a => a.id).sort() : []
   const editingIds = [...editingLezioneAllieviIds].sort()
-  if (gruppo && membriGruppo.length === editingIds.length && membriGruppo.every((id, index) => id === editingIds[index])) {
+  if (gruppo && membriGruppo.length && membriGruppo.every(id => editingIds.includes(id))) {
     sel.value = `gruppo:${gruppo}`
     return
   }
@@ -3768,6 +4845,13 @@ function gruppiSelezionabiliLezione({ includeArchived = false } = {}) {
 
 function gruppoDaAllieviLezione(ids) {
   if (!ids?.length) return ''
+  const idSet = new Set(ids)
+  const gruppiDisponibili = gruppiSelezionabiliLezione({ includeArchived: true })
+  const gruppoCompleto = gruppiDisponibili.find(gruppo => {
+    const membri = allieviSelezionabiliLezione({ includeArchived: true }).filter(a => a.gruppo === gruppo).map(a => a.id)
+    return membri.length && membri.every(id => idSet.has(id))
+  })
+  if (gruppoCompleto) return gruppoCompleto
   const gruppi = [...new Set(allAllievi.filter(a => ids.includes(a.id)).map(a => a.gruppo).filter(Boolean))]
   return gruppi.length === 1 ? gruppi[0] : ''
 }
@@ -3795,18 +4879,245 @@ function renderAllieviGruppoLezione(gruppo, presentiSet = null) {
   })
 }
 
+function renderGroupLessonPanel(gruppo) {
+  const panel = document.getElementById('lz-gruppo-panel')
+  const selected = new Set(selectedLezioneAllieviIds())
+  const membri = allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo)
+  const guests = selectedLezioneAllieviIds()
+    .map(id => allievoById(id))
+    .filter(a => a && a.gruppo !== gruppo)
+  panel.hidden = false
+  panel.innerHTML = `
+    <div class="card">
+      <p class="form-sec" style="margin-top:0">Presenti</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.35rem .8rem">
+        ${membri.map(a => `
+          <label style="display:flex;align-items:center;gap:.55rem;font-size:.9rem">
+            <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? 'checked' : ''} onchange="togglePresenzaGruppoLezione(this)">
+            ${esc(allievoDisplayName(a.id))}
+          </label>`).join('')}
+      </div>
+      ${guests.length ? `<div style="margin-top:.75rem;color:var(--muted);font-size:.86rem">Guest: ${guests.map(a => esc(allievoDisplayName(a.id))).join(', ')}</div>` : ''}
+    </div>`
+}
+
+function togglePresenzaGruppoLezione(cb) {
+  const hidden = [...document.querySelectorAll('#lz-hidden-checks input')].find(input => input.value === cb.value)
+  if (hidden) hidden.checked = cb.checked
+  else if (cb.checked) document.getElementById('lz-hidden-checks').insertAdjacentHTML('beforeend', `<input type="checkbox" value="${cb.value}" checked>`)
+  refreshGroupExclusionControls()
+  renderGroupIndividualControls()
+  renderSpecialGuestPanel()
+  refreshSuggerimentiLuogoSeAperti()
+}
+
 function setLezioneAllievi(ids) {
   const holder = document.getElementById('lz-hidden-checks')
   document.getElementById('lz-skills-container').innerHTML = ''
   holder.innerHTML = ids.map(id => `<input type="checkbox" value="${id}" checked>`).join('')
+  if (currentLessonTargetIsGroup()) {
+    refreshSuggerimentiLuogoSeAperti()
+    return
+  }
   ids.forEach(id => {
     const a = allieviSelezionabiliLezione().find(x => x.id === id)
     if (a) toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
   })
+  refreshSuggerimentiLuogoSeAperti()
 }
 
 function selectedLezioneAllieviIds() {
   return [...document.querySelectorAll('#lz-hidden-checks input[type=checkbox]:checked')].map(input => input.value)
+}
+
+function luoghiCacheKey(ids) {
+  return [...new Set(ids || [])].sort().join('|')
+}
+
+async function luoghiFrequentatiAllievi(ids) {
+  const cleanIds = [...new Set((ids || []).filter(Boolean))]
+  if (!cleanIds.length) return []
+  const key = luoghiCacheKey(cleanIds)
+  if (luoghiLezioneCache.has(key)) return luoghiLezioneCache.get(key)
+
+  const { data } = await sb.from('lezioni_allievi')
+    .select('lezioni(luogo, data)')
+    .in('allievo_id', cleanIds)
+
+  const stats = new Map()
+  ;(data || []).forEach(row => {
+    const luogo = row.lezioni?.luogo?.trim()
+    if (!luogo) return
+    const k = normalizeText(luogo)
+    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
+    prev.count += 1
+    if (String(row.lezioni?.data || '') > prev.latest) prev.latest = String(row.lezioni?.data || '')
+    stats.set(k, prev)
+  })
+  const luoghi = [...stats.values()]
+    .sort((a, b) => b.count - a.count || b.latest.localeCompare(a.latest) || a.luogo.localeCompare(b.luogo, 'it', { sensitivity: 'base' }))
+    .map(item => item.luogo)
+  luoghiLezioneCache.set(key, luoghi)
+  return luoghi
+}
+
+async function mostraSuggerimentiLuogo() {
+  clearTimeout(luogoSuggestTimer)
+  const panel = document.getElementById('lz-luogo-suggest')
+  const input = document.getElementById('lz-luogo')
+  if (!panel || !input) return
+  const ids = selectedLezioneAllieviIds()
+  if (!ids.length) {
+    panel.hidden = true
+    panel.innerHTML = ''
+    return
+  }
+
+  const query = normalizeText(input.value)
+  const luoghi = (await luoghiFrequentatiAllievi(ids))
+    .filter(luogo => !query || normalizeText(luogo).includes(query))
+    .slice(0, 8)
+
+  if (!luoghi.length) {
+    panel.innerHTML = '<div class="place-suggest-empty">Nessun luogo già registrato per i presenti.</div>'
+    panel.hidden = false
+    return
+  }
+
+  panel.innerHTML = luoghi.map(luogo => `
+    <button type="button" class="place-suggest-btn" onmousedown="scegliLuogoSuggerito(${jsArg(luogo)})">${esc(luogo)}</button>
+  `).join('')
+  panel.hidden = false
+}
+
+function scegliLuogoSuggerito(luogo) {
+  document.getElementById('lz-luogo').value = luogo
+  const panel = document.getElementById('lz-luogo-suggest')
+  if (panel) panel.hidden = true
+}
+
+function nascondiSuggerimentiLuogoSoon() {
+  clearTimeout(luogoSuggestTimer)
+  luogoSuggestTimer = setTimeout(() => {
+    const panel = document.getElementById('lz-luogo-suggest')
+    if (panel) panel.hidden = true
+  }, 160)
+}
+
+function refreshSuggerimentiLuogoSeAperti() {
+  const panel = document.getElementById('lz-luogo-suggest')
+  if (panel && !panel.hidden) mostraSuggerimentiLuogo()
+}
+
+function skillWorkKey(row) {
+  return JSON.stringify({
+    skillId: row.skillId || '',
+    stadio: Number(row.stadio || 1),
+    fakie: !!row.fakie,
+    dimensioni: row.dimensioni || {},
+  })
+}
+
+function collapseCommonGroupSkillRows(ids) {
+  const presentIds = (ids || []).filter(id => editingLezioneSkillRows[id]?.length)
+  if (presentIds.length < 2) return
+  const counts = new Map()
+  const rowByKey = new Map()
+  presentIds.forEach(id => {
+    const seen = new Set()
+    ;(editingLezioneSkillRows[id] || []).forEach(row => {
+      const key = skillWorkKey(row)
+      if (seen.has(key)) return
+      seen.add(key)
+      counts.set(key, (counts.get(key) || 0) + 1)
+      rowByKey.set(key, row)
+    })
+  })
+  const commonKeys = [...counts.entries()].filter(([, count]) => count === presentIds.length).map(([key]) => key)
+  if (!commonKeys.length) return
+  const common = new Set(commonKeys)
+  editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] = commonKeys.map(key => ({ ...rowByKey.get(key), excludeIds: [] }))
+  presentIds.forEach(id => {
+    editingLezioneSkillRows[id] = (editingLezioneSkillRows[id] || []).filter(row => !common.has(skillWorkKey(row)))
+  })
+}
+
+function renderGroupSkillWorkspace() {
+  const container = document.getElementById('lz-skills-container')
+  const savedGroupRows = editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] || []
+  container.innerHTML = `
+    <div class="allievo-block">
+      <h4>Lavoro di gruppo</h4>
+      <div class="lesson-skill-tools">
+        <div class="lesson-skill-hint">Inserisci una volta sola le skill o gli esercizi comuni. Per ogni riga puoi escludere chi non li ha fatti.</div>
+        <div><button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('lesson','${GROUP_SKILL_ROWS_KEY}')">+ Nuova skill</button></div>
+        ${renderLessonSkillSuggestionGroups(GROUP_SKILL_ROWS_KEY, [{ title: 'In lavorazione per tutti', skills: sharedInLavorazioneSkills(), shared: true }].filter(group => group.skills.length))}
+      </div>
+      <div id="skill-rows-${GROUP_SKILL_ROWS_KEY}"></div>
+    </div>
+    <div class="allievo-block">
+      <h4>Lavori individuali</h4>
+      <div class="lesson-skill-hint">Aggiungi qui esercizi o skill fatti solo da un allievo, incluso un guest.</div>
+      <div id="lz-individual-tools"></div>
+      <div id="lz-individual-skill-blocks"></div>
+    </div>`
+
+  if (savedGroupRows.length) savedGroupRows.forEach(row => aggiungiSkillRow(GROUP_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, row.excludeIds || []))
+  else aggiungiSkillRow(GROUP_SKILL_ROWS_KEY)
+
+  Object.entries(editingLezioneSkillRows)
+    .filter(([id, rows]) => id !== GROUP_SKILL_ROWS_KEY && rows?.length && selectedLezioneAllieviIds().includes(id))
+    .forEach(([id, rows]) => addIndividualSkillWork(id, rows))
+  renderGroupIndividualControls()
+}
+
+function renderGroupIndividualControls() {
+  const tools = document.getElementById('lz-individual-tools')
+  if (!tools) return
+  const existing = new Set([...document.querySelectorAll('#lz-individual-skill-blocks [data-individual-id]')].map(el => el.dataset.individualId))
+  const options = selectedLezioneAllieviIds()
+    .filter(id => !existing.has(id))
+    .map(id => `<option value="${id}">${esc(allievoDisplayName(id))}</option>`)
+    .join('')
+  tools.innerHTML = `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem;align-items:end;margin-bottom:.65rem">
+      <div class="field" style="margin:0">
+        <label>Allievo</label>
+        <select id="lz-individual-skill-select">
+          <option value="">— Aggiungi lavoro individuale —</option>
+          ${options}
+        </select>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addIndividualSkillWorkFromSelect()">+ Aggiungi</button>
+    </div>`
+}
+
+function addIndividualSkillWorkFromSelect() {
+  const select = document.getElementById('lz-individual-skill-select')
+  const id = select?.value
+  if (!id) return
+  addIndividualSkillWork(id)
+  renderGroupIndividualControls()
+}
+
+function addIndividualSkillWork(id, rows = null) {
+  const container = document.getElementById('lz-individual-skill-blocks')
+  if (!container || document.getElementById(`individual-block-${id}`)) return
+  const div = document.createElement('div')
+  div.className = 'allievo-block'
+  div.id = `individual-block-${id}`
+  div.dataset.individualId = id
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+      <h4>${esc(allievoDisplayName(id))}</h4>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('[data-individual-id]').remove(); renderGroupIndividualControls()">✕</button>
+    </div>
+    <div style="margin:.25rem 0 .55rem"><button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('lesson','${id}')">+ Nuova skill</button></div>
+    <div id="skill-rows-${id}"></div>`
+  container.appendChild(div)
+  const savedRows = rows || editingLezioneSkillRows[id] || []
+  if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(id, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie))
+  else aggiungiSkillRow(id)
 }
 
 function renderSpecialGuestPanel() {
@@ -3832,8 +5143,16 @@ function addSpecialGuestToLesson(id) {
   const holder = document.getElementById('lz-hidden-checks')
   holder.insertAdjacentHTML('beforeend', `<input type="checkbox" value="${id}" checked>`)
   const a = allieviSelezionabiliLezione().find(x => x.id === id) || allAllievi.find(x => x.id === id)
-  if (a) toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
+  if (currentLessonTargetIsGroup()) {
+    const gruppo = document.getElementById('lz-tipo').value.slice('gruppo:'.length)
+    renderGroupLessonPanel(gruppo)
+    refreshGroupExclusionControls()
+    renderGroupIndividualControls()
+  } else if (a) {
+    toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
+  }
   renderSpecialGuestPanel()
+  refreshSuggerimentiLuogoSeAperti()
 }
 
 function creaSpecialGuestDaLezione() {
@@ -3844,13 +5163,17 @@ function creaSpecialGuestDaLezione() {
 
 function collectLezioneDraft() {
   const skillRows = {}
-  selectedLezioneAllieviIds().forEach(id => {
+  const rowOwners = currentLessonTargetIsGroup()
+    ? [GROUP_SKILL_ROWS_KEY, ...selectedLezioneAllieviIds()]
+    : selectedLezioneAllieviIds()
+  rowOwners.forEach(id => {
     skillRows[id] = [...document.querySelectorAll(`#skill-rows-${id} .skill-row`)]
       .map(row => ({
         skillId: row.querySelector('.skill-select')?.value || '',
         stadio: parseInt(row.querySelector('.stadio-toggle')?.dataset.stadio || '1', 10),
         fakie: skillRowFakie(row),
         dimensioni: skillRowDimensions(row),
+        excludeIds: skillRowExcludedIds(row),
       }))
       .filter(row => row.skillId)
   })
@@ -3864,17 +5187,18 @@ function collectLezioneDraft() {
     selectedIds: selectedLezioneAllieviIds(),
     skillRows,
     lezioneBackAllievoId,
+    lezioneBackGruppoNome,
   }
 }
 
 function saveLezioneDraft({ keep = false } = {}) {
-  localStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(collectLezioneDraft()))
-  if (!keep) localStorage.removeItem(LEZIONE_DRAFT_KEY)
+  safeStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(collectLezioneDraft()))
+  if (!keep) safeStorage.removeItem(LEZIONE_DRAFT_KEY)
 }
 
 function loadLezioneDraft() {
   try {
-    return JSON.parse(localStorage.getItem(LEZIONE_DRAFT_KEY) || 'null')
+    return JSON.parse(safeStorage.getItem(LEZIONE_DRAFT_KEY) || 'null')
   } catch {
     return null
   }
@@ -3889,7 +5213,8 @@ function restoreLezioneDraft(draft) {
   renderLezioneTargetOptions(draft.target || '')
   editingLezioneSkillRows = draft.skillRows || {}
   lezioneBackAllievoId = draft.lezioneBackAllievoId || lezioneBackAllievoId
-  localStorage.removeItem(LEZIONE_DRAFT_KEY)
+  lezioneBackGruppoNome = draft.lezioneBackGruppoNome || lezioneBackGruppoNome
+  safeStorage.removeItem(LEZIONE_DRAFT_KEY)
   return draft.selectedIds || []
 }
 
@@ -3905,6 +5230,7 @@ function toggleAllievo(cb, nomeCompleto) {
       <h4>${esc(nomeCompleto)}</h4>
       <div class="lesson-skill-tools">
         <div class="lesson-skill-hint">${lessonSkillHint(allievo)}</div>
+        <div><button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('lesson','${cb.value}')">+ Nuova skill</button></div>
         ${renderLessonSkillSuggestionGroups(cb.value, suggestions)}
       </div>
       <div id="skill-rows-${cb.value}"></div>`
@@ -4202,6 +5528,17 @@ const SKILL_DIMENSION_LABELS = {
   stress: 'Stress',
 }
 
+const LESSON_EXERCISE_OPTIONS = [
+  'slalom',
+  'slalom largo',
+  'curva a 1/4 cerchio',
+  'curva a 1/2 cerchio',
+  'curva a cerchio',
+  'curva a spirale',
+  'ostacoli conetti',
+  'ostacolo rialzo',
+]
+
 function renderDimensionSelect(key, selected = '') {
   const label = SKILL_DIMENSION_LABELS[key] || key
   const options = SKILL_DIMENSION_OPTIONS[key] || []
@@ -4239,13 +5576,90 @@ function renderSkillDimensions(dimensioni = {}, active = false) {
   return `<div class="skill-dimensions" ${active ? '' : 'hidden'}>${Object.keys(SKILL_DIMENSION_OPTIONS).map(key => renderDimensionSelect(key, dimensioni?.[key] || '')).join('')}</div>`
 }
 
+function normalizeExerciseList(value) {
+  if (Array.isArray(value)) return [...new Set(value.map(item => String(item || '').trim()).filter(Boolean))]
+  if (typeof value === 'string') return splitVariantText(value)
+  return []
+}
+
+function renderExerciseToggle(active = false, count = 0) {
+  return `<button type="button" class="btn btn-outline btn-sm exercise-toggle${active ? ' is-on' : ''}" data-exercises="${active ? 'on' : 'off'}" onclick="toggleSkillExercises(this)">Esercizi${count ? ` ${count}` : ''}</button>`
+}
+
+function toggleSkillExercises(btn) {
+  const active = btn.dataset.exercises !== 'on'
+  btn.dataset.exercises = active ? 'on' : 'off'
+  const row = btn.closest('.skill-row')
+  const selectedCount = skillRowExercises(row).length
+  btn.textContent = `Esercizi${selectedCount ? ` ${selectedCount}` : ''}`
+  btn.classList.toggle('is-on', active)
+  const panel = row?.querySelector('.skill-exercises')
+  if (panel) panel.hidden = !active
+}
+
+function renderSkillExercises(selected = [], active = false) {
+  const selectedSet = new Set(normalizeExerciseList(selected))
+  return `<div class="skill-exercises" ${active ? '' : 'hidden'}>${LESSON_EXERCISE_OPTIONS.map(name => `
+    <button type="button" class="exercise-chip${selectedSet.has(name) ? ' is-on' : ''}" data-exercise="${esc(name)}" data-selected="${selectedSet.has(name) ? 'on' : 'off'}" onclick="toggleExerciseChip(this)">${esc(name)}</button>
+  `).join('')}</div>`
+}
+
+function toggleExerciseChip(btn) {
+  const selected = btn.dataset.selected !== 'on'
+  btn.dataset.selected = selected ? 'on' : 'off'
+  btn.classList.toggle('is-on', selected)
+  const row = btn.closest('.skill-row')
+  const toggle = row?.querySelector('.exercise-toggle')
+  if (toggle) {
+    const count = skillRowExercises(row).length
+    toggle.textContent = `Esercizi${count ? ` ${count}` : ''}`
+    toggle.classList.toggle('is-on', toggle.dataset.exercises === 'on' || count > 0)
+  }
+}
+
+function skillRowExercises(row) {
+  return [...(row?.querySelectorAll('.exercise-chip[data-selected="on"]') || [])]
+    .map(btn => btn.dataset.exercise)
+    .filter(Boolean)
+}
+
 function skillRowDimensions(row) {
-  if (row.querySelector('.dimensions-toggle')?.dataset.dimensions !== 'on') return {}
   const dimensioni = {}
-  row.querySelectorAll('.skill-dimension[data-dimension]').forEach(select => {
-    if (select.value) dimensioni[select.dataset.dimension] = select.value
-  })
+  if (row.querySelector('.dimensions-toggle')?.dataset.dimensions === 'on') {
+    row.querySelectorAll('.skill-dimension[data-dimension]').forEach(select => {
+      if (select.value) dimensioni[select.dataset.dimension] = select.value
+    })
+  }
+  const esercizi = skillRowExercises(row)
+  if (esercizi.length) dimensioni.esercizi = esercizi
   return dimensioni
+}
+
+function renderGroupExclusionChips(selectedIds = []) {
+  const selected = new Set(selectedIds || [])
+  const chips = selectedLezioneAllieviIds()
+    .map(id => `<button type="button" class="group-exclude-chip${selected.has(id) ? ' is-excluded' : ''}" data-allievo-id="${esc(id)}" data-excluded="${selected.has(id) ? 'on' : 'off'}" onclick="toggleGroupExclusionChip(this)">${esc(allievoDisplayName(id))}</button>`)
+    .join('')
+  return `<div class="group-exclusion-box"><span class="group-exclusion-label">Escludi</span>${chips || '<span class="lezione-empty-detail">Nessun presente</span>'}</div>`
+}
+
+function toggleGroupExclusionChip(btn) {
+  const excluded = btn.dataset.excluded !== 'on'
+  btn.dataset.excluded = excluded ? 'on' : 'off'
+  btn.classList.toggle('is-excluded', excluded)
+}
+
+function skillRowExcludedIds(row) {
+  return [...row.querySelectorAll('.group-exclude-chip[data-excluded="on"]')].map(btn => btn.dataset.allievoId)
+}
+
+function refreshGroupExclusionControls() {
+  document.querySelectorAll('.group-exclusion-box').forEach(box => {
+    const selected = new Set([...box.querySelectorAll('.group-exclude-chip[data-excluded="on"]')].map(btn => btn.dataset.allievoId))
+    box.innerHTML = `<span class="group-exclusion-label">Escludi</span>${selectedLezioneAllieviIds()
+      .map(id => `<button type="button" class="group-exclude-chip${selected.has(id) ? ' is-excluded' : ''}" data-allievo-id="${esc(id)}" data-excluded="${selected.has(id) ? 'on' : 'off'}" onclick="toggleGroupExclusionChip(this)">${esc(allievoDisplayName(id))}</button>`)
+      .join('') || '<span class="lezione-empty-detail">Nessun presente</span>'}`
+  })
 }
 
 function ensureEmptySkillRow(allieviId) {
@@ -4262,7 +5676,14 @@ function onLessonSkillSelected(select) {
   if (select.value && allieviId) ensureEmptySkillRow(allieviId)
 }
 
-function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, selectedDimensioni = {}, selectedFakie = false) {
+function removeSkillRow(btn) {
+  const row = btn.closest('.skill-row')
+  const allieviId = row?.dataset.allieviId
+  row?.remove()
+  if (allieviId) ensureEmptySkillRow(allieviId)
+}
+
+function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, selectedDimensioni = {}, selectedFakie = false, selectedExcludedIds = []) {
   const container = document.getElementById(`skill-rows-${allieviId}`)
   const row = document.createElement('div')
   row.className = 'skill-row'
@@ -4271,6 +5692,8 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
   const selectedBranch = selectedSkill?.ramo || ''
   const fakieActive = !!selectedFakie || selectedDimensioni?.direzione === 'fakie'
   const dimensionsActive = hasSkillDimensions(selectedDimensioni)
+  const selectedExercises = normalizeExerciseList(selectedDimensioni?.esercizi)
+  const exercisesActive = selectedExercises.length > 0
 
   row.innerHTML = `
     <select class="skill-branch" onchange="filterSkillRow(this)">
@@ -4282,11 +5705,49 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
     </select>
     ${renderFakieToggle(fakieActive)}
     ${renderDimensionToggle(dimensionsActive)}
+    ${renderExerciseToggle(exercisesActive, selectedExercises.length)}
     ${renderLessonStadioToggle(selectedStadio)}
-    <button class="btn btn-ghost btn-sm" onclick="this.closest('.skill-row').remove()">✕</button>
-    ${renderSkillDimensions(selectedDimensioni, dimensionsActive)}`
+    <button class="btn btn-ghost btn-sm" onclick="removeSkillRow(this)">✕</button>
+    ${allieviId === GROUP_SKILL_ROWS_KEY ? renderGroupExclusionChips(selectedExcludedIds) : ''}
+    ${renderSkillDimensions(selectedDimensioni, dimensionsActive)}
+    ${renderSkillExercises(selectedExercises, exercisesActive)}`
   container.appendChild(row)
   if (selectedSkillId) ensureEmptySkillRow(allieviId)
+}
+
+async function snapshotLezioneRelazioni(lezioneId) {
+  if (!lezioneId) return { allievi: [], skills: [] }
+  const [{ data: allievi, error: allieviError }, { data: skills, error: skillsError }] = await Promise.all([
+    sb.from('lezioni_allievi').select('*').eq('lezione_id', lezioneId),
+    sb.from('lezioni_skills').select('*').eq('lezione_id', lezioneId),
+  ])
+  if (allieviError) throw allieviError
+  if (skillsError) throw skillsError
+  return { allievi: allievi || [], skills: skills || [] }
+}
+
+function sanitizeSnapshotRow(row) {
+  const copy = { ...row }
+  delete copy.id
+  delete copy.created_at
+  delete copy.updated_at
+  return copy
+}
+
+async function ripristinaRelazioniLezione(lezioneId, snapshot) {
+  if (!lezioneId || !snapshot) return
+  await sb.from('lezioni_skills').delete().eq('lezione_id', lezioneId)
+  await sb.from('lezioni_allievi').delete().eq('lezione_id', lezioneId)
+  const allievi = (snapshot.allievi || []).map(sanitizeSnapshotRow)
+  const skills = (snapshot.skills || []).map(sanitizeSnapshotRow)
+  if (allievi.length) {
+    const { error } = await sb.from('lezioni_allievi').insert(allievi)
+    if (error) throw error
+  }
+  if (skills.length) {
+    const { error } = await sb.from('lezioni_skills').insert(skills)
+    if (error) throw error
+  }
 }
 
 async function salvaLezione() {
@@ -4310,62 +5771,111 @@ async function salvaLezione() {
   const saveText = editingLezioneId ? 'Salva modifiche' : 'Salva lezione'
   buttons.forEach(btn => { btn.disabled = true; btn.textContent = 'Salvataggio…' })
 
-  // 1 — crea o aggiorna lezione
-  let lz, e1
-  const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note }
-  const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
-  if (editingLezioneId) {
-    ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezione).eq('id', editingLezioneId).select().single())
-    if (isMissingNoteSpecialiError(e1)) {
-      ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezioneCompat).eq('id', editingLezioneId).select().single())
+  const lezioneInModifica = editingLezioneId
+  let lz = null
+  let snapshot = null
+  let relazioniSostituite = false
+
+  try {
+    if (lezioneInModifica) snapshot = await snapshotLezioneRelazioni(lezioneInModifica)
+
+    // 1 — crea o aggiorna lezione
+    let e1
+    const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note }
+    const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
+    if (lezioneInModifica) {
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezione).eq('id', lezioneInModifica).select().single())
+      if (isMissingNoteSpecialiError(e1)) {
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezioneCompat).eq('id', lezioneInModifica).select().single())
+      }
+    } else {
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezione).select().single())
+      if (isMissingNoteSpecialiError(e1)) {
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneCompat).select().single())
+      }
     }
-  } else {
-    ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezione).select().single())
-    if (isMissingNoteSpecialiError(e1)) {
-      ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneCompat).select().single())
+    if (e1) throw e1
+
+    if (lezioneInModifica) {
+      const { error: skillsDeleteError } = await sb.from('lezioni_skills').delete().eq('lezione_id', lezioneInModifica)
+      if (skillsDeleteError) throw skillsDeleteError
+      const { error: allieviDeleteError } = await sb.from('lezioni_allievi').delete().eq('lezione_id', lezioneInModifica)
+      if (allieviDeleteError) throw allieviDeleteError
+      relazioniSostituite = true
     }
-  }
-  if (e1) {
-    errEl.textContent = e1.message
-    errEl.classList.add('show')
-    buttons.forEach(btn => { btn.disabled = false; btn.textContent = saveText })
-    return
-  }
 
-  if (editingLezioneId) {
-    await sb.from('lezioni_skills').delete().eq('lezione_id', editingLezioneId)
-    await sb.from('lezioni_allievi').delete().eq('lezione_id', editingLezioneId)
-  }
-
-  // 2 — allievi + skill
-  for (const cb of checkedAllievi) {
-    const aid = cb.value
-    await sb.from('lezioni_allievi').insert({ lezione_id: lz.id, allievo_id: aid })
-
-    const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
-    const savedSkillKeys = new Set()
-    for (const row of rows) {
-      const skillId = row.querySelector('.skill-select').value
+    const savedSkillKeysByAllievo = new Map()
+    const saveSkillForAllievo = async (aid, row) => {
+      const skillId = row.querySelector('.skill-select')?.value
       const stadio  = parseInt(row.querySelector('.stadio-toggle')?.dataset.stadio || '1', 10)
       const dimensioni = skillRowDimensions(row)
       const fakie = skillRowFakie(row)
       const key = `${skillId}:${stadio}:${fakie ? 'fakie' : 'frontale'}:${JSON.stringify(dimensioni)}`
-      if (skillId && !savedSkillKeys.has(key)) {
-        savedSkillKeys.add(key)
-        const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: skillId, stadio_raggiunto: stadio, fakie, dimensioni })
-        if (skillError) throw skillError
+      if (!skillId) return
+      if (!savedSkillKeysByAllievo.has(aid)) savedSkillKeysByAllievo.set(aid, new Set())
+      const savedSkillKeys = savedSkillKeysByAllievo.get(aid)
+      if (savedSkillKeys.has(key)) return
+      savedSkillKeys.add(key)
+      const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: skillId, stadio_raggiunto: stadio, fakie, dimensioni })
+      if (skillError) throw skillError
+      try {
         await aggiornaProgressiDaLezione(aid, skillId, stadio, { fakie })
+      } catch (progressError) {
+        console.warn('Progressi non aggiornati dopo salvataggio lezione', progressError)
       }
     }
-  }
 
-  buttons.forEach(btn => { btn.disabled = false; btn.textContent = saveText })
-  editingLezioneId = null
-  editingLezioneAllieviIds = []
-  editingLezioneSkillRows = {}
-  lezioniCache = null
-  localStorage.removeItem(LEZIONE_DRAFT_KEY)
-  showView('lezione', lz.id)
+    // 2 — allievi + skill
+    for (const cb of checkedAllievi) {
+      const aid = cb.value
+      const { error: allievoInsertError } = await sb.from('lezioni_allievi').insert({ lezione_id: lz.id, allievo_id: aid })
+      if (allievoInsertError) throw allievoInsertError
+    }
+
+    if (tipo === 'gruppo') {
+      const checkedIds = checkedAllievi.map(cb => cb.value)
+      for (const row of document.querySelectorAll(`#skill-rows-${GROUP_SKILL_ROWS_KEY} .skill-row`)) {
+        const excluded = new Set(skillRowExcludedIds(row))
+        for (const aid of checkedIds.filter(id => !excluded.has(id))) {
+          await saveSkillForAllievo(aid, row)
+        }
+      }
+      for (const aid of checkedIds) {
+        const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
+        for (const row of rows) await saveSkillForAllievo(aid, row)
+      }
+    } else {
+      for (const cb of checkedAllievi) {
+        const aid = cb.value
+        const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
+      for (const row of rows) {
+          await saveSkillForAllievo(aid, row)
+        }
+      }
+    }
+
+    editingLezioneId = null
+    editingLezioneAllieviIds = []
+    editingLezioneSkillRows = {}
+    lezioniCache = null
+    luoghiLezioneCache.clear()
+    safeStorage.removeItem(LEZIONE_DRAFT_KEY)
+    const destination = editReturnTarget
+    editReturnTarget = null
+    await goToReturnTarget(destination, { name: 'lezione', id: lz.id })
+  } catch (e) {
+    if (lezioneInModifica && relazioniSostituite && snapshot) {
+      try {
+        await ripristinaRelazioniLezione(lezioneInModifica, snapshot)
+      } catch (restoreError) {
+        console.error('Ripristino relazioni lezione fallito', restoreError)
+      }
+    }
+    errEl.textContent = e.message || 'Errore nel salvataggio della lezione. Le presenze precedenti sono state mantenute quando possibile.'
+    errEl.classList.add('show')
+  } finally {
+    buttons.forEach(btn => { btn.disabled = false; btn.textContent = saveText })
+  }
 }
 
 async function insertLezioneSkill(payload) {
@@ -4374,11 +5884,13 @@ async function insertLezioneSkill(payload) {
     const { error } = await sb.from('lezioni_skills').insert(nextPayload)
     if (!error) return { error: null }
     if (isMissingDimensioniError(error) && 'dimensioni' in nextPayload) {
+      if (hasLessonSkillMetadata(nextPayload)) return { error: missingLessonSkillColumnError('dimensioni') }
       const { dimensioni, ...compatPayload } = nextPayload
       nextPayload = compatPayload
       continue
     }
     if (isMissingFakieError(error) && 'fakie' in nextPayload) {
+      if (nextPayload.fakie) return { error: missingLessonSkillColumnError('fakie') }
       const { fakie, ...compatPayload } = nextPayload
       nextPayload = compatPayload
       continue
@@ -4450,8 +5962,8 @@ const TUNING_PARAMS = [
 ]
 
 function initTuning() {
-  tuningLocal = JSON.parse(localStorage.getItem('tuningLocal') || '[]')
-  tuningAlertCount = Number(localStorage.getItem('tuningAlertCount') || 0)
+  tuningLocal = JSON.parse(safeStorage.getItem('tuningLocal') || '[]')
+  tuningAlertCount = Number(safeStorage.getItem('tuningAlertCount') || 0)
   renderTuningStats()
   setTuningMode(tuningMode, true)
 }
@@ -4854,7 +6366,7 @@ async function persistTuningPayload(payload) {
   if (error) {
     const localPayload = { ...payload, creato_il: new Date().toISOString(), errore_remoto: error.message }
     tuningLocal.push(localPayload)
-    localStorage.setItem('tuningLocal', JSON.stringify(tuningLocal))
+    safeStorage.setItem('tuningLocal', JSON.stringify(tuningLocal))
   }
   return error
 }
@@ -4885,7 +6397,7 @@ async function saveTuningAlert() {
   await persistTuningPayload(buildTuningPayload({ avviso: true }))
 
   tuningAlertCount += 1
-  localStorage.setItem('tuningAlertCount', String(tuningAlertCount))
+  safeStorage.setItem('tuningAlertCount', String(tuningAlertCount))
   renderTuningStats()
   nextTuningCard()
 }
