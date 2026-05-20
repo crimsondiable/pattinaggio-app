@@ -162,10 +162,11 @@
     .place-suggest-btn { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .42rem .5rem; font: inherit; font-size: .84rem; cursor: pointer; }
     .place-suggest-btn:hover { background: var(--blu-chiaro); color: var(--blu); }
     .place-suggest-empty { color: var(--muted); font-size: .78rem; padding: .35rem .5rem; }
-    .skill-row { display: grid; grid-template-columns: minmax(112px,.34fr) minmax(150px,.78fr) auto auto auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
+    .skill-row { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin-bottom: .55rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); min-width: 0; }
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
-    .skill-row .skill-select { max-width: 210px; }
+    .skill-row .skill-branch { flex: 0 0 120px; width: 120px; }
+    .skill-row .skill-select { flex: 0 1 190px; width: 190px; max-width: 190px; }
     .fakie-toggle { min-width: 82px; justify-content: center; white-space: nowrap; }
     .fakie-toggle.is-on { border-color: rgba(250,204,21,.9); color: #fff7c2; background: rgba(250,204,21,.16); box-shadow: 0 0 18px rgba(250,204,21,.24); }
     .dimensions-toggle { min-width: 102px; justify-content: center; white-space: nowrap; }
@@ -179,15 +180,15 @@
     .lesson-side-toggle.side-issue { border-color: rgba(251,113,133,.55); color: #fecaca; background: rgba(251,113,133,.1); }
     .exercise-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
     .exercise-toggle.is-on { border-color: rgba(52,211,153,.75); color: var(--success); background: rgba(52,211,153,.1); }
-    .skill-exercises { grid-column: 1 / -1; display: flex; gap: .35rem; flex-wrap: wrap; padding: .45rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
+    .skill-exercises { grid-column: 1 / -1; flex-basis: 100%; display: flex; gap: .35rem; flex-wrap: wrap; padding: .45rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
     .skill-exercises[hidden] { display: none; }
     .exercise-chip { border: 1px solid var(--bordo); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: .24rem .58rem; font-size: .78rem; font-weight: 750; cursor: pointer; }
     .exercise-chip.is-on { border-color: rgba(52,211,153,.75); background: rgba(52,211,153,.13); color: #bbf7d0; }
-    .group-exclusion-box { grid-column: 1 / -1; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; padding: .4rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
+    .group-exclusion-box { grid-column: 1 / -1; flex-basis: 100%; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; padding: .4rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
     .group-exclusion-label { color: var(--muted); font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .045em; margin-right: .15rem; }
     .group-exclude-chip { border: 1px solid var(--bordo); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: .22rem .55rem; font-size: .78rem; font-weight: 700; cursor: pointer; }
     .group-exclude-chip.is-excluded { border-color: rgba(248,113,113,.75); background: rgba(248,113,113,.16); color: #fecaca; }
-    .skill-dimensions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); gap: .35rem; }
+    .skill-dimensions { grid-column: 1 / -1; flex-basis: 100%; display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); gap: .35rem; }
     .skill-dimensions[hidden] { display: none; }
     .skill-dimensions select { font-size: .76rem; padding: .3rem .42rem; color: var(--muted); }
     .skill-dimensions select.has-value { color: var(--testo); border-color: rgba(110,231,249,.34); background: rgba(110,231,249,.06); }
@@ -5465,7 +5466,7 @@ function renderLessonBranchOptions(selectedBranch = '') {
 }
 
 function lessonSkillOptionLabel(skill, selectedSkillId = '') {
-  return skill.id === selectedSkillId ? (skill.nome || '') : `${skill.nome} · ${skillMetaLabel(skill)}`
+  return String(skill.id) === String(selectedSkillId) ? (skill.nome || '') : `${skill.nome} · ${skillMetaLabel(skill)}`
 }
 
 function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = '') {
@@ -5479,7 +5480,13 @@ function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = ''
   })
   if (!allSkills.length) return '<option value="">Catalogo vuoto</option>'
   if (!list.length) return '<option value="">Nessuna skill trovata</option>'
-  return list.map(s => `<option value="${s.id}" title="${esc(`${s.nome} · ${skillMetaLabel(s)}`)}" ${s.id === selectedSkillId ? 'selected' : ''}>${esc(lessonSkillOptionLabel(s, selectedSkillId))}</option>`).join('')
+  return list.map(s => `<option value="${s.id}" data-name="${esc(s.nome || '')}" title="${esc(`${s.nome} · ${skillMetaLabel(s)}`)}" ${String(s.id) === String(selectedSkillId) ? 'selected' : ''}>${esc(lessonSkillOptionLabel(s, selectedSkillId))}</option>`).join('')
+}
+
+function compactSelectedSkillOption(select) {
+  if (!select?.value) return
+  const selected = select.options[select.selectedIndex]
+  if (selected?.dataset.name) selected.textContent = selected.dataset.name
 }
 
 function filterSkillRow(input) {
@@ -5490,6 +5497,7 @@ function filterSkillRow(input) {
   const branch = row.querySelector('.skill-branch')?.value || ''
   select.innerHTML = `<option value="">— Skill —</option>${renderLessonSkillOptions(selected, '', branch)}`
   if ([...select.options].some(option => option.value === selected)) select.value = selected
+  compactSelectedSkillOption(select)
 }
 
 function lessonStadioLabel(stadio) {
@@ -5761,6 +5769,7 @@ function ensureEmptySkillRow(allieviId) {
 }
 
 function onLessonSkillSelected(select) {
+  compactSelectedSkillOption(select)
   const row = select.closest('.skill-row')
   const allieviId = row?.dataset.allieviId
   if (select.value && allieviId) ensureEmptySkillRow(allieviId)
@@ -5806,6 +5815,7 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
     ${renderSkillDimensions(selectedDimensioni, dimensionsActive)}
     ${renderSkillExercises(selectedExercises, exercisesActive)}`
   container.appendChild(row)
+  compactSelectedSkillOption(row.querySelector('.skill-select'))
   if (selectedSkillId) ensureEmptySkillRow(allieviId)
 }
 
