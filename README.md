@@ -1,4 +1,4 @@
-# Blading Manager Big Ball of Mud
+# Blading Manager
 
 Gestionale statico per test remoto via GitHub Pages.
 
