@@ -162,7 +162,7 @@
     .place-suggest-btn { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .42rem .5rem; font: inherit; font-size: .84rem; cursor: pointer; }
     .place-suggest-btn:hover { background: var(--blu-chiaro); color: var(--blu); }
     .place-suggest-empty { color: var(--muted); font-size: .78rem; padding: .35rem .5rem; }
-    .skill-row { display: grid; grid-template-columns: minmax(120px,.42fr) minmax(180px,1fr) auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
+    .skill-row { display: grid; grid-template-columns: minmax(120px,.42fr) minmax(180px,1fr) auto auto auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); min-width: 0; }
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
     .fakie-toggle { min-width: 82px; justify-content: center; white-space: nowrap; }
@@ -170,6 +170,12 @@
     .dimensions-toggle { min-width: 102px; justify-content: center; white-space: nowrap; }
     .dimensions-toggle.is-on { border-color: rgba(110,231,249,.75); color: var(--blu); background: var(--blu-chiaro); }
     .stadio-toggle { min-width: 122px; justify-content: center; white-space: nowrap; }
+    .lesson-result-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
+    .lesson-result-toggle.result-review { border-color: rgba(251,191,36,.5); color: #facc15; background: rgba(251,191,36,.08); }
+    .lesson-result-toggle.result-good { border-color: rgba(110,231,249,.55); color: var(--blu); background: rgba(110,231,249,.08); }
+    .lesson-result-toggle.result-great { border-color: rgba(52,211,153,.6); color: var(--success); background: rgba(52,211,153,.1); }
+    .lesson-side-toggle { min-width: 108px; justify-content: center; white-space: nowrap; }
+    .lesson-side-toggle.side-issue { border-color: rgba(251,113,133,.55); color: #fecaca; background: rgba(251,113,133,.1); }
     .exercise-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
     .exercise-toggle.is-on { border-color: rgba(52,211,153,.75); color: var(--success); background: rgba(52,211,153,.1); }
     .skill-exercises { grid-column: 1 / -1; display: flex; gap: .35rem; flex-wrap: wrap; padding: .45rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
@@ -4284,15 +4290,18 @@ function renderLezioneListaRow(l, { variant = 'lista', schedaId = null, gruppoNo
 function renderSkillChipsLezione(lezione) {
   const viste = new Set()
   const skills = (lezione.lezioni_skills || [])
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi) }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback }))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}`
+      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}-${s.esito || ''}-${s.latoFeedback || ''}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
     })
   return skills.length
-    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`).join('')
+    ? skills.map(s => {
+        const feedback = [s.esito ? lessonResultLabel(s.esito) : '', s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ''].filter(Boolean).join(' · ')
+        return `<span class="st st${s.stadio}">${esc(s.nome)}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
+      }).join('')
     : '—'
 }
 
@@ -4334,15 +4343,18 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || []
   const viste = new Set()
   const skills = skillRows
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi) }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback }))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}`
+      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}-${s.esito || ''}-${s.latoFeedback || ''}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
     })
   const skillsHtml = skills.length
-    ? skills.map(s => `<span class="st st${s.stadio}">${esc(s.nome)}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`).join('')
+    ? skills.map(s => {
+        const feedback = [s.esito ? lessonResultLabel(s.esito) : '', s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ''].filter(Boolean).join(' · ')
+        return `<span class="st st${s.stadio}">${esc(s.nome)}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
+      }).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
   const noteHtml = lezione.note
     ? `<div class="lezione-note-preview">${esc(lezione.note)}</div>`
@@ -4553,7 +4565,8 @@ async function loadLezione(id) {
           .map(r => {
             const direzione = r.dimensioni?.direzione || (r.fakie ? 'fakie' : '')
             const esercizi = normalizeExerciseList(r.dimensioni?.esercizi)
-            const extra = [direzione, r.dimensioni?.lato, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
+            const feedback = [r.dimensioni?.esito ? lessonResultLabel(r.dimensioni.esito) : '', r.dimensioni?.lato_feedback ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ''].filter(Boolean)
+            const extra = [...feedback, direzione, r.dimensioni?.lato, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
             return `<span class="st st${r.stadio_raggiunto || 0}">${esc(r.skills.nome)}${extra ? ` · ${esc(extra)}` : ''}${r.skills.livello ? ` · Lv.${r.skills.livello}` : ''}</span>`
           })
           .join('')
@@ -5495,6 +5508,76 @@ function toggleLessonStadio(btn) {
   btn.classList.add(`st${next}`)
 }
 
+const LESSON_RESULT_OPTIONS = [
+  { value: 'da_rivedere', label: 'Da rivedere', className: 'result-review' },
+  { value: 'bene', label: 'Bene', className: 'result-good' },
+  { value: 'ottimo', label: 'Ottimo', className: 'result-great' },
+]
+
+const LESSON_SIDE_FEEDBACK_OPTIONS = [
+  { value: 'bilaterale', label: 'Bilaterale', className: '' },
+  { value: 'male_sx', label: 'Male sx', className: 'side-issue' },
+  { value: 'male_dx', label: 'Male dx', className: 'side-issue' },
+]
+
+function normalizedLessonResult(value) {
+  return LESSON_RESULT_OPTIONS.some(option => option.value === value) ? value : 'bene'
+}
+
+function normalizedLessonSideFeedback(value) {
+  return LESSON_SIDE_FEEDBACK_OPTIONS.some(option => option.value === value) ? value : 'bilaterale'
+}
+
+function lessonOption(options, value) {
+  return options.find(option => option.value === value) || options[0]
+}
+
+function renderLessonResultToggle(value = 'bene') {
+  const option = lessonOption(LESSON_RESULT_OPTIONS, normalizedLessonResult(value))
+  return `<button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className}" data-result="${esc(option.value)}" onclick="toggleLessonResult(this)">${esc(option.label)}</button>`
+}
+
+function toggleLessonResult(btn) {
+  const current = normalizedLessonResult(btn.dataset.result)
+  const index = LESSON_RESULT_OPTIONS.findIndex(option => option.value === current)
+  const next = LESSON_RESULT_OPTIONS[(index + 1) % LESSON_RESULT_OPTIONS.length]
+  btn.dataset.result = next.value
+  btn.textContent = next.label
+  btn.classList.remove(...LESSON_RESULT_OPTIONS.map(option => option.className).filter(Boolean))
+  btn.classList.add(next.className)
+}
+
+function renderLessonSideFeedbackToggle(value = 'bilaterale') {
+  const option = lessonOption(LESSON_SIDE_FEEDBACK_OPTIONS, normalizedLessonSideFeedback(value))
+  return `<button type="button" class="btn btn-outline btn-sm lesson-side-toggle ${option.className}" data-side-feedback="${esc(option.value)}" onclick="toggleLessonSideFeedback(this)">${esc(option.label)}</button>`
+}
+
+function toggleLessonSideFeedback(btn) {
+  const current = normalizedLessonSideFeedback(btn.dataset.sideFeedback)
+  const index = LESSON_SIDE_FEEDBACK_OPTIONS.findIndex(option => option.value === current)
+  const next = LESSON_SIDE_FEEDBACK_OPTIONS[(index + 1) % LESSON_SIDE_FEEDBACK_OPTIONS.length]
+  btn.dataset.sideFeedback = next.value
+  btn.textContent = next.label
+  btn.classList.remove(...LESSON_SIDE_FEEDBACK_OPTIONS.map(option => option.className).filter(Boolean))
+  if (next.className) btn.classList.add(next.className)
+}
+
+function skillRowResult(row) {
+  return normalizedLessonResult(row?.querySelector('.lesson-result-toggle')?.dataset.result)
+}
+
+function skillRowSideFeedback(row) {
+  return normalizedLessonSideFeedback(row?.querySelector('.lesson-side-toggle')?.dataset.sideFeedback)
+}
+
+function lessonResultLabel(value) {
+  return lessonOption(LESSON_RESULT_OPTIONS, normalizedLessonResult(value)).label
+}
+
+function lessonSideFeedbackLabel(value) {
+  return lessonOption(LESSON_SIDE_FEEDBACK_OPTIONS, normalizedLessonSideFeedback(value)).label
+}
+
 function renderFakieToggle(active = false) {
   return `<button type="button" class="btn btn-outline btn-sm fakie-toggle${active ? ' is-on' : ''}" data-fakie="${active ? 'on' : 'off'}" onclick="toggleLessonFakie(this)">Fakie ${active ? 'on' : 'off'}</button>`
 }
@@ -5625,6 +5708,8 @@ function skillRowExercises(row) {
 
 function skillRowDimensions(row) {
   const dimensioni = {}
+  dimensioni.esito = skillRowResult(row)
+  dimensioni.lato_feedback = skillRowSideFeedback(row)
   if (row.querySelector('.dimensions-toggle')?.dataset.dimensions === 'on') {
     row.querySelectorAll('.skill-dimension[data-dimension]').forEach(select => {
       if (select.value) dimensioni[select.dataset.dimension] = select.value
@@ -5694,6 +5779,8 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
   const dimensionsActive = hasSkillDimensions(selectedDimensioni)
   const selectedExercises = normalizeExerciseList(selectedDimensioni?.esercizi)
   const exercisesActive = selectedExercises.length > 0
+  const selectedResult = normalizedLessonResult(selectedDimensioni?.esito)
+  const selectedSideFeedback = normalizedLessonSideFeedback(selectedDimensioni?.lato_feedback)
 
   row.innerHTML = `
     <select class="skill-branch" onchange="filterSkillRow(this)">
@@ -5706,6 +5793,8 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
     ${renderFakieToggle(fakieActive)}
     ${renderDimensionToggle(dimensionsActive)}
     ${renderExerciseToggle(exercisesActive, selectedExercises.length)}
+    ${renderLessonResultToggle(selectedResult)}
+    ${renderLessonSideFeedbackToggle(selectedSideFeedback)}
     ${renderLessonStadioToggle(selectedStadio)}
     <button class="btn btn-ghost btn-sm" onclick="removeSkillRow(this)">✕</button>
     ${allieviId === GROUP_SKILL_ROWS_KEY ? renderGroupExclusionChips(selectedExcludedIds) : ''}
