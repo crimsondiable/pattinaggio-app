@@ -162,9 +162,10 @@
     .place-suggest-btn { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .42rem .5rem; font: inherit; font-size: .84rem; cursor: pointer; }
     .place-suggest-btn:hover { background: var(--blu-chiaro); color: var(--blu); }
     .place-suggest-empty { color: var(--muted); font-size: .78rem; padding: .35rem .5rem; }
-    .skill-row { display: grid; grid-template-columns: minmax(120px,.42fr) minmax(180px,1fr) auto auto auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
+    .skill-row { display: grid; grid-template-columns: minmax(112px,.34fr) minmax(150px,.78fr) auto auto auto auto auto auto auto; gap: .4rem; align-items: center; margin-bottom: .55rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); min-width: 0; }
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
+    .skill-row .skill-select { max-width: 210px; }
     .fakie-toggle { min-width: 82px; justify-content: center; white-space: nowrap; }
     .fakie-toggle.is-on { border-color: rgba(250,204,21,.9); color: #fff7c2; background: rgba(250,204,21,.16); box-shadow: 0 0 18px rgba(250,204,21,.24); }
     .dimensions-toggle { min-width: 102px; justify-content: center; white-space: nowrap; }
@@ -5463,6 +5464,10 @@ function renderLessonBranchOptions(selectedBranch = '') {
   return `<option value="">Tutti i rami</option>${branches.map(branch => `<option value="${esc(branch)}" ${branch === selectedBranch ? 'selected' : ''}>${esc(branch)}</option>`).join('')}`
 }
 
+function lessonSkillOptionLabel(skill, selectedSkillId = '') {
+  return skill.id === selectedSkillId ? (skill.nome || '') : `${skill.nome} · ${skillMetaLabel(skill)}`
+}
+
 function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = '') {
   const q = normalizeText(filter)
   const selectedBranch = branch || ''
@@ -5474,7 +5479,7 @@ function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = ''
   })
   if (!allSkills.length) return '<option value="">Catalogo vuoto</option>'
   if (!list.length) return '<option value="">Nessuna skill trovata</option>'
-  return list.map(s => `<option value="${s.id}" ${s.id === selectedSkillId ? 'selected' : ''}>${esc(s.nome)} · ${esc(skillMetaLabel(s))}</option>`).join('')
+  return list.map(s => `<option value="${s.id}" title="${esc(`${s.nome} · ${skillMetaLabel(s)}`)}" ${s.id === selectedSkillId ? 'selected' : ''}>${esc(lessonSkillOptionLabel(s, selectedSkillId))}</option>`).join('')
 }
 
 function filterSkillRow(input) {
