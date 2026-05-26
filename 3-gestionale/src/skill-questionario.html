@@ -337,6 +337,7 @@
                 <option>Andatura</option>
                 <option>Frenata</option>
                 <option>Rotazione</option>
+                <option>Air</option>
                 <option>Extra</option>
               </select>
             </div>
@@ -423,13 +424,13 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="./skilltree-catalog.js?v=202605121130"></script>
+  <script src="./skilltree-catalog.js?v=202605270010"></script>
   <script>
     const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
     const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
-    const BRANCHES = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Extra']
-    const branchMap = { stance: 'Equilibrio', gait: 'Andatura', break: 'Frenata', rotation: 'Rotazione' }
-    const branchTone = { Equilibrio: 'Stance', Andatura: 'Gait', Frenata: 'Brake', Rotazione: 'Rotation', Extra: 'Extra' }
+    const BRANCHES = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+    const branchMap = { stance: 'Equilibrio', gait: 'Andatura', break: 'Frenata', rotation: 'Rotazione', air: 'Air' }
+    const branchTone = { Equilibrio: 'Stance', Andatura: 'Gait', Frenata: 'Brake', Rotazione: 'Rotation', Air: 'Air', Extra: 'Extra' }
     const localKey = 'skillQuestionarioDrafts'
     const orderKey = 'skillQuestionarioCatalogOrder'
     let sb = null
@@ -473,6 +474,10 @@
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, ' ')
         .trim()
+    }
+
+    function isFakieSkillName(value) {
+      return /\bfakie\b/i.test(String(value || ''))
     }
 
     function applyCatalogOrder() {
@@ -712,7 +717,7 @@
     }
 
     async function boot() {
-      skills = (window.SKILLTREE_NODES || []).map(normalizeNode)
+      skills = (window.SKILLTREE_NODES || []).map(normalizeNode).filter(skill => !isFakieSkillName(skill.skill_nome))
       applyCatalogOrder()
       const branchSelect = document.getElementById('filter-branch')
       branchSelect.innerHTML = '<option value="">Tutti</option>' + BRANCHES.map(r => `<option>${r}</option>`).join('')
@@ -754,11 +759,12 @@
       if (defsError && isMissingRemoteTable(defsError)) {
         setGlobal('DB remoto non ancora pronto: manca public.skill_definizioni o la cache REST non e aggiornata. Fai un hard refresh e riprova; le modifiche restano salvabili in locale.', 'msg-info')
       }
-      const idByName = new Map((remoteSkills || []).map(s => [String(s.nome).toLowerCase(), s.id]))
+      const idByName = new Map((remoteSkills || []).filter(s => !isFakieSkillName(s.nome)).map(s => [String(s.nome).toLowerCase(), s.id]))
       skills = skills.map(s => ({ ...s, skill_id: idByName.get(s.skill_nome.toLowerCase()) || s.skill_id }))
-      ;(remoteDefs || []).forEach(def => definitions.set(def.skill_nome, def))
+      const visibleRemoteDefs = (remoteDefs || []).filter(def => !isFakieSkillName(def.skill_nome))
+      visibleRemoteDefs.forEach(def => definitions.set(def.skill_nome, def))
       const known = new Set(skills.map(skill => normalizeName(skill.skill_nome)))
-      ;(remoteDefs || []).forEach(def => {
+      visibleRemoteDefs.forEach(def => {
         const key = normalizeName(def.skill_nome)
         if (!key || known.has(key)) return
         skills.push(definitionAsSkill(def))
