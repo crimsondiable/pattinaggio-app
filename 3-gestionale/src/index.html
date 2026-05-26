@@ -162,6 +162,31 @@
     .place-suggest-btn { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .42rem .5rem; font: inherit; font-size: .84rem; cursor: pointer; }
     .place-suggest-btn:hover { background: var(--blu-chiaro); color: var(--blu); }
     .place-suggest-empty { color: var(--muted); font-size: .78rem; padding: .35rem .5rem; }
+    .inline-action-menu { position: relative; display: inline-flex; }
+    .inline-action-panel { position: absolute; right: 0; top: calc(100% + .35rem); z-index: 30; min-width: 170px; border: 1px solid var(--bordo); border-radius: var(--r); background: #07151b; box-shadow: var(--shadow); padding: .35rem; display: grid; gap: .2rem; }
+    .inline-action-panel[hidden] { display: none; }
+    .inline-action-panel button { width: 100%; justify-content: flex-start; }
+    .inline-action-meta { border-top: 1px solid rgba(148,163,184,.16); margin-top: .25rem; padding: .45rem .4rem .2rem; color: var(--muted); font-size: .74rem; line-height: 1.35; }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .65rem; margin-bottom: 1rem; }
+    .dashboard-tile { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: var(--panel-soft); padding: .75rem; display: grid; gap: .18rem; cursor: pointer; }
+    .dashboard-tile:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .dashboard-tile strong { font-size: 1.25rem; line-height: 1; }
+    .dashboard-tile span { color: var(--muted); font-size: .76rem; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
+    .global-search { position: relative; width: min(300px, 28vw); min-width: 190px; }
+    .global-search input { width: 100%; padding: .42rem .65rem; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); font-size: .84rem; }
+    .global-search-panel { position: absolute; right: 0; top: calc(100% + .35rem); z-index: 150; width: min(430px, 90vw); max-height: 62vh; overflow: auto; border: 1px solid var(--bordo); border-radius: var(--r); background: #07151b; box-shadow: var(--shadow); padding: .35rem; display: grid; gap: .22rem; }
+    .global-search-panel[hidden] { display: none; }
+    .search-result { border: 0; border-radius: calc(var(--r) - 2px); background: transparent; color: var(--testo); text-align: left; padding: .48rem .55rem; cursor: pointer; display: grid; gap: .08rem; }
+    .search-result:hover { background: var(--blu-chiaro); color: var(--blu); }
+    .search-result span { color: var(--muted); font-size: .74rem; }
+    .location-form-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(150px,.55fr); gap: .65rem; align-items: end; }
+    .lesson-status-row { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; margin-bottom:.8rem; }
+    .lesson-status-chip { border:1.5px solid var(--bordo); background:rgba(255,255,255,.035); color:var(--muted); border-radius:999px; padding:.32rem .7rem; font-size:.82rem; font-weight:800; cursor:pointer; }
+    .lesson-status-chip.is-on { border-color:rgba(52,211,153,.65); color:var(--success); background:rgba(52,211,153,.12); }
+    .lesson-status-chip.is-open.is-on { border-color:rgba(251,191,36,.55); color:#facc15; background:rgba(251,191,36,.1); }
+    .lesson-status-badge { display:inline-flex; align-items:center; border:1px solid rgba(251,191,36,.4); border-radius:999px; padding:.12rem .46rem; color:#facc15; background:rgba(251,191,36,.08); font-size:.72rem; font-weight:850; text-transform:uppercase; letter-spacing:.04em; }
+    .linkish { color: var(--blu); cursor: pointer; text-decoration: none; font-weight: 750; }
+    .linkish:hover { text-decoration: underline; }
     .skill-row { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin-bottom: .55rem; }
     .skill-row select { font-size: .84rem; padding: .35rem .5rem; border: 1.5px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); min-width: 0; }
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
@@ -520,6 +545,10 @@
       <button id="nav-tuning" onclick="showView('tuning')">Tuning</button>
       <button onclick="location.href='./skill-questionario.html'">Questionario skill</button>
     </nav>
+    <div class="global-search" onclick="event.stopPropagation()">
+      <input type="search" id="global-search-input" placeholder="Cerca..." oninput="scheduleGlobalSearch()" onfocus="scheduleGlobalSearch()" autocomplete="off">
+      <div class="global-search-panel" id="global-search-panel" hidden></div>
+    </div>
     <button class="btn btn-outline btn-sm god-toggle" id="god-toggle" onclick="toggleGodMode()">GOD mode</button>
     <button class="btn btn-ghost btn-sm" onclick="doLogout()">Esci</button>
     <div class="god-panel" id="god-panel">
@@ -548,6 +577,7 @@
           <button class="btn btn-primary btn-sm" onclick="showView('nuovo-allievo')">+ Nuovo allievo</button>
         </div>
       </div>
+      <div id="dashboard-content"></div>
       <div class="card">
         <div id="allievi-content"><div class="loading">Caricamento…</div></div>
       </div>
@@ -575,6 +605,7 @@
           <select id="lezioni-filtro" class="inline-select" onchange="setFiltroLezioni(this.value)">
             <option value="all">Tutte le lezioni</option>
           </select>
+          <button class="btn btn-outline btn-sm" id="lezioni-aperte-btn" onclick="toggleFiltroLezioniAperte()" type="button">Aperte</button>
           <button class="btn btn-outline btn-sm" id="lezioni-dettagli-btn" onclick="toggleDettagliLezioni()" type="button">Espandi</button>
           <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
         </div>
@@ -582,6 +613,11 @@
       <div class="card">
         <div id="lezioni-content"><div class="loading">Caricamento…</div></div>
       </div>
+    </section>
+
+    <!-- VIEW: location -->
+    <section id="view-location" hidden>
+      <div id="location-content"><div class="loading">Caricamento…</div></div>
     </section>
 
     <!-- VIEW: scheda lezione -->
@@ -600,6 +636,12 @@
       </div>
 
       <div class="card">
+        <p class="form-sec" style="margin-top:0">Stato</p>
+        <div class="lesson-status-row">
+          <button type="button" class="lesson-status-chip is-open is-on" id="lz-status-open" onclick="setLessonStatus('aperta')">Aperta</button>
+          <button type="button" class="lesson-status-chip" id="lz-status-done" onclick="setLessonStatus('chiusa')">Chiusa / fatta</button>
+          <input type="hidden" id="lz-stato" value="aperta">
+        </div>
         <div class="form-grid">
           <div class="field"><label>Data *</label><input type="date" id="lz-data"></div>
           <div class="field"><label>Durata (min)</label><input type="number" id="lz-durata" placeholder="60" min="1"></div>
@@ -617,6 +659,11 @@
         </div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
+        <p class="form-sec">Check operativo</p>
+        <div class="form-grid">
+          <div class="field"><label>Cosa e andato bene</label><textarea id="lz-check-bene" placeholder="Cose riuscite, intuizioni, reazioni buone…"></textarea></div>
+          <div class="field"><label>Non fatto / da riprendere</label><textarea id="lz-check-non-fatto" placeholder="Cosa non e stato fatto o va rimandato…"></textarea></div>
+        </div>
         <div class="field"><label>Descrizione lezione</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
       </div>
 
@@ -1046,8 +1093,8 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null
-let luoghiLezioneCache = new Map(), luogoSuggestTimer = null
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null
+let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
 const GROUP_SKILL_ROWS_KEY = '__group__'
 let godMode = false, godScope = 'all', shareContext = null
@@ -1239,9 +1286,11 @@ async function initApp() {
   allPrereqs = p || []
   allProgressi = pr || []
   skillDefinitions = await loadSkillDefinitions()
+  await loadLocations()
   renderGodPanel()
   renderAllievi()
   showView('allievi')
+  refreshDashboardData()
 }
 
 async function loadSkillDefinitions() {
@@ -1261,12 +1310,72 @@ async function ricaricaAllievi() {
   allAllievi = data || []
   renderGodPanel()
   renderAllievi()
+  refreshDashboardData()
+}
+
+async function loadLocations(force = false) {
+  if (locationsLoaded && !force) return allLocations
+  const { data, error } = await sb.from('locations').select('*').order('nome')
+  if (error) {
+    const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
+    if (!/locations|schema cache|could not find the table|does not exist/i.test(text)) console.warn('locations non caricate', error)
+    try { allLocations = JSON.parse(safeStorage.getItem('locationsLocal') || '[]') || [] } catch { allLocations = [] }
+    locationsLoaded = true
+    return allLocations
+  }
+  allLocations = data || []
+  locationsLoaded = true
+  return allLocations
+}
+
+function locationRecordByName(nome) {
+  const key = normalizeText(nome || '')
+  return allLocations.find(l => normalizeText(l.nome || '') === key) || null
+}
+
+function locationNamesFromLessons() {
+  const map = new Map()
+  ;(lezioniCache || []).forEach(l => {
+    const nome = String(l.luogo || '').trim()
+    if (!nome) return
+    const key = normalizeText(nome)
+    if (!map.has(key)) map.set(key, nome)
+  })
+  allLocations.forEach(l => {
+    const nome = String(l.nome || '').trim()
+    if (nome && !map.has(normalizeText(nome))) map.set(normalizeText(nome), nome)
+  })
+  return [...map.values()].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))
+}
+
+function renderDashboard() {
+  const el = document.getElementById('dashboard-content')
+  if (!el) return
+  const attivi = allieviVisibiliGod().filter(a => a.stato !== 'archiviato')
+  const lezioni = lezioniCache || []
+  const oggi = new Date().toISOString().slice(0, 10)
+  const todayLessons = lezioni.filter(l => String(l.data || '').slice(0, 10) === oggi)
+  const aperte = lezioni.filter(l => lessonStatus(l) === 'aperta')
+  const locations = locationNamesFromLessons()
+  el.innerHTML = `
+    <div class="dashboard-grid">
+      <div class="dashboard-tile" onclick="showView('allievi')"><strong>${attivi.length}</strong><span>Allievi attivi</span></div>
+      <div class="dashboard-tile" onclick="showView('lezioni'); openDayLessonsWidget('${oggi}')"><strong>${todayLessons.length}</strong><span>Lezioni oggi</span></div>
+      <div class="dashboard-tile" onclick="showView('lezioni'); setFiltroLezioniAperte(true)"><strong>${aperte.length}</strong><span>Lezioni aperte</span></div>
+      <div class="dashboard-tile" onclick="showLocationsIndex()"><strong>${locations.length}</strong><span>Location</span></div>
+    </div>`
+}
+
+async function refreshDashboardData() {
+  if (!lezioniCache) await loadLezioni(true)
+  await loadLocations()
+  renderDashboard()
 }
 
 // ── Views ─────────────────────────────────────────────────────────────
 
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning']
+  return ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
@@ -1275,6 +1384,7 @@ function currentReturnTarget() {
   if (view === 'scheda' && currentSchedaId) return { name: 'scheda', id: currentSchedaId }
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
+  if (view === 'location') return { name: 'lezioni', id: null }
   if (view === 'allievi' || view === 'lezioni' || view === 'skills' || view === 'tuning') return { name: view, id: null }
   return null
 }
@@ -1302,16 +1412,17 @@ function showView(name, id) {
     const returnTarget = currentReturnTarget()
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning'].forEach(v => {
+  ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
-  document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name))
+  document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','location','lezione','nuova-lezione'].includes(name))
   document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
 
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
+  if (name === 'location' && id) loadLocation(id)
   if (name === 'lezione' && id) loadLezione(id)
   if (name === 'nuova-lezione') initNuovaLezione(id || null)
   if (name === 'nuovo-allievo') initNuovoAllievo(id || null)
@@ -1327,6 +1438,155 @@ function openLezione(id, fromAllievoId = null, fromGruppoNome = null) {
   lezioneBackAllievoId = fromAllievoId || null
   lezioneBackGruppoNome = fromGruppoNome || null
   showView('lezione', id)
+}
+
+function chiudiLezioneGuidata(id) {
+  showView('nuova-lezione', `lezione:${id}`)
+  let tries = 0
+  const timer = setInterval(() => {
+    tries += 1
+    const check = document.getElementById('lz-check-bene')
+    if (check || tries > 20) {
+      clearInterval(timer)
+      setLessonStatus('chiusa')
+      document.getElementById('lz-title').textContent = 'Chiudi lezione'
+      check?.focus()
+      check?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 120)
+}
+
+function openLocation(luogo) {
+  if (!luogo) return
+  showView('location', luogo)
+}
+
+async function loadLocation(luogo) {
+  const el = document.getElementById('location-content')
+  const nome = String(luogo || '').trim()
+  el.innerHTML = '<div class="loading">Caricamento…</div>'
+  if (!lezioniCache) await loadLezioni(true)
+  await loadLocations()
+  if (nome === '__index__') {
+    const names = locationNamesFromLessons()
+    el.innerHTML = `
+      <button class="back-btn" onclick="showView('allievi')">← Dashboard</button>
+      <div class="section-header"><h2>Location</h2><button class="btn btn-primary btn-sm" onclick="openLocation('Nuova location')">+ Nuova location</button></div>
+      <div class="card">
+        ${names.length ? names.map(name => {
+          const rec = locationRecordByName(name)
+          const count = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(name)).length
+          return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> · ${esc(rec?.tipologia || 'Location')} · ${count} lezion${count === 1 ? 'e' : 'i'}</span>${rec?.indirizzo ? `<span> · ${esc(rec.indirizzo)}</span>` : ''}</div>`
+        }).join('') : '<div class="empty">Nessuna location registrata.</div>'}
+      </div>`
+    return
+  }
+  const stored = locationRecordByName(nome) || {}
+  const lezioni = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(nome))
+  const allieviIds = [...new Set(lezioni.flatMap(l => (l.lezioni_allievi || []).map(la => la.allievi?.id).filter(Boolean)))]
+  const allievi = allieviIds.map(id => allAllievi.find(a => a.id === id)).filter(Boolean)
+  const casaDi = allievi.length === 1 ? `Casa di ${allievoDisplayName(allievi[0].id)}` : ''
+  const tipologia = stored.tipologia || (/casa|home|abitazione/i.test(nome) || casaDi ? 'Casa allievo' : 'Location')
+  const indirizzo = stored.indirizzo || allievi.map(a => a.profilo?.indirizzo).find(Boolean) || ''
+  el.innerHTML = `
+    <button class="back-btn" onclick="showView('lezioni')">← Lezioni</button>
+    <div class="card">
+      <div class="lezione-read-title">${esc(stored.nome || casaDi || nome)}</div>
+      <div class="scheda-meta">${esc(tipologia)}${indirizzo ? ` · ${esc(indirizzo)}` : ''}</div>
+    </div>
+    <p class="sec-title">Dati location</p>
+    <div class="card">
+      <div id="location-status" class="msg"></div>
+      <div class="location-form-grid">
+        <div class="field"><label>Nome</label><input id="loc-nome" value="${esc(stored.nome || nome)}"></div>
+        <div class="field">
+          <label>Tipologia</label>
+          <select id="loc-tipologia">
+            ${['Location','Casa allievo','Pista','Skatepark','Palestra','Altro'].map(t => `<option value="${t}" ${t === tipologia ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Indirizzo</label><input id="loc-indirizzo" value="${esc(indirizzo)}" placeholder="Via, civico, zona"></div>
+      <div class="field"><label>Note</label><textarea id="loc-note" placeholder="Dettagli accesso, pavimentazione, criticita...">${esc(stored.note || '')}</textarea></div>
+      <button class="btn btn-primary btn-sm" onclick="salvaLocation(${jsArg(nome)})">Salva location</button>
+    </div>
+    <p class="sec-title">Allievi collegati</p>
+    <div class="card">
+      ${allievi.length ? allievi.map(a => `<div class="lezione-read-person clickable" onclick="loadScheda('${a.id}')"><strong>${esc(allievoDisplayName(a.id))}</strong>${a.profilo?.indirizzo ? `<span> · ${esc(a.profilo.indirizzo)}</span>` : ''}</div>`).join('') : '<div class="empty">Nessun allievo collegato.</div>'}
+    </div>
+    <p class="sec-title">Lezioni in questa location</p>
+    <div class="card">${lezioni.length ? renderLezioniTable(lezioni, { showYearGroups: false }) : '<div class="empty">Nessuna lezione registrata.</div>'}</div>
+  `
+}
+
+function showLocationsIndex() {
+  showView('location', '__index__')
+}
+
+async function salvaLocation(originalName) {
+  const status = document.getElementById('location-status')
+  const nome = document.getElementById('loc-nome')?.value.trim()
+  if (!nome) {
+    if (status) { status.textContent = 'Inserisci il nome della location.'; status.className = 'msg msg-err show' }
+    return
+  }
+  const payload = {
+    nome,
+    tipologia: document.getElementById('loc-tipologia')?.value || 'Location',
+    indirizzo: document.getElementById('loc-indirizzo')?.value.trim() || null,
+    note: document.getElementById('loc-note')?.value.trim() || null,
+    maestro_id: currentUid || null,
+    updated_at: new Date().toISOString(),
+  }
+  if (status) { status.textContent = 'Salvataggio...'; status.className = 'msg msg-info show' }
+  const { error } = await sb.from('locations').upsert(payload, { onConflict: 'nome' })
+  if (error) {
+    const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
+    if (/locations|schema cache|does not exist|could not find/i.test(text)) {
+      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => normalizeText(l.nome) !== normalizeText(originalName) && normalizeText(l.nome) !== normalizeText(nome))
+      local.push(payload)
+      safeStorage.setItem('locationsLocal', JSON.stringify(local))
+      allLocations = local
+      locationsLoaded = true
+      if (status) { status.textContent = 'Salvata localmente. Per salvarla nel DB applica la migrazione locations.'; status.className = 'msg msg-info show' }
+      renderDashboard()
+      return
+    }
+    if (status) { status.textContent = error.message || 'Errore salvataggio location.'; status.className = 'msg msg-err show' }
+    return
+  }
+  await loadLocations(true)
+  luoghiLezioneCache.clear()
+  logModificaLocale('location', nome, 'Aggiornata location')
+  if (status) { status.textContent = 'Location salvata.'; status.className = 'msg msg-ok show' }
+  renderDashboard()
+}
+
+async function ensureLocationDaLezione(luogo, allieviIds = []) {
+  const nome = String(luogo || '').trim()
+  if (!nome || locationRecordByName(nome)) return
+  const linked = allieviIds.length === 1 ? allAllievi.find(a => a.id === allieviIds[0]) : null
+  const payload = {
+    nome,
+    tipologia: linked && /casa|home|abitazione/i.test(nome) ? 'Casa allievo' : 'Location',
+    indirizzo: linked?.profilo?.indirizzo || null,
+    allievo_id: linked?.id || null,
+    maestro_id: currentUid || null,
+    updated_at: new Date().toISOString(),
+  }
+  const { error } = await sb.from('locations').upsert(payload, { onConflict: 'nome' })
+  if (error) {
+    const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
+    if (/locations|schema cache|does not exist|could not find/i.test(text)) {
+      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => normalizeText(l.nome) !== normalizeText(nome))
+      local.push(payload)
+      safeStorage.setItem('locationsLocal', JSON.stringify(local))
+      allLocations = local
+      locationsLoaded = true
+    }
+    return
+  }
+  await loadLocations(true)
 }
 
 async function apriSchedaAllievoDaLezione(allievoId) {
@@ -1394,6 +1654,207 @@ function jsArg(value) {
   return esc(JSON.stringify(value))
 }
 
+function scheduleGlobalSearch() {
+  clearTimeout(globalSearchTimer)
+  globalSearchTimer = setTimeout(renderGlobalSearch, 120)
+}
+
+async function renderGlobalSearch() {
+  const input = document.getElementById('global-search-input')
+  const panel = document.getElementById('global-search-panel')
+  if (!input || !panel) return
+  const query = normalizeText(input.value || '')
+  if (!query) {
+    panel.hidden = true
+    panel.innerHTML = ''
+    return
+  }
+  if (!lezioniCache) await loadLezioni(true)
+  await loadLocations()
+  const results = []
+  allieviVisibiliGod().forEach(a => {
+    const name = allievoDisplayName(a.id)
+    const haystack = normalizeText([name, a.nome, a.cognome, a.nickname, a.gruppo, a.email, a.telefono, a.note_generali, a.profilo?.indirizzo, a.profilo?.luogo_incontro].filter(Boolean).join(' '))
+    if (haystack.includes(query)) results.push({ type: 'Allievo', title: name, detail: a.gruppo || a.profilo?.luogo_incontro || '', action: `loadScheda('${a.id}')` })
+  })
+  gruppiEsistenti().forEach(gruppo => {
+    if (normalizeText(gruppo).includes(query)) results.push({ type: 'Gruppo', title: gruppo, detail: `${gruppoMembri(gruppo).length} allievi`, action: `showView('gruppo',${jsArg(gruppo)})` })
+  })
+  allSkills.forEach(skill => {
+    const haystack = normalizeText([skill.nome, skill.ramo, skill.blocco, skill.descrizione].filter(Boolean).join(' '))
+    if (haystack.includes(query)) results.push({ type: 'Skill', title: skill.nome, detail: skillMetaLabel(skill), action: `openSkillDetailModal('${skill.id}')` })
+  })
+  locationNamesFromLessons().forEach(nome => {
+    const rec = locationRecordByName(nome)
+    const haystack = normalizeText([nome, rec?.indirizzo, rec?.tipologia, rec?.note].filter(Boolean).join(' '))
+    if (haystack.includes(query)) results.push({ type: 'Location', title: nome, detail: [rec?.tipologia, rec?.indirizzo].filter(Boolean).join(' · '), action: `openLocation(${jsArg(nome)})` })
+  })
+  ;(lezioniCache || []).forEach(l => {
+    const parsed = lessonParsedNotes(l)
+    const haystack = normalizeText([formatDate(l.data), labelPartecipantiLezione(l), l.luogo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
+    if (haystack.includes(query)) results.push({ type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatDate(l.data)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})` })
+  })
+
+  const limited = results.slice(0, 12)
+  panel.innerHTML = limited.length
+    ? limited.map(r => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong>${esc(r.title)}</strong><span>${esc(r.type)}${r.detail ? ` · ${esc(r.detail)}` : ''}</span></button>`).join('')
+    : '<div class="place-suggest-empty">Nessun risultato.</div>'
+  panel.hidden = false
+}
+
+function closeGlobalSearch() {
+  const panel = document.getElementById('global-search-panel')
+  if (panel) panel.hidden = true
+}
+
+function toggleActionMenu(id, event) {
+  event?.stopPropagation()
+  document.querySelectorAll('.inline-action-panel').forEach(panel => {
+    if (panel.id !== id) panel.hidden = true
+  })
+  const panel = document.getElementById(id)
+  if (panel) panel.hidden = !panel.hidden
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.inline-action-panel').forEach(panel => { panel.hidden = true })
+  closeGlobalSearch()
+})
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return formatDate(String(value).slice(0, 10))
+  return d.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function allievoUpdatedAt(allievo) {
+  return allievo?.aggiornato_il || allievo?.updated_at || allievo?.modified_at || allievo?.creato_il || ''
+}
+
+function modificaKey() {
+  return 'bladingManagerModifiche'
+}
+
+function logModificaLocale(tipo, id, descrizione) {
+  if (!id) return
+  let rows = []
+  try { rows = JSON.parse(safeStorage.getItem(modificaKey()) || '[]') || [] } catch { rows = [] }
+  rows.unshift({ tipo, id, descrizione, quando: new Date().toISOString(), utente: currentEmail || '' })
+  safeStorage.setItem(modificaKey(), JSON.stringify(rows.slice(0, 200)))
+  sb?.from?.('modifiche_storico')?.insert?.({ tipo, entity_id: String(id), descrizione, maestro_id: currentUid || null }).then(({ error }) => {
+    if (error && !/modifiche_storico|schema cache|does not exist|could not find/i.test(error.message || error.details || error.hint || '')) console.warn('Storico modifica non salvato nel DB', error)
+  })
+}
+
+function modificheLocali(tipo, id) {
+  try {
+    return (JSON.parse(safeStorage.getItem(modificaKey()) || '[]') || [])
+      .filter(row => row.tipo === tipo && String(row.id) === String(id))
+  } catch {
+    return []
+  }
+}
+
+function openHistoryModal(tipo, id, title = 'Storico modifiche') {
+  const rows = modificheLocali(tipo, id)
+  const existing = document.getElementById('modal-history')
+  if (existing) existing.remove()
+  const overlay = document.createElement('div')
+  overlay.id = 'modal-history'
+  overlay.className = 'overlay'
+  overlay.onclick = event => { if (event.target === overlay) overlay.remove() }
+  overlay.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>${esc(title)}</h3>
+      <div style="display:grid;gap:.45rem">
+        ${rows.length ? rows.map(row => `<div class="skill-detail-item"><strong>${esc(row.descrizione || 'Modifica')}</strong><span>${esc(formatDateTime(row.quando))}${row.utente ? ` · ${esc(row.utente)}` : ''}</span></div>`).join('') : '<div class="empty">Nessuna modifica registrata in locale.</div>'}
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById('modal-history')?.remove()">Chiudi</button></div>
+    </div>`
+  document.body.appendChild(overlay)
+}
+
+function setLessonStatus(status) {
+  const value = status === 'chiusa' ? 'chiusa' : 'aperta'
+  const input = document.getElementById('lz-stato')
+  if (input) input.value = value
+  document.getElementById('lz-status-open')?.classList.toggle('is-on', value === 'aperta')
+  document.getElementById('lz-status-done')?.classList.toggle('is-on', value === 'chiusa')
+}
+
+function lessonStatus(lezione) {
+  const explicit = String(lezione?.stato || lezione?.status || splitLessonNotes(lezione?.note || '').stato || '').toLowerCase()
+  if (explicit === 'aperta') return 'aperta'
+  return 'chiusa'
+}
+
+const LESSON_CHECK_MARKERS = {
+  stato: '[[stato]]',
+  speciali: '[[note_speciali]]',
+  bene: '[[check_bene]]',
+  nonFatto: '[[check_non_fatto]]',
+  note: '[[note]]',
+}
+
+function splitLessonNotes(raw = '') {
+  const text = String(raw || '')
+  const hasMarkers = Object.values(LESSON_CHECK_MARKERS).some(marker => text.includes(marker))
+  if (!hasMarkers) return { bene: '', nonFatto: '', note: text }
+  const read = (start, end) => {
+    const from = text.indexOf(start)
+    if (from < 0) return ''
+    const after = from + start.length
+    const to = end ? text.indexOf(end, after) : text.length
+    return text.slice(after, to < 0 ? text.length : to).trim()
+  }
+  return {
+    stato: read(LESSON_CHECK_MARKERS.stato, LESSON_CHECK_MARKERS.speciali),
+    speciali: read(LESSON_CHECK_MARKERS.speciali, LESSON_CHECK_MARKERS.bene),
+    bene: read(LESSON_CHECK_MARKERS.bene, LESSON_CHECK_MARKERS.nonFatto),
+    nonFatto: read(LESSON_CHECK_MARKERS.nonFatto, LESSON_CHECK_MARKERS.note),
+    note: read(LESSON_CHECK_MARKERS.note, null),
+  }
+}
+
+function composeLessonNotes(note, bene, nonFatto, speciali = '', stato = '') {
+  if (!bene && !nonFatto && !speciali && !stato) return note || null
+  return [
+    LESSON_CHECK_MARKERS.stato,
+    stato || '',
+    LESSON_CHECK_MARKERS.speciali,
+    speciali || '',
+    LESSON_CHECK_MARKERS.bene,
+    bene || '',
+    LESSON_CHECK_MARKERS.nonFatto,
+    nonFatto || '',
+    LESSON_CHECK_MARKERS.note,
+    note || '',
+  ].join('\n').trim()
+}
+
+function renderLessonCheckBlocks(lezione) {
+  const parsed = lessonParsedNotes(lezione)
+  return [
+    parsed.bene ? `<p class="sec-title">Cosa e andato bene</p><div class="card"><div class="lezione-read-note">${esc(parsed.bene)}</div></div>` : '',
+    parsed.nonFatto ? `<p class="sec-title">Non fatto / da riprendere</p><div class="card"><div class="lezione-read-note">${esc(parsed.nonFatto)}</div></div>` : '',
+  ].join('')
+}
+
+function lessonParsedNotes(lezione) {
+  const parsed = splitLessonNotes(lezione?.note || '')
+  return {
+    ...parsed,
+    bene: lezione?.check_bene || parsed.bene || '',
+    nonFatto: lezione?.check_non_fatto || parsed.nonFatto || '',
+  }
+}
+
+function lessonSpecialNotes(lezione) {
+  const parsed = lessonParsedNotes(lezione)
+  return lezione?.note_speciali || parsed.speciali || lezione?.nota_speciale || lezione?.nota || ''
+}
+
 function renderGodPanel() {
   const panel = document.getElementById('god-panel')
   const toggle = document.getElementById('god-toggle')
@@ -1437,6 +1898,7 @@ function setGodScope(scope) {
 
 function renderAllievi() {
   const el = document.getElementById('allievi-content')
+  renderDashboard()
   const baseLista = allieviVisibiliGod()
   if (!baseLista.length) {
     el.innerHTML = mostraArchiviati
@@ -2027,6 +2489,7 @@ async function salvaAllievo() {
     telefono:        isAss ? null : (document.getElementById('na-tel').value.trim() || null),
     note_generali:   isAss ? (document.getElementById('ass-note').value.trim() || null) : (document.getElementById('na-note').value.trim() || null),
     profilo,
+    aggiornato_il:   new Date().toISOString(),
     ...(editingAllieviId ? {} : { maestro_id: currentUid }),
   }
 
@@ -2035,11 +2498,20 @@ async function salvaAllievo() {
     let data, error
     if (savedId) {
       ;({ data, error } = await sb.from('allievi').update(payload).eq('id', savedId).select().single())
+      if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+        const { aggiornato_il, ...compatPayload } = payload
+        ;({ data, error } = await sb.from('allievi').update(compatPayload).eq('id', savedId).select().single())
+      }
     } else {
       ;({ data, error } = await sb.from('allievi').insert(payload).select().single())
+      if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+        const { aggiornato_il, ...compatPayload } = payload
+        ;({ data, error } = await sb.from('allievi').insert(compatPayload).select().single())
+      }
     }
 
     if (error) throw error
+    logModificaLocale('allievo', data?.id || savedId, savedId ? 'Aggiornata scheda allievo' : 'Creata scheda allievo')
 
     // Reload lista da DB per sicurezza (evita dati stale in cache)
     const { data: fresh } = await sb.from('allievi').select('*').order('nome')
@@ -2684,12 +3156,19 @@ async function loadScheda(id) {
             ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' <span class="vip-star">★</span>' : ''}
           </div>
           ${headerExtra}
-        </div>
+       </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
-          <button class="btn btn-outline btn-sm" onclick="eliminaAllievo('${id}')">🗑 Elimina</button>
-          <button class="btn btn-outline btn-sm" onclick="esportaAllievo('${id}')">⬇ JSON</button>
-          <button class="btn btn-outline btn-sm" onclick="stampaScheda('${id}')">🖨 Stampa</button>
+          <div class="inline-action-menu">
+            <button class="btn btn-outline btn-sm" onclick="toggleActionMenu('scheda-actions-${id}', event)" type="button">Azioni</button>
+            <div class="inline-action-panel" id="scheda-actions-${id}" hidden>
+              <button class="btn btn-ghost btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
+              <button class="btn btn-ghost btn-sm" onclick="eliminaAllievo('${id}')">Elimina</button>
+              <button class="btn btn-ghost btn-sm" onclick="esportaAllievo('${id}')">JSON</button>
+              <button class="btn btn-ghost btn-sm" onclick="stampaScheda('${id}')">Stampa</button>
+              <button class="btn btn-ghost btn-sm" onclick="openHistoryModal('allievo','${id}',${jsArg(`Storico ${allievoDisplayName(id)}`)})">Storico</button>
+              ${allievoUpdatedAt(allievo) ? `<div class="inline-action-meta">Ultima modifica<br><strong>${esc(formatDateTime(allievoUpdatedAt(allievo)))}</strong></div>` : '<div class="inline-action-meta">Ultima modifica non disponibile</div>'}
+            </div>
+          </div>
         </div>
       </div>
       ${!isAss && allievo.note_generali ? `<p style="font-size:.88rem;color:var(--muted);margin-top:.6rem">${esc(allievo.note_generali)}</p>` : ''}
@@ -4086,6 +4565,14 @@ function isMissingDimensioniError(error) {
   return !!error && /dimensioni/i.test(error.message || error.details || error.hint || '')
 }
 
+function isMissingLessonStatusError(error) {
+  return !!error && /\b(stato|status|updated_at)\b/i.test(error.message || error.details || error.hint || '')
+}
+
+function isMissingLessonCheckError(error) {
+  return !!error && /\b(check_bene|check_non_fatto)\b/i.test(error.message || error.details || error.hint || '')
+}
+
 function hasLessonSkillMetadata(payload = {}) {
   return !!payload?.dimensioni && Object.keys(payload.dimensioni).length > 0
 }
@@ -4106,8 +4593,18 @@ async function loadLezioni(force = false) {
   const el = document.getElementById('lezioni-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
   let { data, error } = await sb.from('lezioni')
-    .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+    .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
     .order('data', { ascending: false })
+  if (isMissingLessonCheckError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+      .order('data', { ascending: false }))
+  }
+  if (isMissingLessonStatusError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+      .order('data', { ascending: false }))
+  }
   if (isMissingDimensioniError(error)) {
     ;({ data, error } = await sb.from('lezioni')
       .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome))')
@@ -4128,6 +4625,7 @@ async function loadLezioni(force = false) {
 
   lezioniCache = data || []
   renderLezioni({ animate: true })
+  renderDashboard()
 }
 
 function renderLezioni({ animate = false } = {}) {
@@ -4145,9 +4643,10 @@ function renderLezioni({ animate = false } = {}) {
     ? lezioniCache.filter(l => l.lezioni_allievi?.some(la => scopeIds.has(la.allievi?.id)))
     : lezioniCache
   const lezioniFiltrate = filtraLezioniPerSelezione(lezioni)
+    .filter(l => !filtroLezioniAperte || lessonStatus(l) === 'aperta')
 
   if (!lezioniFiltrate.length) {
-    el.innerHTML = `<div class="empty">${filtroLezioni === 'all' ? 'Nessuna lezione per questo account.' : 'Nessuna lezione per questa selezione.'}</div>`
+    el.innerHTML = `<div class="empty">${filtroLezioniAperte ? 'Nessuna lezione aperta per questa selezione.' : (filtroLezioni === 'all' ? 'Nessuna lezione per questo account.' : 'Nessuna lezione per questa selezione.')}</div>`
     return
   }
 
@@ -4273,20 +4772,63 @@ function ensureUltimoAnnoLezioniAperto(anni, variant = 'lista', schedaId = null)
 function renderLezioneListaRow(l, { variant = 'lista', schedaId = null, gruppoNome = null } = {}) {
   const nomi = labelPartecipantiLezione(l)
   const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : ''
+  const status = lessonStatus(l) === 'aperta' ? '<span class="lesson-status-badge">Aperta</span>' : ''
+  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || '').slice(0, 10))}')">${formatDate(l.data)}</span>`
+  const luogoLink = l.luogo ? `<span class="linkish" onclick="event.stopPropagation(); openLocation(${jsArg(l.luogo)})">${esc(l.luogo)}</span>` : '—'
+  const noteSpeciali = lessonSpecialNotes(l)
   if (variant === 'scheda') {
     return `<tr onclick="openLezione('${l.id}','${schedaId}')" style="cursor:pointer">
-      <td><strong>${formatDate(l.data)}</strong></td>
+      <td><strong>${dataLink}</strong> ${status}</td>
       <td style="font-size:.84rem">${renderSkillChipsLezione(l)}</td>
-      <td><div class="lezione-note-cell">${l.note_speciali ? esc(l.note_speciali) : '—'}</div></td>
-      <td>${l.luogo ? esc(l.luogo) : '—'}</td>
+      <td><div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : '—'}</div></td>
+      <td>${luogoLink}</td>
     </tr>`
   }
   return `<tr onclick="openLezione(${jsArg(l.id)},null,${jsArg(gruppoNome)})" style="cursor:pointer">
-    <td><strong>${formatDate(l.data)}</strong></td>
-    <td style="font-size:.84rem">${esc(nomi)}</td>
-    <td>${l.luogo ? esc(l.luogo) : '—'}</td>
-    <td><div class="lezione-note-cell">${l.note_speciali ? esc(l.note_speciali) : '—'}</div></td>
+    <td><strong>${dataLink}</strong> ${status}</td>
+    <td style="font-size:.84rem"><span class="linkish" onclick="event.stopPropagation(); openLessonParticipantTarget(${jsArg(l.id)})">${esc(nomi)}</span></td>
+    <td>${luogoLink}</td>
+    <td><div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : '—'}</div></td>
   </tr>${detail}`
+}
+
+function openLessonParticipantTarget(lezioneId) {
+  const l = (lezioniCache || []).find(item => String(item.id) === String(lezioneId))
+  const partecipanti = (l?.lezioni_allievi || []).map(la => la.allievi).filter(Boolean)
+  if (partecipanti.length === 1) {
+    loadScheda(partecipanti[0].id)
+    return
+  }
+  const gruppi = [...new Set(partecipanti.map(a => a.gruppo).filter(Boolean))]
+  if (l?.tipo === 'gruppo' && gruppi.length === 1) {
+    showView('gruppo', gruppi[0])
+    return
+  }
+  openLezione(lezioneId)
+}
+
+function openDayLessonsWidget(date) {
+  const day = String(date || '').slice(0, 10)
+  const lessons = (lezioniCache || []).filter(l => String(l.data || '').slice(0, 10) === day)
+  const existing = document.getElementById('modal-day-lessons')
+  if (existing) existing.remove()
+  const overlay = document.createElement('div')
+  overlay.id = 'modal-day-lessons'
+  overlay.className = 'overlay'
+  overlay.onclick = event => { if (event.target === overlay) overlay.remove() }
+  overlay.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>${esc(formatDateWithWeekday(day))}</h3>
+      <div style="display:grid;gap:.45rem">
+        ${lessons.length ? lessons.map(l => `
+          <button type="button" class="btn btn-outline" style="justify-content:space-between;text-align:left" onclick="document.getElementById('modal-day-lessons')?.remove(); openLezione(${jsArg(l.id)})">
+            <span>${esc(labelPartecipantiLezione(l))}</span>
+            <span style="color:var(--muted)">${l.luogo ? esc(l.luogo) : '—'}</span>
+          </button>`).join('') : '<div class="empty">Nessuna lezione in questo giorno.</div>'}
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById('modal-day-lessons')?.remove()">Chiudi</button></div>
+    </div>`
+  document.body.appendChild(overlay)
 }
 
 function renderSkillChipsLezione(lezione) {
@@ -4339,6 +4881,21 @@ function aggiornaToggleDettagliLezioni() {
   btn.textContent = lezioniDettagliEspansi ? 'Compatta' : 'Espandi'
   btn.classList.toggle('btn-primary', lezioniDettagliEspansi)
   btn.classList.toggle('btn-outline', !lezioniDettagliEspansi)
+  const openBtn = document.getElementById('lezioni-aperte-btn')
+  if (openBtn) {
+    openBtn.classList.toggle('btn-primary', filtroLezioniAperte)
+    openBtn.classList.toggle('btn-outline', !filtroLezioniAperte)
+    openBtn.textContent = filtroLezioniAperte ? 'Solo aperte' : 'Aperte'
+  }
+}
+
+function setFiltroLezioniAperte(value) {
+  filtroLezioniAperte = !!value
+  renderLezioni()
+}
+
+function toggleFiltroLezioniAperte() {
+  setFiltroLezioniAperte(!filtroLezioniAperte)
 }
 
 function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
@@ -4358,8 +4915,10 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
         return `<span class="st st${s.stadio}">${esc(s.nome)}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
       }).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
-  const noteHtml = lezione.note
-    ? `<div class="lezione-note-preview">${esc(lezione.note)}</div>`
+  const parsedNotes = lessonParsedNotes(lezione)
+  const notePreview = [parsedNotes.bene ? `Bene: ${parsedNotes.bene}` : '', parsedNotes.nonFatto ? `Da riprendere: ${parsedNotes.nonFatto}` : '', parsedNotes.note].filter(Boolean).join('\n')
+  const noteHtml = notePreview
+    ? `<div class="lezione-note-preview">${esc(notePreview)}</div>`
     : '<span class="lezione-empty-detail">Nessuna nota.</span>'
 
   return `
@@ -4415,7 +4974,7 @@ function filtraLezioniPerSelezione(lezioni) {
 
 async function fetchLezioneCompleta(id) {
   let { data: lezione, error } = await sb.from('lezioni')
-    .select('*, lezioni_allievi(allievo_id, allievi(id, nome, cognome, nickname, gruppo)), lezioni_skills(allievo_id, stadio_raggiunto, fakie, dimensioni, skills(nome, ramo, livello))')
+    .select('*, lezioni_allievi(allievo_id, allievi(id, nome, cognome, nickname, gruppo, profilo)), lezioni_skills(allievo_id, stadio_raggiunto, fakie, dimensioni, skills(nome, ramo, livello))')
     .eq('id', id)
     .single()
   if (isMissingDimensioniError(error)) {
@@ -4568,7 +5127,8 @@ async function loadLezione(id) {
             const direzione = r.dimensioni?.direzione || (r.fakie ? 'fakie' : '')
             const esercizi = normalizeExerciseList(r.dimensioni?.esercizi)
             const feedback = [r.dimensioni?.esito ? lessonResultLabel(r.dimensioni.esito) : '', r.dimensioni?.lato_feedback ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ''].filter(Boolean)
-            const extra = [...feedback, direzione, r.dimensioni?.lato, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
+            const dimensionLabels = ['lato','superficie','piano','velocita','assistenza','stress'].map(key => dimensionValueLabel(r.dimensioni?.[key])).filter(Boolean)
+            const extra = [...feedback, direzione, ...dimensionLabels, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
             return `<span class="st st${r.stadio_raggiunto || 0}">${esc(r.skills.nome)}${extra ? ` · ${esc(extra)}` : ''}${r.skills.livello ? ` · Lv.${r.skills.livello}` : ''}</span>`
           })
           .join('')
@@ -4603,17 +5163,24 @@ async function loadLezione(id) {
           </tbody>
         </table>` : '<div class="empty">Nessuna struttura lezione registrata.</div>'}
     </div>`
+  const parsedNotes = lessonParsedNotes(lezione)
+  const noteSpecialiRead = lessonSpecialNotes(lezione)
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
       <button class="back-btn" onclick="tornaDaLezione()" style="margin-bottom:0">${lezioneBackLabel()}</button>
-      <button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione','lezione:${lezione.id}')">${editIcon()} Modifica</button>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+        ${lessonStatus(lezione) === 'aperta' ? `<button class="btn btn-primary btn-sm" onclick="chiudiLezioneGuidata(${jsArg(lezione.id)})">Chiudi lezione</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="openHistoryModal('lezione',${jsArg(lezione.id)},'Storico lezione')">Storico</button>
+        <button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione','lezione:${lezione.id}')">${editIcon()} Modifica</button>
+      </div>
     </div>
 
     <div class="card">
       <div class="lezione-read-head">
         <div>
           <div class="lezione-read-title">${esc(titoloLezione)}</div>
+          ${lessonStatus(lezione) === 'aperta' ? '<div style="margin-top:.4rem"><span class="lesson-status-badge">Aperta</span></div>' : ''}
         </div>
         <div class="lezione-read-when">
           <div class="lezione-when-nav">
@@ -4626,8 +5193,13 @@ async function loadLezione(id) {
           </div>
         </div>
       </div>
-      ${lezione.note_speciali ? `<div style="margin-top:.75rem"><span class="ramo">${esc(lezione.note_speciali)}</span></div>` : ''}
+      ${(lezione.updated_at || lezione.aggiornato_il) ? `<div style="color:var(--muted);font-size:.78rem;margin-top:.55rem">Ultima modifica: ${esc(formatDateTime(lezione.updated_at || lezione.aggiornato_il))}</div>` : ''}
     </div>
+
+    ${noteSpecialiRead ? `
+      <p class="sec-title">Note speciali</p>
+      <div class="card"><div class="lezione-read-note">${esc(noteSpecialiRead)}</div></div>
+    ` : ''}
 
     <div class="lezione-read-grid">
       <div>
@@ -4641,9 +5213,11 @@ async function loadLezione(id) {
       </div>
     </div>
 
+    ${renderLessonCheckBlocks(lezione)}
+
     <p class="sec-title">Note</p>
     <div class="card">
-      ${lezione.note ? `<div class="lezione-read-note">${esc(lezione.note)}</div>` : '<div class="empty">Nessuna nota registrata.</div>'}
+      ${parsedNotes.note ? `<div class="lezione-read-note">${esc(parsedNotes.note)}</div>` : '<div class="empty">Nessuna nota registrata.</div>'}
     </div>
   `
   requestAnimationFrame(() => motion.cards(el))
@@ -4670,9 +5244,12 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-data').value    = new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
+  setLessonStatus('aperta')
   document.getElementById('lz-luogo-suggest').hidden = true
   document.getElementById('lz-luogo-suggest').innerHTML = ''
   document.getElementById('lz-note-speciali').value = ''
+  document.getElementById('lz-check-bene').value = ''
+  document.getElementById('lz-check-non-fatto').value = ''
   document.getElementById('lz-note').value    = ''
   document.getElementById('lz-err').classList.remove('show')
   document.getElementById('lz-skills-container').innerHTML = ''
@@ -4690,9 +5267,21 @@ async function initNuovaLezione(presetAllievoId = null) {
 
   if (editId) {
     let { data: lezione, error } = await sb.from('lezioni')
-      .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
       .eq('id', editId)
       .single()
+    if (isMissingLessonCheckError(error)) {
+      ;({ data: lezione, error } = await sb.from('lezioni')
+        .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+        .eq('id', editId)
+        .single())
+    }
+    if (isMissingLessonStatusError(error)) {
+      ;({ data: lezione, error } = await sb.from('lezioni')
+        .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+        .eq('id', editId)
+        .single())
+    }
     if (isMissingDimensioniError(error)) {
       ;({ data: lezione, error } = await sb.from('lezioni')
         .select('id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie)')
@@ -4736,8 +5325,12 @@ async function initNuovaLezione(presetAllievoId = null) {
     document.getElementById('lz-data').value = lezione.data || ''
     document.getElementById('lz-durata').value = lezione.durata_min || ''
     document.getElementById('lz-luogo').value = lezione.luogo || ''
-    document.getElementById('lz-note-speciali').value = lezione.note_speciali || ''
-    document.getElementById('lz-note').value = lezione.note || ''
+    setLessonStatus(lessonStatus(lezione))
+    const parsedNotes = lessonParsedNotes(lezione)
+    document.getElementById('lz-note-speciali').value = lezione.note_speciali || parsedNotes.speciali || ''
+    document.getElementById('lz-check-bene').value = parsedNotes.bene || ''
+    document.getElementById('lz-check-non-fatto').value = parsedNotes.nonFatto || ''
+    document.getElementById('lz-note').value = parsedNotes.note || ''
   }
 
   renderLezioneTargetOptions()
@@ -4924,6 +5517,7 @@ function togglePresenzaGruppoLezione(cb) {
   renderGroupIndividualControls()
   renderSpecialGuestPanel()
   refreshSuggerimentiLuogoSeAperti()
+  suggerisciDurataDaUltimaLezione()
 }
 
 function setLezioneAllievi(ids) {
@@ -4932,6 +5526,7 @@ function setLezioneAllievi(ids) {
   holder.innerHTML = ids.map(id => `<input type="checkbox" value="${id}" checked>`).join('')
   if (currentLessonTargetIsGroup()) {
     refreshSuggerimentiLuogoSeAperti()
+    suggerisciDurataDaUltimaLezione()
     return
   }
   ids.forEach(id => {
@@ -4939,6 +5534,7 @@ function setLezioneAllievi(ids) {
     if (a) toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
   })
   refreshSuggerimentiLuogoSeAperti()
+  suggerisciDurataDaUltimaLezione()
 }
 
 function selectedLezioneAllieviIds() {
@@ -4969,11 +5565,35 @@ async function luoghiFrequentatiAllievi(ids) {
     if (String(row.lezioni?.data || '') > prev.latest) prev.latest = String(row.lezioni?.data || '')
     stats.set(k, prev)
   })
+  ;(await loadLocations()).forEach(loc => {
+    const luogo = String(loc.nome || '').trim()
+    if (!luogo) return
+    const k = normalizeText(luogo)
+    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
+    prev.count += loc.tipologia === 'Casa allievo' ? 2 : 1
+    stats.set(k, prev)
+  })
   const luoghi = [...stats.values()]
     .sort((a, b) => b.count - a.count || b.latest.localeCompare(a.latest) || a.luogo.localeCompare(b.luogo, 'it', { sensitivity: 'base' }))
     .map(item => item.luogo)
   luoghiLezioneCache.set(key, luoghi)
   return luoghi
+}
+
+async function suggerisciDurataDaUltimaLezione() {
+  if (editingLezioneId) return
+  const input = document.getElementById('lz-durata')
+  if (!input || input.value) return
+  const ids = selectedLezioneAllieviIds()
+  if (!ids.length) return
+  const { data } = await sb.from('lezioni_allievi')
+    .select('lezioni(durata_min, data)')
+    .in('allievo_id', ids)
+  const latest = (data || [])
+    .map(row => row.lezioni)
+    .filter(l => l?.durata_min)
+    .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))[0]
+  if (latest?.durata_min && !input.value) input.value = latest.durata_min
 }
 
 async function mostraSuggerimentiLuogo() {
@@ -5195,8 +5815,11 @@ function collectLezioneDraft() {
   return {
     data: document.getElementById('lz-data')?.value || '',
     durata: document.getElementById('lz-durata')?.value || '',
+    stato: document.getElementById('lz-stato')?.value || 'aperta',
     luogo: document.getElementById('lz-luogo')?.value || '',
     noteSpeciali: document.getElementById('lz-note-speciali')?.value || '',
+    checkBene: document.getElementById('lz-check-bene')?.value || '',
+    checkNonFatto: document.getElementById('lz-check-non-fatto')?.value || '',
     note: document.getElementById('lz-note')?.value || '',
     target: document.getElementById('lz-tipo')?.value || '',
     selectedIds: selectedLezioneAllieviIds(),
@@ -5222,8 +5845,11 @@ function loadLezioneDraft() {
 function restoreLezioneDraft(draft) {
   document.getElementById('lz-data').value = draft.data || new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value = draft.durata || ''
+  setLessonStatus(draft.stato || 'aperta')
   document.getElementById('lz-luogo').value = draft.luogo || ''
   document.getElementById('lz-note-speciali').value = draft.noteSpeciali || ''
+  document.getElementById('lz-check-bene').value = draft.checkBene || ''
+  document.getElementById('lz-check-non-fatto').value = draft.checkNonFatto || ''
   document.getElementById('lz-note').value = draft.note || ''
   renderLezioneTargetOptions(draft.target || '')
   editingLezioneSkillRows = draft.skillRows || {}
@@ -5673,7 +6299,7 @@ function renderSkillDimensions(dimensioni = {}, active = false) {
 }
 
 function normalizeExerciseList(value) {
-  if (Array.isArray(value)) return [...new Set(value.map(item => String(item || '').trim()).filter(Boolean))]
+  if (Array.isArray(value)) return [...new Set(value.flatMap(item => Array.isArray(item) ? item : [item]).map(item => String(item || '').trim()).filter(Boolean))]
   if (typeof value === 'string') return splitVariantText(value)
   return []
 }
@@ -5731,6 +6357,33 @@ function skillRowDimensions(row) {
   const esercizi = skillRowExercises(row)
   if (esercizi.length) dimensioni.esercizi = esercizi
   return dimensioni
+}
+
+function mergeDimensionValue(a, b) {
+  const values = []
+  ;[a, b].forEach(value => {
+    if (Array.isArray(value)) values.push(...value)
+    else if (value !== undefined && value !== null && value !== '') values.push(value)
+  })
+  const unique = [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
+  if (!unique.length) return undefined
+  return unique.length === 1 ? unique[0] : unique
+}
+
+function mergeLessonDimensions(a = {}, b = {}) {
+  const merged = { ...(a || {}) }
+  Object.entries(b || {}).forEach(([key, value]) => {
+    const next = key === 'esercizi'
+      ? normalizeExerciseList([...(normalizeExerciseList(merged[key])), ...(normalizeExerciseList(value))])
+      : mergeDimensionValue(merged[key], value)
+    if (next !== undefined && (!(Array.isArray(next)) || next.length)) merged[key] = next
+  })
+  return merged
+}
+
+function dimensionValueLabel(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).join(', ')
+  return value || ''
 }
 
 function renderGroupExclusionChips(selectedIds = []) {
@@ -5857,11 +6510,14 @@ async function ripristinaRelazioniLezione(lezioneId, snapshot) {
 async function salvaLezione() {
   const data   = document.getElementById('lz-data').value
   const durata = parseInt(document.getElementById('lz-durata').value) || null
+  const stato = document.getElementById('lz-stato')?.value === 'chiusa' ? 'chiusa' : 'aperta'
   const target = document.getElementById('lz-tipo').value
   const tipo   = target.startsWith('gruppo:') ? 'gruppo' : target.startsWith('allievo:') ? 'individuale' : 'campo_libero'
   const luogo  = document.getElementById('lz-luogo').value.trim() || null
   const noteSpeciali = document.getElementById('lz-note-speciali').value.trim() || null
-  const note   = document.getElementById('lz-note').value.trim()  || null
+  const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
+  const checkNonFatto = document.getElementById('lz-check-non-fatto')?.value.trim() || ''
+  const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato)
   const errEl  = document.getElementById('lz-err')
   errEl.classList.remove('show')
 
@@ -5885,15 +6541,39 @@ async function salvaLezione() {
 
     // 1 — crea o aggiorna lezione
     let e1
-    const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note }
+    const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
     const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
     if (lezioneInModifica) {
       ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezione).eq('id', lezioneInModifica).select().single())
+      if (isMissingLessonCheckError(e1)) {
+        const { check_bene, check_non_fatto, ...withoutCheck } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutCheck).eq('id', lezioneInModifica).select().single())
+      }
+      if (isMissingLessonStatusError(e1)) {
+        const { stato: _stato, ...withoutStatus } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutStatus).eq('id', lezioneInModifica).select().single())
+      }
+      if (isMissingLessonCheckError(e1)) {
+        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutStatusAndCheck).eq('id', lezioneInModifica).select().single())
+      }
       if (isMissingNoteSpecialiError(e1)) {
         ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezioneCompat).eq('id', lezioneInModifica).select().single())
       }
     } else {
       ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezione).select().single())
+      if (isMissingLessonCheckError(e1)) {
+        const { check_bene, check_non_fatto, ...withoutCheck } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutCheck).select().single())
+      }
+      if (isMissingLessonStatusError(e1)) {
+        const { stato: _stato, ...withoutStatus } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutStatus).select().single())
+      }
+      if (isMissingLessonCheckError(e1)) {
+        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadLezione
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutStatusAndCheck).select().single())
+      }
       if (isMissingNoteSpecialiError(e1)) {
         ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneCompat).select().single())
       }
@@ -5908,24 +6588,32 @@ async function salvaLezione() {
       relazioniSostituite = true
     }
 
-    const savedSkillKeysByAllievo = new Map()
-    const saveSkillForAllievo = async (aid, row) => {
+    const pendingSkillsByAllievo = new Map()
+    const queueSkillForAllievo = (aid, row) => {
       const skillId = row.querySelector('.skill-select')?.value
       const stadio  = parseInt(row.querySelector('.stadio-toggle')?.dataset.stadio || '1', 10)
       const dimensioni = skillRowDimensions(row)
       const fakie = skillRowFakie(row)
-      const key = `${skillId}:${stadio}:${fakie ? 'fakie' : 'frontale'}:${JSON.stringify(dimensioni)}`
       if (!skillId) return
-      if (!savedSkillKeysByAllievo.has(aid)) savedSkillKeysByAllievo.set(aid, new Set())
-      const savedSkillKeys = savedSkillKeysByAllievo.get(aid)
-      if (savedSkillKeys.has(key)) return
-      savedSkillKeys.add(key)
-      const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: skillId, stadio_raggiunto: stadio, fakie, dimensioni })
-      if (skillError) throw skillError
+      if (!pendingSkillsByAllievo.has(aid)) pendingSkillsByAllievo.set(aid, new Map())
+      const key = `${skillId}:${stadio}:${fakie ? 'fakie' : 'frontale'}`
+      const pending = pendingSkillsByAllievo.get(aid)
+      const current = pending.get(key)
+      pending.set(key, current
+        ? { ...current, dimensioni: mergeLessonDimensions(current.dimensioni, dimensioni) }
+        : { skillId, stadio, fakie, dimensioni })
+    }
+    const flushSkills = async () => {
+      for (const [aid, skillMap] of pendingSkillsByAllievo.entries()) {
+        for (const item of skillMap.values()) {
+          const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni })
+          if (skillError) throw skillError
       try {
-        await aggiornaProgressiDaLezione(aid, skillId, stadio, { fakie })
+            await aggiornaProgressiDaLezione(aid, item.skillId, item.stadio, { fakie: item.fakie })
       } catch (progressError) {
         console.warn('Progressi non aggiornati dopo salvataggio lezione', progressError)
+      }
+        }
       }
     }
 
@@ -5935,28 +6623,31 @@ async function salvaLezione() {
       const { error: allievoInsertError } = await sb.from('lezioni_allievi').insert({ lezione_id: lz.id, allievo_id: aid })
       if (allievoInsertError) throw allievoInsertError
     }
+    await ensureLocationDaLezione(luogo, checkedAllievi.map(cb => cb.value))
 
     if (tipo === 'gruppo') {
       const checkedIds = checkedAllievi.map(cb => cb.value)
       for (const row of document.querySelectorAll(`#skill-rows-${GROUP_SKILL_ROWS_KEY} .skill-row`)) {
         const excluded = new Set(skillRowExcludedIds(row))
         for (const aid of checkedIds.filter(id => !excluded.has(id))) {
-          await saveSkillForAllievo(aid, row)
+          queueSkillForAllievo(aid, row)
         }
       }
       for (const aid of checkedIds) {
         const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
-        for (const row of rows) await saveSkillForAllievo(aid, row)
+        for (const row of rows) queueSkillForAllievo(aid, row)
       }
     } else {
       for (const cb of checkedAllievi) {
         const aid = cb.value
         const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
       for (const row of rows) {
-          await saveSkillForAllievo(aid, row)
+          queueSkillForAllievo(aid, row)
         }
       }
     }
+    await flushSkills()
+    logModificaLocale('lezione', lz.id, lezioneInModifica ? `Aggiornata lezione (${stato})` : `Creata lezione (${stato})`)
 
     editingLezioneId = null
     editingLezioneAllieviIds = []
