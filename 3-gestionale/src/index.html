@@ -83,6 +83,9 @@
     nav { display: flex; gap: .2rem; margin-left: auto; }
     nav button { background: none; border: none; padding: .38rem .75rem; border-radius: var(--r); font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; }
     nav button.active, nav button:hover { background: var(--blu-chiaro); color: var(--blu); }
+    nav button[hidden] { display: none; }
+    .nav-icon-btn { width: 2.15rem; justify-content: center; padding-inline: .48rem; }
+    .nav-icon { width: 1rem; height: 1rem; display: block; }
     .god-toggle.on { color: #041015; background: linear-gradient(135deg, #facc15, #f0abfc); border-color: rgba(250,204,21,.35); }
     .god-panel {
       width: 100%; display: none; align-items: center; gap: .6rem; flex-wrap: wrap;
@@ -171,6 +174,45 @@
     .skill-suggest:hover { border-color: var(--blu); color: var(--blu); background: var(--blu-chiaro); }
     .lesson-suggestion-title.shared-work { color: #facc15; text-shadow: 0 0 12px rgba(250,204,21,.35); }
     .skill-suggest.skill-suggest-shared-work { border-color: rgba(250,204,21,.95); color: #fff7c2; background: rgba(250,204,21,.2); box-shadow: 0 0 0 1px rgba(250,204,21,.32), 0 0 22px rgba(250,204,21,.52); }
+    .lesson-prep-panel { border: 1px solid rgba(110,231,249,.18); border-radius: var(--r); background: rgba(110,231,249,.045); padding: .65rem; margin-bottom: .65rem; display: grid; gap: .45rem; }
+    .lesson-prep-panel[hidden] { display: none; }
+    .lesson-prep-title { color: var(--blu); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
+    .lesson-prep-meta { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+    .lesson-prep-skills { display: flex; flex-wrap: wrap; gap: .28rem; }
+    .prep-board { display: grid; gap: .85rem; }
+    .prep-hero { border: 1px solid rgba(110,231,249,.2); border-radius: var(--r); background: linear-gradient(135deg, rgba(110,231,249,.1), rgba(52,211,153,.055)); padding: .85rem; display: grid; gap: .75rem; }
+    .prep-hero-top { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .85rem; align-items: start; }
+    .prep-kicker { color: var(--blu); font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+    .prep-headline { font-size: 1.25rem; font-weight: 850; line-height: 1.1; margin-top: .12rem; }
+    .prep-subline { color: var(--muted); font-size: .84rem; margin-top: .28rem; line-height: 1.35; }
+    .prep-save-tag { border: 1px solid rgba(251,191,36,.38); border-radius: 999px; color: #facc15; background: rgba(251,191,36,.08); padding: .22rem .55rem; font-size: .72rem; font-weight: 850; white-space: nowrap; }
+    .prep-radar { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: .55rem; }
+    .prep-radar-card { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.025); padding: .6rem; display: grid; gap: .22rem; min-height: 78px; }
+    .prep-radar-card strong { font-size: 1.05rem; line-height: 1; }
+    .prep-radar-card span { color: var(--muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .045em; }
+    .prep-intents { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .prep-intent { border: 1px solid rgba(110,231,249,.25); border-radius: 999px; background: rgba(110,231,249,.07); color: var(--testo); padding: .32rem .62rem; font-size: .78rem; font-weight: 800; cursor: pointer; }
+    .prep-intent:hover, .prep-intent.is-on { border-color: var(--blu); color: var(--blu); background: var(--blu-chiaro); }
+    .prep-stage-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; align-items: start; }
+    .prep-stage { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: var(--panel-soft); padding: .65rem; display: grid; gap: .5rem; min-height: 170px; }
+    .prep-stage h4 { margin: 0; font-size: .86rem; line-height: 1.15; }
+    .prep-stage p { margin: 0; color: var(--muted); font-size: .76rem; line-height: 1.35; }
+    .prep-stage-actions { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .prep-suggest { border: 1px solid rgba(148,163,184,.22); background: rgba(255,255,255,.025); color: var(--testo); border-radius: 999px; padding: .24rem .5rem; font-size: .74rem; font-weight: 800; cursor: pointer; }
+    .prep-suggest:hover { border-color: var(--blu); color: var(--blu); background: var(--blu-chiaro); }
+    .prep-plan-grid { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(220px,.65fr); gap: .7rem; align-items: start; }
+    .prep-plan-note textarea { min-height: 170px; }
+    .prep-selected-list { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .prep-empty { color: var(--muted); font-size: .82rem; line-height: 1.35; }
+    .prep-raw-toggle { justify-self: start; }
+    .prep-skill-storage { display: none; }
+    .prep-skill-storage.is-visible { display: block; }
+    @media (max-width: 980px) { .prep-stage-grid, .prep-plan-grid, .prep-hero-top { grid-template-columns: 1fr; } }
+    .ripasso-panel { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .6rem; margin: .45rem 0 .65rem; display: grid; gap: .55rem; }
+    .ripasso-panel[hidden] { display: none; }
+    .ripasso-group { display: grid; gap: .3rem; }
+    .ripasso-title { color: var(--muted); font-size: .68rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
+    .ripasso-empty { color: var(--muted); font-size: .8rem; }
     .place-suggest-wrap { position: relative; }
     .place-suggest-panel { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + .28rem); border: 1px solid var(--bordo); border-radius: var(--r); background: #07151b; box-shadow: var(--shadow); padding: .35rem; display: grid; gap: .25rem; }
     .place-suggest-panel[hidden] { display: none; }
@@ -207,17 +249,29 @@
     .skill-row select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 3px rgba(110,231,249,.12); }
     .skill-row .skill-branch { flex: 0 0 120px; width: 120px; }
     .skill-row .skill-select { flex: 0 1 190px; width: 190px; max-width: 190px; }
+    .skill-row-summary { display: none; flex: 1 1 100%; justify-content: space-between; text-align: left; white-space: normal; }
+    .skill-row.is-collapsed > :not(.skill-row-summary) { display: none !important; }
+    .skill-row.is-collapsed .skill-row-summary { display: flex; }
     .fakie-toggle { min-width: 82px; justify-content: center; white-space: nowrap; }
     .fakie-toggle.is-on { border-color: rgba(250,204,21,.9); color: #fff7c2; background: rgba(250,204,21,.16); box-shadow: 0 0 18px rgba(250,204,21,.24); }
     .dimensions-toggle { min-width: 102px; justify-content: center; white-space: nowrap; }
     .dimensions-toggle.is-on { border-color: rgba(110,231,249,.75); color: var(--blu); background: var(--blu-chiaro); }
     .stadio-toggle { min-width: 122px; justify-content: center; white-space: nowrap; }
+    .stadio-toggle.st1 { border-color: rgba(251,191,36,.5) !important; color: #facc15 !important; background-color: rgba(251,191,36,.08) !important; }
+    .stadio-toggle.st2 { border-color: rgba(56,189,248,.55) !important; color: #67e8f9 !important; background-color: rgba(56,189,248,.1) !important; }
+    .stadio-toggle.st3 { border-color: rgba(52,211,153,.65) !important; color: var(--success) !important; background-color: rgba(52,211,153,.12) !important; }
+    .stadio-toggle.st1:hover, .stadio-toggle.st1:focus { border-color: rgba(251,191,36,.75) !important; color: #fde68a !important; background-color: rgba(251,191,36,.14) !important; }
+    .stadio-toggle.st2:hover, .stadio-toggle.st2:focus { border-color: rgba(56,189,248,.78) !important; color: #a5f3fc !important; background-color: rgba(56,189,248,.16) !important; }
+    .stadio-toggle.st3:hover, .stadio-toggle.st3:focus { border-color: rgba(52,211,153,.85) !important; color: #bbf7d0 !important; background-color: rgba(52,211,153,.18) !important; }
+    .lesson-feedback-controls { display: contents; }
+    .lesson-feedback-controls[hidden] { display: none; }
     .lesson-result-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
     .lesson-result-toggle.result-review { border-color: rgba(251,191,36,.5); color: #facc15; background: rgba(251,191,36,.08); }
     .lesson-result-toggle.result-good { border-color: rgba(110,231,249,.55); color: var(--blu); background: rgba(110,231,249,.08); }
     .lesson-result-toggle.result-great { border-color: rgba(52,211,153,.6); color: var(--success); background: rgba(52,211,153,.1); }
     .lesson-side-toggle { min-width: 108px; justify-content: center; white-space: nowrap; }
     .lesson-side-toggle.side-issue { border-color: rgba(251,113,133,.55); color: #fecaca; background: rgba(251,113,133,.1); }
+    .lesson-side-toggle.side-good { border-color: rgba(52,211,153,.65); color: #bbf7d0; background: rgba(52,211,153,.1); }
     .exercise-toggle { min-width: 92px; justify-content: center; white-space: nowrap; }
     .exercise-toggle.is-on { border-color: rgba(52,211,153,.75); color: var(--success); background: rgba(52,211,153,.1); }
     .skill-exercises { grid-column: 1 / -1; flex-basis: 100%; display: flex; gap: .35rem; flex-wrap: wrap; padding: .45rem .5rem; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: rgba(255,255,255,.018); }
@@ -404,6 +458,9 @@
     .skill-delete-warning ul { margin: .48rem 0 0; padding-left: 1.15rem; }
     .skill-delete-warning li { margin: .18rem 0; }
     .skill-delete-warning-note { margin-top: .58rem; padding-top: .58rem; border-top: 1px solid rgba(251,113,133,.28); color: #fff; font-weight: 750; }
+    .skill-delete-replace { margin-top: .7rem; display: grid; gap: .45rem; }
+    .skill-delete-replace label { color: #fff; font-size: .76rem; text-transform: uppercase; letter-spacing: .055em; font-weight: 800; }
+    .skill-origin-note { color: #fecaca; font-weight: 750; }
     .skill-detail-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1rem; align-items: start; margin-bottom: 1rem; }
     .skill-detail-title { font-size: 1.2rem; line-height: 1.15; font-weight: 800; }
     .skill-detail-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
@@ -562,9 +619,15 @@
     <nav>
       <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
       <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
+      <button id="nav-calendar" class="nav-icon-btn" onclick="showCalendarFromHeader()" title="Calendario" aria-label="Calendario">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+        </svg>
+      </button>
       <button id="nav-skills" onclick="showView('skills')">Skills</button>
-      <button id="nav-tuning" onclick="showView('tuning')">Tuning</button>
-      <button onclick="location.href='./skill-questionario.html'">Questionario skill</button>
+      <button id="nav-tuning" class="god-only-nav" hidden onclick="showView('tuning')">Tuning</button>
+      <button id="nav-questionario" class="god-only-nav" hidden onclick="location.href='./skill-questionario.html'">Questionario skill</button>
+      <button id="nav-app-notes" class="god-only-nav" hidden onclick="showView('app-notes')">Note x app</button>
     </nav>
     <div class="global-search" onclick="event.stopPropagation()">
       <input type="search" id="global-search-input" placeholder="Cerca..." oninput="scheduleGlobalSearch()" onfocus="scheduleGlobalSearch()" autocomplete="off">
@@ -608,7 +671,11 @@
     <section id="view-scheda" hidden>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
         <button class="back-btn" onclick="showView('allievi')" style="margin-bottom:0">← Allievi</button>
-        <button class="btn btn-primary btn-sm" id="scheda-nuova-lezione" hidden>+ Lezione individuale</button>
+        <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="scheda-nuova-lezione" hidden>+ Lezione individuale</button>
+          <button class="btn btn-primary btn-sm" id="scheda-prepara-lezione" hidden>+ Prepara lezione</button>
+          <button class="btn btn-outline btn-sm" id="scheda-lezione-postuma" hidden>+ Lezione postuma</button>
+        </div>
       </div>
       <div id="scheda-content"></div>
     </section>
@@ -628,7 +695,9 @@
           </select>
           <button class="btn btn-outline btn-sm" id="lezioni-aperte-btn" onclick="toggleFiltroLezioniAperte()" type="button">Aperte</button>
           <button class="btn btn-outline btn-sm" id="lezioni-dettagli-btn" onclick="toggleDettagliLezioni()" type="button">Espandi</button>
-          <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
+          <button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione')">+ Lezione individuale</button>
+          <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione','modo:prep')">+ Prepara lezione</button>
+          <button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione','modo:postuma')">+ Lezione postuma</button>
         </div>
       </div>
       <div class="card">
@@ -680,18 +749,19 @@
         </div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
-        <p class="form-sec">Check operativo</p>
-        <div class="form-grid">
+        <p class="form-sec" id="lz-check-title">Check operativo</p>
+        <div class="form-grid" id="lz-check-grid">
           <div class="field"><label>Cosa e andato bene</label><textarea id="lz-check-bene" placeholder="Cose riuscite, intuizioni, reazioni buone…"></textarea></div>
           <div class="field"><label>Non fatto / da riprendere</label><textarea id="lz-check-non-fatto" placeholder="Cosa non e stato fatto o va rimandato…"></textarea></div>
         </div>
-        <div class="field"><label>Descrizione lezione</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
+        <div class="field" id="lz-note-field"><label>Descrizione lezione</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
       </div>
 
       <div id="lz-gruppo-panel" hidden></div>
       <div id="lz-allievi-list" hidden></div>
       <div id="lz-hidden-checks" hidden></div>
 
+      <div id="lz-prep-board" hidden></div>
       <div id="lz-skills-container"></div>
       <div class="card" id="lz-special-guest-panel" hidden></div>
 
@@ -982,6 +1052,24 @@
       </div>
     </section>
 
+    <!-- VIEW: note gestionali app -->
+    <section id="view-app-notes" hidden>
+      <div class="section-header">
+        <div>
+          <h2>Note x app</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:.25rem">Promemoria interni sulle modifiche da fare al gestionale.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveAppNotes()">Salva note</button>
+      </div>
+      <div class="card">
+        <div id="app-notes-status" class="msg"></div>
+        <div class="field">
+          <label>Modifiche da fare</label>
+          <textarea id="app-notes-text" placeholder="Scrivi qui idee, bug, priorita o cose da sistemare..." style="min-height:360px" oninput="scheduleAppNotesSave()"></textarea>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Modal condivisione -->
@@ -1117,11 +1205,13 @@ const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
 let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null
-let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null
+let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
 const lezioniColumnState = { data: false, luogo: false, note: false }
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
 const GROUP_SKILL_ROWS_KEY = '__group__'
+const APP_NOTES_KEY = 'bladingManagerAppNotes'
 let godMode = false, godScope = 'all', shareContext = null
+let appNotesTimer = null
 const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
 
 const safeStorage = (() => {
@@ -1399,7 +1489,7 @@ async function refreshDashboardData() {
 // ── Views ─────────────────────────────────────────────────────────────
 
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning']
+  return ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
@@ -1409,7 +1499,7 @@ function currentReturnTarget() {
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
   if (view === 'location') return { name: 'lezioni', id: null }
-  if (view === 'allievi' || view === 'lezioni' || view === 'skills' || view === 'tuning') return { name: view, id: null }
+  if (view === 'allievi' || view === 'lezioni' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
   return null
 }
 
@@ -1432,17 +1522,20 @@ async function goToReturnTarget(target, fallback) {
 }
 
 function showView(name, id) {
+  if ((name === 'tuning' || name === 'app-notes') && !godMode) name = 'allievi'
   if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
     const returnTarget = currentReturnTarget()
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning'].forEach(v => {
+  ['allievi','scheda','gruppo','lezioni','location','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','location','lezione','nuova-lezione'].includes(name))
+  document.getElementById('nav-calendar').classList.toggle('active', name === 'lezioni')
   document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
+  document.getElementById('nav-app-notes').classList.toggle('active', name === 'app-notes')
 
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
@@ -1455,7 +1548,14 @@ function showView(name, id) {
   if (name === 'scheda' && id)  loadScheda(id)
   if (name === 'skills')        renderSkillsCatalog()
   if (name === 'tuning')        initTuning()
+  if (name === 'app-notes')     initAppNotes()
   requestAnimationFrame(() => motion.view(name))
+}
+
+function showCalendarFromHeader() {
+  const today = new Date().toISOString().slice(0, 10)
+  showView('lezioni')
+  requestAnimationFrame(() => openDayLessonsWidget(today))
 }
 
 function openLezione(id, fromAllievoId = null, fromGruppoNome = null) {
@@ -1780,6 +1880,23 @@ function modificheLocali(tipo, id) {
   }
 }
 
+function valueForHistory(value) {
+  if (value === null || value === undefined || value === '') return ''
+  if (Array.isArray(value)) return JSON.stringify(value)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function historyChangedFields(previous = {}, next = {}, labels = {}) {
+  return Object.entries(labels).flatMap(([key, label]) => {
+    return valueForHistory(previous?.[key]) === valueForHistory(next?.[key]) ? [] : [label]
+  })
+}
+
+function historyDescription(base, changes = [], fallback = 'dettagli') {
+  return changes.length ? `${base}: ${changes.join(', ')}` : `${base}: ${fallback}`
+}
+
 function openHistoryModal(tipo, id, title = 'Storico modifiche') {
   const rows = modificheLocali(tipo, id)
   const existing = document.getElementById('modal-history')
@@ -1805,6 +1922,7 @@ function setLessonStatus(status) {
   if (input) input.value = value
   document.getElementById('lz-status-open')?.classList.toggle('is-on', value === 'aperta')
   document.getElementById('lz-status-done')?.classList.toggle('is-on', value === 'chiusa')
+  syncLessonFeedbackVisibility()
 }
 
 function lessonStatus(lezione) {
@@ -1889,6 +2007,7 @@ function renderGodPanel() {
     godMode = false
     godScope = 'all'
   }
+  syncGodOnlyNav()
   panel.classList.toggle('show', godMode)
   toggle.classList.toggle('on', godMode)
   if (!godMode || !sel) return
@@ -1903,13 +2022,48 @@ function renderGodPanel() {
   godScope = sel.value
 }
 
+function syncGodOnlyNav() {
+  document.querySelectorAll('.god-only-nav').forEach(el => { el.hidden = !godMode })
+}
+
 function toggleGodMode() {
   if (!isSuperMaestro()) return
   godMode = !godMode
   if (!godMode) godScope = 'all'
   renderGodPanel()
+  if (!godMode && ['tuning', 'app-notes'].includes(visibleViewName())) showView('allievi')
   renderAllievi()
   if (!document.getElementById('view-lezioni').hidden) loadLezioni()
+}
+
+function initAppNotes() {
+  const textarea = document.getElementById('app-notes-text')
+  const status = document.getElementById('app-notes-status')
+  if (!textarea) return
+  textarea.value = safeStorage.getItem(APP_NOTES_KEY) || ''
+  if (status) {
+    status.className = 'msg'
+    status.textContent = ''
+  }
+}
+
+function setAppNotesStatus(text, cls = 'msg-ok') {
+  const status = document.getElementById('app-notes-status')
+  if (!status) return
+  status.className = `msg ${cls}${text ? ' show' : ''}`
+  status.textContent = text
+}
+
+function saveAppNotes() {
+  const textarea = document.getElementById('app-notes-text')
+  if (!textarea) return
+  safeStorage.setItem(APP_NOTES_KEY, textarea.value || '')
+  setAppNotesStatus('Note salvate.', 'msg-ok')
+}
+
+function scheduleAppNotesSave() {
+  clearTimeout(appNotesTimer)
+  appNotesTimer = setTimeout(saveAppNotes, 450)
 }
 
 function setGodScope(scope) {
@@ -2119,7 +2273,7 @@ function initNuovoAllievo(id) {
   document.getElementById('na-nome').value        = allievo?.nome            || ''
   document.getElementById('na-cognome').value     = allievo?.cognome         || ''
   document.getElementById('na-nascita').value     = dateIsoToInput(allievo?.data_nascita)
-  document.getElementById('na-iscrizione').value  = dateIsoToInput(allievo?.data_iscrizione || new Date().toISOString().slice(0,10))
+  document.getElementById('na-iscrizione').value  = dateIsoToInput(allievo?.data_iscrizione)
   document.getElementById('na-email').value       = allievo?.email           || ''
   document.getElementById('na-tel').value         = allievo?.telefono        || ''
   document.getElementById('na-note').value        = allievo?.note_generali   || ''
@@ -2518,6 +2672,7 @@ async function salvaAllievo() {
   }
 
   const savedId = editingAllieviId
+  const originalAllievo = savedId ? (allAllievi.find(a => String(a.id) === String(savedId)) || {}) : {}
   try {
     let data, error
     if (savedId) {
@@ -2535,7 +2690,21 @@ async function salvaAllievo() {
     }
 
     if (error) throw error
-    logModificaLocale('allievo', data?.id || savedId, savedId ? 'Aggiornata scheda allievo' : 'Creata scheda allievo')
+    const changedFields = savedId ? historyChangedFields(originalAllievo, payload, {
+      nome: 'nome',
+      cognome: 'cognome',
+      nickname: 'nickname',
+      vip: 'VIP',
+      blocco_attuale: 'blocco',
+      gruppo: 'gruppo',
+      data_nascita: 'data nascita',
+      data_iscrizione: 'data iscrizione',
+      email: 'email',
+      telefono: 'telefono',
+      note_generali: 'note',
+      profilo: 'profilo tecnico'
+    }) : []
+    logModificaLocale('allievo', data?.id || savedId, savedId ? historyDescription('Aggiornata scheda allievo', changedFields) : 'Creata scheda allievo')
 
     // Reload lista da DB per sicurezza (evita dati stale in cache)
     const { data: fresh } = await sb.from('allievi').select('*').order('nome')
@@ -3058,8 +3227,14 @@ async function loadScheda(id) {
   showView('scheda')
   currentSchedaId = id
   const shortcut = document.getElementById('scheda-nuova-lezione')
+  const prepShortcut = document.getElementById('scheda-prepara-lezione')
+  const postumaShortcut = document.getElementById('scheda-lezione-postuma')
   shortcut.hidden = false
   shortcut.onclick = () => showView('nuova-lezione', id)
+  prepShortcut.hidden = false
+  prepShortcut.onclick = () => showView('nuova-lezione', `modo:prep:${id}`)
+  postumaShortcut.hidden = false
+  postumaShortcut.onclick = () => showView('nuova-lezione', `modo:postuma:${id}`)
   document.getElementById('scheda-content').innerHTML = '<div class="loading">Caricamento…</div>'
 
   const allievo = allAllievi.find(a => a.id === id)
@@ -4068,10 +4243,15 @@ async function optionalDelete(table, column, value) {
   if (error && !/does not exist|schema cache|column/i.test(error.message || '')) throw error
 }
 
+async function optionalUpdate(table, column, value, payload) {
+  const { error } = await sb.from(table).update(payload).eq(column, value)
+  if (error && !/does not exist|schema cache|column/i.test(error.message || '')) throw error
+}
+
 async function fetchSkillDeleteUsage(skillId) {
   const [{ data: progressi, error: progressiError }, { data: lezioniSkills, error: lezioniError }] = await Promise.all([
-    sb.from('progressi_allievo').select('allievo_id, stadio').eq('skill_id', skillId),
-    sb.from('lezioni_skills').select('allievo_id, lezione_id, stadio_raggiunto').eq('skill_id', skillId)
+    sb.from('progressi_allievo').select('id, allievo_id, skill_id, stadio, stadio_lato_sx, stadio_lato_dx, data_inizio, data_acquisizione, data_perfezionamento, note_maestro').eq('skill_id', skillId),
+    sb.from('lezioni_skills').select('id, allievo_id, lezione_id, skill_id, stadio_raggiunto, note, fakie, dimensioni').eq('skill_id', skillId)
   ])
   if (progressiError) throw progressiError
   if (lezioniError) throw lezioniError
@@ -4121,9 +4301,227 @@ function renderSkillDeleteUsageWarning(skill, usage) {
 
   return `
     <strong>Fermo: "${esc(skill.nome)}" risulta gia lavorata.</strong>
-    <div style="margin-top:.36rem">Non la cancello perche e collegata a ${progressiCount} progresso/i e ${lezioniCount} lezione/i. Prima compensa questa skill: spostala su una skill sostitutiva o aggiorna le lezioni/progressi collegati.</div>
+    <div style="margin-top:.36rem">Non la cancello secca perche e collegata a ${progressiCount} progresso/i e ${lezioniCount} lezione/i. Se va rimossa dal catalogo, sostituiscila con una skill corretta: lo storico verra spostato e nelle lezioni restera traccia del nome originale.</div>
     ${righeAllievi ? `<ul>${righeAllievi}${extra > 0 ? `<li><strong>+${extra}</strong> altri allievi</li>` : ''}</ul>` : ''}
-    <div class="skill-delete-warning-note">Avviso rosso di compensazione: questa skill va sistemata prima di poterla eliminare dal catalogo.</div>`
+    <div class="skill-delete-replace">
+      <label for="skill-replace-select">Sostituisci con</label>
+      <select id="skill-replace-select">${renderSkillReplacementOptions(skill.id)}</select>
+      <button type="button" id="skill-replace-btn" class="btn btn-delete-soft btn-full" onclick="sostituisciSkillUsataDaCatalogo(${jsArg(skill.id)})">Sostituisci nello storico e rimuovi dal catalogo</button>
+    </div>
+    <div class="skill-delete-warning-note">Avviso rosso di compensazione: questa skill non viene persa, viene accorpata a quella scelta qui sopra.</div>`
+}
+
+function renderSkillReplacementOptions(oldSkillId) {
+  return `<option value="">— Scegli skill sostitutiva —</option>${sortedSkillsForLesson()
+    .filter(skill => String(skill.id) !== String(oldSkillId))
+    .map(skill => `<option value="${skill.id}">${esc(skill.nome)} · ${esc(skillMetaLabel(skill))}</option>`)
+    .join('')}`
+}
+
+function mergeTextNotes(...values) {
+  const parts = values.map(value => String(value || '').trim()).filter(Boolean)
+  return [...new Set(parts)].join(' / ') || null
+}
+
+function mergeSkillReplacementTrail(dimensioni = {}, oldSkill, replacementSkill) {
+  const clean = { ...(dimensioni || {}) }
+  const previous = Array.isArray(clean.skill_sostituzioni) ? clean.skill_sostituzioni : []
+  delete clean.skill_sostituzioni
+  return {
+    ...clean,
+    skill_sostituzioni: [
+      ...previous,
+      {
+        da_id: oldSkill.id,
+        da_nome: oldSkill.nome,
+        a_id: replacementSkill.id,
+        a_nome: replacementSkill.nome,
+        sostituita_il: new Date().toISOString()
+      }
+    ]
+  }
+}
+
+function mergeLessonDimensionsForReplacement(existing = {}, incoming = {}, oldSkill, replacementSkill) {
+  const existingTrail = Array.isArray(existing?.skill_sostituzioni) ? existing.skill_sostituzioni : []
+  const incomingTrail = Array.isArray(incoming?.skill_sostituzioni) ? incoming.skill_sostituzioni : []
+  const cleanExisting = { ...(existing || {}) }
+  const cleanIncoming = { ...(incoming || {}) }
+  delete cleanExisting.skill_sostituzioni
+  delete cleanIncoming.skill_sostituzioni
+  const merged = mergeLessonDimensions(cleanExisting, cleanIncoming)
+  merged.skill_sostituzioni = [
+    ...existingTrail,
+    ...incomingTrail,
+    {
+      da_id: oldSkill.id,
+      da_nome: oldSkill.nome,
+      a_id: replacementSkill.id,
+      a_nome: replacementSkill.nome,
+      sostituita_il: new Date().toISOString()
+    }
+  ]
+  return merged
+}
+
+function latestSkillReplacementName(dimensioni = {}) {
+  const trail = Array.isArray(dimensioni?.skill_sostituzioni) ? dimensioni.skill_sostituzioni : []
+  return trail.length ? trail[trail.length - 1]?.da_nome : ''
+}
+
+function maxNullableNumber(a, b) {
+  const values = [a, b].map(value => Number(value || 0)).filter(value => value > 0)
+  return values.length ? Math.max(...values) : null
+}
+
+function earliestDate(...values) {
+  const dates = values.map(value => String(value || '').trim()).filter(Boolean).sort()
+  return dates[0] || null
+}
+
+function firstDate(...values) {
+  return values.map(value => String(value || '').trim()).find(Boolean) || null
+}
+
+function progressReplacementPayload(oldRow, existingRow, replacementSkillId, oldSkill) {
+  const marker = `Skill sostituita da "${oldSkill.nome}" il ${new Date().toISOString().slice(0, 10)}.`
+  return {
+    allievo_id: oldRow.allievo_id,
+    skill_id: replacementSkillId,
+    stadio: Math.max(Number(existingRow?.stadio || 0), Number(oldRow.stadio || 0)),
+    stadio_lato_sx: maxNullableNumber(existingRow?.stadio_lato_sx, oldRow.stadio_lato_sx),
+    stadio_lato_dx: maxNullableNumber(existingRow?.stadio_lato_dx, oldRow.stadio_lato_dx),
+    data_inizio: earliestDate(existingRow?.data_inizio, oldRow.data_inizio),
+    data_acquisizione: firstDate(existingRow?.data_acquisizione, oldRow.data_acquisizione),
+    data_perfezionamento: firstDate(existingRow?.data_perfezionamento, oldRow.data_perfezionamento),
+    note_maestro: mergeTextNotes(existingRow?.note_maestro, oldRow.note_maestro, marker)
+  }
+}
+
+async function mergeSkillProgressi(oldSkill, replacementSkill, usage) {
+  if (!usage.progressi.length) return
+  const allievoIds = [...new Set(usage.progressi.map(row => row.allievo_id).filter(Boolean))]
+  const { data: existingRows, error: existingError } = await sb.from('progressi_allievo')
+    .select('id, allievo_id, skill_id, stadio, stadio_lato_sx, stadio_lato_dx, data_inizio, data_acquisizione, data_perfezionamento, note_maestro')
+    .eq('skill_id', replacementSkill.id)
+    .in('allievo_id', allievoIds)
+  if (existingError) throw existingError
+
+  const existingByAllievo = new Map((existingRows || []).map(row => [row.allievo_id, row]))
+  const payload = usage.progressi.map(row => progressReplacementPayload(row, existingByAllievo.get(row.allievo_id), replacementSkill.id, oldSkill))
+  const { error: upsertError } = await sb.from('progressi_allievo').upsert(payload, { onConflict: 'allievo_id,skill_id' })
+  if (upsertError) throw upsertError
+  const { error: deleteError } = await sb.from('progressi_allievo').delete().eq('skill_id', oldSkill.id)
+  if (deleteError) throw deleteError
+}
+
+async function mergeSkillLessonRows(oldSkill, replacementSkill, usage) {
+  if (!usage.lezioniSkills.length) return
+  const lezioneIds = [...new Set(usage.lezioniSkills.map(row => row.lezione_id).filter(Boolean))]
+  const { data: existingRows, error: existingError } = await sb.from('lezioni_skills')
+    .select('id, lezione_id, allievo_id, skill_id, stadio_raggiunto, note, fakie, dimensioni')
+    .eq('skill_id', replacementSkill.id)
+    .in('lezione_id', lezioneIds)
+  if (existingError) throw existingError
+
+  const existingByLessonStudent = new Map((existingRows || []).map(row => [`${row.lezione_id}:${row.allievo_id}`, row]))
+  const oldIdsToDelete = []
+  for (const oldRow of usage.lezioniSkills) {
+    const key = `${oldRow.lezione_id}:${oldRow.allievo_id}`
+    const existing = existingByLessonStudent.get(key)
+    if (existing) {
+      const { error: updateError } = await sb.from('lezioni_skills').update({
+        stadio_raggiunto: Math.max(Number(existing.stadio_raggiunto || 0), Number(oldRow.stadio_raggiunto || 0)),
+        note: mergeTextNotes(existing.note, oldRow.note),
+        fakie: !!(existing.fakie || oldRow.fakie),
+        dimensioni: mergeLessonDimensionsForReplacement(existing.dimensioni || {}, oldRow.dimensioni || {}, oldSkill, replacementSkill)
+      }).eq('id', existing.id)
+      if (updateError) throw updateError
+      oldIdsToDelete.push(oldRow.id)
+    } else {
+      const { error: updateError } = await sb.from('lezioni_skills').update({
+        skill_id: replacementSkill.id,
+        dimensioni: mergeSkillReplacementTrail(oldRow.dimensioni || {}, oldSkill, replacementSkill)
+      }).eq('id', oldRow.id)
+      if (updateError) throw updateError
+    }
+  }
+  if (oldIdsToDelete.length) {
+    const { error: deleteError } = await sb.from('lezioni_skills').delete().in('id', oldIdsToDelete)
+    if (deleteError) throw deleteError
+  }
+}
+
+async function rewriteSkillPrerequisites(oldSkillId, replacementSkillId) {
+  const { data: rows, error } = await sb.from('prerequisiti_skill').select('*').or(`skill_id.eq.${oldSkillId},richiede_skill_id.eq.${oldSkillId}`)
+  if (error) throw error
+  const rewrittenByKey = new Map()
+  ;(rows || [])
+    .map(row => ({
+      skill_id: row.skill_id === oldSkillId ? replacementSkillId : row.skill_id,
+      richiede_skill_id: row.richiede_skill_id === oldSkillId ? replacementSkillId : row.richiede_skill_id,
+      stadio_minimo: row.stadio_minimo,
+      note: row.note
+    }))
+    .filter(row => row.skill_id !== row.richiede_skill_id)
+    .forEach(row => {
+      const key = `${row.skill_id}:${row.richiede_skill_id}`
+      const current = rewrittenByKey.get(key)
+      rewrittenByKey.set(key, current ? {
+        ...row,
+        stadio_minimo: Math.min(Number(current.stadio_minimo || 2), Number(row.stadio_minimo || 2)),
+        note: mergeTextNotes(current.note, row.note)
+      } : row)
+    })
+  const rewritten = [...rewrittenByKey.values()]
+  if (rewritten.length) {
+    const { error: upsertError } = await sb.from('prerequisiti_skill').upsert(rewritten, { onConflict: 'skill_id,richiede_skill_id' })
+    if (upsertError) throw upsertError
+  }
+  await optionalDelete('prerequisiti_skill', 'skill_id', oldSkillId)
+  await optionalDelete('prerequisiti_skill', 'richiede_skill_id', oldSkillId)
+}
+
+async function sostituisciSkillUsataDaCatalogo(oldSkillId) {
+  const oldSkill = allSkills.find(skill => String(skill.id) === String(oldSkillId))
+  const replacementId = document.getElementById('skill-replace-select')?.value
+  const replacementSkill = allSkills.find(skill => String(skill.id) === String(replacementId))
+  if (!oldSkill) { setSkillCatalogStatus('Skill da sostituire non trovata.', 'msg-err'); return }
+  if (!replacementSkill) { setSkillCatalogStatus('Scegli una skill sostitutiva.', 'msg-err'); return }
+  if (oldSkill.id === replacementSkill.id) { setSkillCatalogStatus('La skill sostitutiva deve essere diversa.', 'msg-err'); return }
+  if (!confirm(`Sostituire "${oldSkill.nome}" con "${replacementSkill.nome}" in progressi e lezioni, poi rimuovere "${oldSkill.nome}" dal catalogo?`)) return
+
+  const btn = document.getElementById('skill-replace-btn')
+  const oldText = btn?.textContent
+  if (btn) { btn.disabled = true; btn.textContent = 'Sostituzione in corso...' }
+  setSkillCatalogStatus('Sostituzione nello storico in corso...', 'msg-info')
+  try {
+    const usage = await fetchSkillDeleteUsage(oldSkill.id)
+    await mergeSkillProgressi(oldSkill, replacementSkill, usage)
+    await mergeSkillLessonRows(oldSkill, replacementSkill, usage)
+    await rewriteSkillPrerequisites(oldSkill.id, replacementSkill.id)
+    await optionalDelete('skill_definizioni', 'skill_id', oldSkill.id)
+    await optionalUpdate('tuning_risposte', 'skill_id', oldSkill.id, { skill_id: replacementSkill.id })
+    await optionalUpdate('tuning_risposte', 'skill_ref_id', oldSkill.id, { skill_ref_id: replacementSkill.id })
+    const { error } = await sb.from('skills').delete().eq('id', oldSkill.id)
+    if (error) throw error
+
+    allSkills = allSkills.filter(skill => String(skill.id) !== String(oldSkill.id))
+    skillDefinitions = skillDefinitions.filter(def => String(def.skill_id || '') !== String(oldSkill.id) && normalizeText(def.skill_nome) !== normalizeText(oldSkill.nome))
+    const [{ data: freshPrereqs }, { data: freshProgressi }] = await Promise.all([
+      sb.from('prerequisiti_skill').select('*'),
+      sb.from('progressi_allievo').select('allievo_id, skill_id, stadio')
+    ])
+    if (freshPrereqs) allPrereqs = freshPrereqs
+    if (freshProgressi) allProgressi = freshProgressi
+    await refreshSkillCatalogConsumers()
+    setSkillDeleteWarning('')
+    setSkillCatalogStatus(`"${oldSkill.nome}" sostituita con "${replacementSkill.nome}". Storico conservato.`, 'msg-ok')
+  } catch (e) {
+    setSkillCatalogStatus(e.message || 'Errore durante la sostituzione della skill.', 'msg-err')
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText }
+  }
 }
 
 async function salvaDefinizioneVarianteSkill(skill, parentSkill, variants = []) {
@@ -4984,10 +5382,10 @@ function renderSkillChipsLezione(lezione, allievoId = null) {
   const viste = new Set()
   const skills = (lezione.lezioni_skills || [])
     .filter(ls => !allievoId || !ls.allievo_id || String(ls.allievo_id) === String(allievoId))
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback, originale: latestSkillReplacementName(ls.dimensioni) }))
     .filter(s => !isFakieSkillName(s.nome))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}-${normalizedLessonResult(s.esito)}-${normalizedLessonSideFeedback(s.latoFeedback)}`
+      const key = `${s.nome || ''}-${s.stadio}-${normalizedLessonResult(s.esito)}-${normalizedLessonSideFeedback(s.latoFeedback)}-${s.originale || ''}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
@@ -4995,7 +5393,7 @@ function renderSkillChipsLezione(lezione, allievoId = null) {
   return skills.length
     ? skills.map(s => {
         const feedback = [lessonResultCompactLabel(s.esito), lessonSideFeedbackCompactLabel(s.latoFeedback)].filter(Boolean).join(' · ')
-        return `<span class="st st${s.stadio}">${esc(s.nome)}${feedback ? ` · ${esc(feedback)}` : ''}</span>`
+        return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ''}${feedback ? ` · ${esc(feedback)}` : ''}</span>`
       }).join(' ')
     : '—'
 }
@@ -5053,10 +5451,10 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || []
   const viste = new Set()
   const skills = skillRows
-    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback }))
+    .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback, originale: latestSkillReplacementName(ls.dimensioni) }))
     .filter(s => !isFakieSkillName(s.nome))
     .filter(s => {
-      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}-${s.esito || ''}-${s.latoFeedback || ''}`
+      const key = `${s.nome || ''}-${s.stadio}-${s.esercizi.join('|')}-${s.esito || ''}-${s.latoFeedback || ''}-${s.originale || ''}`
       if (!s.nome || viste.has(key)) return false
       viste.add(key)
       return true
@@ -5064,7 +5462,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillsHtml = skills.length
     ? skills.map(s => {
         const feedback = [s.esito ? lessonResultLabel(s.esito) : '', s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ''].filter(Boolean).join(' · ')
-        return `<span class="st st${s.stadio}">${esc(s.nome)}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
+        return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ''}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
       }).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
   const parsedNotes = lessonParsedNotes(lezione)
@@ -5378,10 +5776,45 @@ async function loadLezione(id) {
 
 // ── Nuova lezione ─────────────────────────────────────────────────────
 
+function lezioneFormTitle(isEdit = false) {
+  if (isEdit) return 'Modifica lezione'
+  if (lezioneFormMode === 'prep') return 'Prepara lezione'
+  if (lezioneFormMode === 'postuma') return 'Lezione postuma'
+  return 'Nuova lezione'
+}
+
+function lezioneFormSaveLabel(isEdit = false) {
+  if (isEdit) return 'Salva modifiche'
+  if (lezioneFormMode === 'prep') return 'Salva aperta'
+  if (lezioneFormMode === 'postuma') return 'Salva lezione fatta'
+  return 'Salva lezione'
+}
+
+function syncLezioneFormLabels(isEdit = !!editingLezioneId) {
+  document.getElementById('lz-title').textContent = lezioneFormTitle(isEdit)
+  document.getElementById('btn-salva-lz').textContent = lezioneFormSaveLabel(isEdit)
+  document.getElementById('btn-salva-lz-top').textContent = lezioneFormSaveLabel(isEdit)
+  const prep = lezioneFormMode === 'prep' && !isEdit
+  document.getElementById('lz-check-title').hidden = prep
+  document.getElementById('lz-check-grid').hidden = prep
+  document.getElementById('lz-note-field').hidden = prep
+}
+
 async function initNuovaLezione(presetAllievoId = null) {
   editingLezioneId = null
   editingLezioneAllieviIds = []
   editingLezioneSkillRows = {}
+  lezioneFormMode = 'standard'
+  let explicitLezioneMode = false
+  if (typeof presetAllievoId === 'string' && presetAllievoId.startsWith('modo:prep')) {
+    lezioneFormMode = 'prep'
+    explicitLezioneMode = true
+    presetAllievoId = presetAllievoId.startsWith('modo:prep:') ? presetAllievoId.slice('modo:prep:'.length) : null
+  } else if (typeof presetAllievoId === 'string' && presetAllievoId.startsWith('modo:postuma')) {
+    lezioneFormMode = 'postuma'
+    explicitLezioneMode = true
+    presetAllievoId = presetAllievoId.startsWith('modo:postuma:') ? presetAllievoId.slice('modo:postuma:'.length) : null
+  }
   const editId = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('lezione:')
     ? presetAllievoId.slice('lezione:'.length)
     : null
@@ -5397,7 +5830,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-data').value    = new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
-  setLessonStatus('aperta')
+  setLessonStatus(lezioneFormMode === 'postuma' ? 'chiusa' : 'aperta')
   document.getElementById('lz-luogo-suggest').hidden = true
   document.getElementById('lz-luogo-suggest').innerHTML = ''
   document.getElementById('lz-note-speciali').value = ''
@@ -5405,6 +5838,8 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-check-non-fatto').value = ''
   document.getElementById('lz-note').value    = ''
   document.getElementById('lz-err').classList.remove('show')
+  document.getElementById('lz-prep-board').hidden = true
+  document.getElementById('lz-prep-board').innerHTML = ''
   document.getElementById('lz-skills-container').innerHTML = ''
   document.getElementById('lz-gruppo-panel').hidden = true
   document.getElementById('lz-gruppo-panel').innerHTML = ''
@@ -5412,9 +5847,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-hidden-checks').innerHTML = ''
   document.getElementById('lz-special-guest-panel').hidden = true
   document.getElementById('lz-special-guest-panel').innerHTML = ''
-  document.getElementById('lz-title').textContent = editId ? 'Modifica lezione' : 'Nuova lezione'
-  document.getElementById('btn-salva-lz').textContent = editId ? 'Salva modifiche' : 'Salva lezione'
-  document.getElementById('btn-salva-lz-top').textContent = editId ? 'Salva modifiche' : 'Salva lezione'
+  syncLezioneFormLabels(!!editId)
   document.getElementById('btn-cancella-lz').hidden = !editId
   document.getElementById('lz-back-btn').textContent = lezioneBackLabel()
 
@@ -5493,8 +5926,10 @@ async function initNuovaLezione(presetAllievoId = null) {
   else document.getElementById('lz-tipo').value = ''
   if (editId && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds)
 
-  const draft = !editId ? loadLezioneDraft() : null
+  const draft = !editId && !explicitLezioneMode ? loadLezioneDraft() : null
   const draftSelectedIds = draft ? restoreLezioneDraft(draft) : []
+  if (draft?.formMode) lezioneFormMode = draft.formMode
+  syncLezioneFormLabels(!!editId)
   renderLezionePartecipanti()
   if (editId) {
     editingLezioneAllieviIds
@@ -5539,6 +5974,7 @@ function renderLezionePartecipanti() {
   }
   lezionePresetAllievoId = null
   renderSpecialGuestPanel()
+  renderPrepBoard()
   refreshSuggerimentiLuogoSeAperti()
 }
 
@@ -5669,6 +6105,7 @@ function togglePresenzaGruppoLezione(cb) {
   refreshGroupExclusionControls()
   renderGroupIndividualControls()
   renderSpecialGuestPanel()
+  renderPrepBoard()
   refreshSuggerimentiLuogoSeAperti()
   suggerisciDurataDaUltimaLezione()
 }
@@ -5687,6 +6124,7 @@ function setLezioneAllievi(ids) {
     if (a) toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
   })
   refreshSuggerimentiLuogoSeAperti()
+  renderPrepBoard()
   suggerisciDurataDaUltimaLezione()
 }
 
@@ -5841,6 +6279,7 @@ function renderGroupSkillWorkspace() {
         <div class="lesson-skill-hint">Inserisci una volta sola le skill o gli esercizi comuni. Per ogni riga puoi escludere chi non li ha fatti.</div>
         ${groupActions}
       </div>
+      <div class="ripasso-panel" id="${ripassoPanelId(GROUP_SKILL_ROWS_KEY)}" hidden></div>
       <div id="skill-rows-${GROUP_SKILL_ROWS_KEY}"></div>
     </div>
     <div class="allievo-block">
@@ -5850,7 +6289,7 @@ function renderGroupSkillWorkspace() {
       <div id="lz-individual-skill-blocks"></div>
     </div>`
 
-  if (savedGroupRows.length) savedGroupRows.forEach(row => aggiungiSkillRow(GROUP_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, row.excludeIds || []))
+  if (savedGroupRows.length) savedGroupRows.forEach(row => aggiungiSkillRow(GROUP_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, row.excludeIds || [], { collapseExisting: false }))
 
   Object.entries(editingLezioneSkillRows)
     .filter(([id, rows]) => id !== GROUP_SKILL_ROWS_KEY && rows?.length && selectedLezioneAllieviIds().includes(id))
@@ -5900,10 +6339,11 @@ function addIndividualSkillWork(id, rows = null) {
       <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('[data-individual-id]').remove(); renderGroupIndividualControls()">✕</button>
     </div>
     <div style="margin:.25rem 0 .55rem">${renderLessonWorkButtons(id)}</div>
+    <div class="ripasso-panel" id="${ripassoPanelId(id)}" hidden></div>
     <div id="skill-rows-${id}"></div>`
   container.appendChild(div)
   const savedRows = rows || editingLezioneSkillRows[id] || []
-  if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(id, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie))
+  if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(id, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }))
 }
 
 function renderSpecialGuestPanel() {
@@ -5938,6 +6378,7 @@ function addSpecialGuestToLesson(id) {
     toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(' '))
   }
   renderSpecialGuestPanel()
+  renderPrepBoard()
   refreshSuggerimentiLuogoSeAperti()
 }
 
@@ -5977,6 +6418,7 @@ function collectLezioneDraft() {
     skillRows,
     lezioneBackAllievoId,
     lezioneBackGruppoNome,
+    formMode: lezioneFormMode,
   }
 }
 
@@ -5994,6 +6436,7 @@ function loadLezioneDraft() {
 }
 
 function restoreLezioneDraft(draft) {
+  if (draft.formMode) lezioneFormMode = draft.formMode
   document.getElementById('lz-data').value = draft.data || new Date().toISOString().slice(0,10)
   document.getElementById('lz-durata').value = draft.durata || ''
   setLessonStatus(draft.stato || 'aperta')
@@ -6015,7 +6458,7 @@ function toggleAllievo(cb, nomeCompleto) {
   if (cb.checked) {
     const allievo = allieviSelezionabiliLezione().find(x => x.id === cb.value) || allAllievi.find(x => x.id === cb.value)
     const div = document.createElement('div')
-    div.className = 'allievo-block'
+    div.className = lezioneFormMode === 'prep' ? 'allievo-block prep-skill-storage' : 'allievo-block'
     div.id = `block-${cb.value}`
     div.innerHTML = `
       <h4>${esc(nomeCompleto)}</h4>
@@ -6023,13 +6466,264 @@ function toggleAllievo(cb, nomeCompleto) {
         <div class="lesson-skill-hint">${lessonSkillHint(allievo)}</div>
         ${renderLessonWorkButtons(cb.value)}
       </div>
+      <div class="ripasso-panel" id="${ripassoPanelId(cb.value)}" hidden></div>
       <div id="skill-rows-${cb.value}"></div>`
     container.appendChild(div)
     const savedRows = editingLezioneSkillRows[cb.value] || []
-    if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(cb.value, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie))
+    if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(cb.value, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }))
   } else {
     document.getElementById(`block-${cb.value}`)?.remove()
   }
+}
+
+async function ultimaLezioneAllievo(allievoId) {
+  if (!allievoId) return null
+  let { data, error } = await sb.from('lezioni_allievi')
+    .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
+    .eq('allievo_id', allievoId)
+  if (isMissingLessonStatusError(error)) {
+    ;({ data, error } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
+      .eq('allievo_id', allievoId))
+  }
+  if (isMissingDimensioniError(error)) {
+    ;({ data, error } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, skills(nome)))')
+      .eq('allievo_id', allievoId))
+  }
+  if (error) return null
+  const lezioni = (data || [])
+    .map(row => row.lezioni)
+    .filter(Boolean)
+    .filter(l => String(l.id) !== String(editingLezioneId || ''))
+    .sort((a, b) => {
+      const aClosed = lessonStatus(a) === 'chiusa' ? 1 : 0
+      const bClosed = lessonStatus(b) === 'chiusa' ? 1 : 0
+      return bClosed - aClosed || String(b.data || '').localeCompare(String(a.data || '')) || String(b.id).localeCompare(String(a.id))
+    })
+  return lezioni[0] || null
+}
+
+async function renderPrepInsightForAllievo(allievoId) {
+  const panel = document.getElementById(`prep-insight-${allievoId}`)
+  if (!panel) return
+  const lezione = await ultimaLezioneAllievo(allievoId)
+  if (!lezione) {
+    panel.innerHTML = '<div class="lesson-prep-title">Ultima lezione</div><div class="lesson-prep-meta">Nessuna lezione precedente trovata.</div>'
+    return
+  }
+  const rows = (lezione.lezioni_skills || [])
+    .filter(row => String(row.allievo_id || allievoId) === String(allievoId))
+    .filter(row => row.skill_id && row.skills?.nome)
+  const parsed = lessonParsedNotes(lezione)
+  panel.innerHTML = `
+    <div class="lesson-prep-title">Ultima lezione</div>
+    <div class="lesson-prep-meta">${formatDateWithWeekday(lezione.data)}${lezione.luogo ? ` · ${esc(lezione.luogo)}` : ''}${lezione.note_speciali ? `<br>${esc(lezione.note_speciali)}` : ''}</div>
+    ${rows.length ? `<div class="lesson-prep-skills">${rows.map(row => `<span class="st st${row.stadio_raggiunto || 1}">${esc(row.skills.nome)} · ${esc(lessonStadioLabel(row.stadio_raggiunto || 1))}</span>`).join('')}</div>` : '<div class="ripasso-empty">Nessuna skill registrata nell ultima lezione.</div>'}
+    ${parsed.nonFatto ? `<div class="lesson-prep-meta"><strong>Da riprendere:</strong> ${esc(parsed.nonFatto)}</div>` : ''}
+  `
+  const container = document.getElementById(`skill-rows-${allievoId}`)
+  if (!container || container.querySelector('.skill-row')) return
+  rows.forEach(row => aggiungiSkillRow(allievoId, row.skill_id, row.stadio_raggiunto || 1, row.dimensioni || {}, !!row.fakie, [], { ripassoOnly: true, collapseExisting: false }))
+}
+
+function prepOwnerId() {
+  const ids = selectedLezioneAllieviIds()
+  return ids.length === 1 ? ids[0] : null
+}
+
+function prepSkillItemFromLessonRow(row) {
+  return {
+    skillId: String(row.skill_id || ''),
+    stadio: Number(row.stadio_raggiunto || 1),
+    fakie: !!row.fakie,
+    dimensioni: row.dimensioni || {},
+    skill: row.skills || allSkills.find(skill => String(skill.id) === String(row.skill_id)) || null,
+  }
+}
+
+function prepSkillButtons(ownerId, items, stage, emptyText) {
+  const usable = (items || []).filter(item => item.skillId && item.skill?.nome).slice(0, 8)
+  if (!usable.length) return `<span class="prep-empty">${esc(emptyText)}</span>`
+  return usable.map(item => `
+    <button type="button" class="prep-suggest" onclick="addPrepSkill(${jsArg(ownerId)},${jsArg(item.skillId)},${jsArg(stage)},${Number(item.stadio || 1)},${jsArg(item.dimensioni || {})},${item.fakie ? 'true' : 'false'})">
+      ${esc(item.skill.nome)}
+    </button>`).join('')
+}
+
+function buildPrepPlanDraft(allievo, lastLesson, lastItems, groups) {
+  const lines = []
+  lines.push('Piano operativo')
+  lines.push(`Allievo: ${allievoDisplayName(allievo.id)}`)
+  if (lastLesson?.data) lines.push(`Ultima lezione: ${formatDateWithWeekday(lastLesson.data)}`)
+  if (lastItems.length) lines.push(`Ripasso iniziale: ${lastItems.map(item => item.skill?.nome).filter(Boolean).join(', ')}`)
+  if (groups.work.length) lines.push(`Focus da lavorare: ${groups.work.slice(0, 3).map(item => item.skill.nome).join(', ')}`)
+  if (groups.done.length) lines.push(`Richiamo breve: ${groups.done.slice(0, 2).map(item => item.skill.nome).join(', ')}`)
+  lines.push('')
+  lines.push('Scaletta')
+  lines.push('1. Ingresso: valutare energia, equilibrio e confidenza.')
+  lines.push('2. Ripasso: riattivare l ultima lezione senza pressione.')
+  lines.push('3. Focus: un solo nodo tecnico, pulito e osservabile.')
+  lines.push('4. Uscita: mini test, gioco o percorso breve.')
+  return lines.join('\n')
+}
+
+function renderPrepSelectedSkills(ownerId = prepOwnerId()) {
+  const target = document.getElementById('prep-selected-skills')
+  if (!target || !ownerId) return
+  const rows = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)]
+    .map(row => {
+      const select = row.querySelector('.skill-select')
+      if (!select?.value) return ''
+      const name = select.selectedOptions?.[0]?.dataset?.name || select.selectedOptions?.[0]?.textContent || ''
+      const stadio = Number(row.querySelector('.stadio-toggle')?.dataset.stadio || 1)
+      return `<span class="st st${stadio}">${esc(name)} · ${esc(lessonStadioLabel(stadio))}</span>`
+    })
+    .filter(Boolean)
+  target.innerHTML = rows.length ? rows.join('') : '<span class="prep-empty">Nessuna skill nel piano. Clicca una proposta nella scaletta.</span>'
+}
+
+function syncPrepPlanToNote() {
+  const text = document.getElementById('prep-plan-text')?.value || ''
+  const note = document.getElementById('lz-note')
+  if (note) note.value = text
+}
+
+function appendPrepPlanLine(line) {
+  const textarea = document.getElementById('prep-plan-text')
+  const note = document.getElementById('lz-note')
+  const current = textarea?.value || note?.value || ''
+  const next = `${current.trim()}${current.trim() ? '\n' : ''}${line}`.trim()
+  if (textarea) textarea.value = next
+  if (note) note.value = next
+}
+
+function setPrepIntent(intent, detail) {
+  document.querySelectorAll('.prep-intent').forEach(btn => btn.classList.toggle('is-on', btn.dataset.intent === intent))
+  const special = document.getElementById('lz-note-speciali')
+  if (special) special.value = `Obiettivo: ${detail}`
+  appendPrepPlanLine(`Intenzione: ${detail}`)
+}
+
+function addPrepSkill(ownerId, skillId, stage = 'Focus', stadio = 1, dimensioni = {}, fakie = false) {
+  const skill = allSkills.find(s => String(s.id) === String(skillId))
+  if (!skill) return
+  const alreadyPlanned = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)]
+    .some(row => String(row.querySelector('.skill-select')?.value || '') === String(skill.id))
+  if (!alreadyPlanned) aggiungiSkillRow(ownerId, skill.id, stadio || 1, dimensioni || {}, !!fakie, [], { ripassoOnly: true, collapseExisting: false })
+  appendPrepPlanLine(`${stage}: ${skill.nome}`)
+  renderPrepSelectedSkills(ownerId)
+}
+
+function togglePrepRawEditor(ownerId = prepOwnerId()) {
+  const block = ownerId ? document.getElementById(`block-${ownerId}`) : null
+  if (!block) return
+  block.classList.toggle('is-visible')
+}
+
+async function renderPrepBoard() {
+  const board = document.getElementById('lz-prep-board')
+  if (!board) return
+  if (lezioneFormMode !== 'prep' || editingLezioneId) {
+    board.hidden = true
+    board.innerHTML = ''
+    return
+  }
+  const ids = selectedLezioneAllieviIds()
+  if (!ids.length) {
+    board.hidden = false
+    board.innerHTML = `<div class="card prep-board"><div class="prep-empty">Scegli un allievo: preparo una scaletta viva partendo dal suo ultimo lavoro.</div></div>`
+    return
+  }
+  if (ids.length !== 1) {
+    board.hidden = false
+    board.innerHTML = `<div class="card prep-board"><div class="prep-empty">La preparazione intelligente per ora ragiona su un allievo alla volta. Per i gruppi resta disponibile la lezione classica/postuma.</div></div>`
+    return
+  }
+
+  const ownerId = ids[0]
+  const allievo = allievoById(ownerId)
+  if (!allievo) return
+  const lastLesson = await ultimaLezioneAllievo(ownerId)
+  if (prepOwnerId() !== ownerId || lezioneFormMode !== 'prep') return
+  const lastItems = (lastLesson?.lezioni_skills || [])
+    .filter(row => String(row.allievo_id || ownerId) === String(ownerId))
+    .map(prepSkillItemFromLessonRow)
+    .filter(item => item.skillId && item.skill)
+  const groups = workedSkillGroupsForOwner(ownerId)
+  const note = document.getElementById('lz-note')
+  if (note && !note.value.trim()) note.value = buildPrepPlanDraft(allievo, lastLesson, lastItems, groups)
+
+  const rowsContainer = document.getElementById(`skill-rows-${ownerId}`)
+  if (!editingLezioneId && rowsContainer && !rowsContainer.querySelector('.skill-row') && lastItems.length) {
+    lastItems.forEach(item => aggiungiSkillRow(ownerId, item.skillId, item.stadio || 1, item.dimensioni || {}, item.fakie, [], { ripassoOnly: true, collapseExisting: false }))
+  }
+
+  const parsed = lessonParsedNotes(lastLesson || {})
+  const workItems = groups.work.map(item => ({ ...item, stadio: item.stadio || 1 }))
+  const doneItems = groups.done.map(item => ({ ...item, stadio: 1 }))
+  board.hidden = false
+  board.innerHTML = `
+    <div class="prep-board">
+      <div class="prep-hero">
+        <div class="prep-hero-top">
+          <div>
+            <div class="prep-kicker">Prepara senza fretta</div>
+            <div class="prep-headline">${esc(allievoDisplayName(ownerId))}</div>
+            <div class="prep-subline">Questa non e una registrazione: e una scaletta aperta. La chiuderai dopo, quando saprai cosa e successo davvero.</div>
+          </div>
+          <div class="prep-save-tag">salva come aperta</div>
+        </div>
+        <div class="prep-radar">
+          <div class="prep-radar-card"><strong>${lastLesson?.data ? formatDate(lastLesson.data) : '—'}</strong><span>ultima lezione</span><div class="prep-empty">${lastLesson?.luogo ? esc(lastLesson.luogo) : 'nessun luogo'}</div></div>
+          <div class="prep-radar-card"><strong>${workItems.length}</strong><span>richiedono lavoro</span><div class="prep-empty">${workItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'nessuna urgenza'}</div></div>
+          <div class="prep-radar-card"><strong>${doneItems.length}</strong><span>gia completate</span><div class="prep-empty">${doneItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'ancora niente'}</div></div>
+          <div class="prep-radar-card"><strong>${parsed.nonFatto ? 'si' : 'no'}</strong><span>da riprendere</span><div class="prep-empty">${parsed.nonFatto ? esc(parsed.nonFatto).slice(0, 80) : 'nessuna nota'}</div></div>
+        </div>
+        <div class="prep-intents">
+          <button type="button" class="prep-intent" data-intent="consolidare" onclick="setPrepIntent('consolidare','consolidare una skill gia accesa')">Consolidare</button>
+          <button type="button" class="prep-intent" data-intent="sbloccare" onclick="setPrepIntent('sbloccare','sbloccare un punto che resiste')">Sbloccare</button>
+          <button type="button" class="prep-intent" data-intent="fiducia" onclick="setPrepIntent('fiducia','costruire fiducia e fluidita')">Fiducia</button>
+          <button type="button" class="prep-intent" data-intent="testare" onclick="setPrepIntent('testare','testare se il gesto regge in autonomia')">Testare</button>
+        </div>
+      </div>
+
+      <div class="prep-stage-grid">
+        <div class="prep-stage">
+          <h4>1. Riaccendi</h4>
+          <p>Parti da qualcosa che il corpo riconosce. L ultima lezione diventa ingresso, non verifica.</p>
+          <div class="prep-stage-actions">${prepSkillButtons(ownerId, lastItems, 'Riaccendi', 'Nessuna skill nell ultima lezione.')}</div>
+        </div>
+        <div class="prep-stage">
+          <h4>2. Nodo tecnico</h4>
+          <p>Una cosa sola da lavorare bene. Se tutto e importante, niente e davvero osservabile.</p>
+          <div class="prep-stage-actions">${prepSkillButtons(ownerId, workItems, 'Nodo tecnico', 'Nessuna skill aperta nei progressi.')}</div>
+        </div>
+        <div class="prep-stage">
+          <h4>3. Variazione</h4>
+          <p>Cambia superficie, lato, ritmo o piano. Qui capisci se la skill e solida.</p>
+          <div class="prep-stage-actions">${prepSkillButtons(ownerId, [...workItems, ...lastItems], 'Variazione', 'Aggiungi prima un ripasso o una skill.')}</div>
+        </div>
+        <div class="prep-stage">
+          <h4>4. Uscita</h4>
+          <p>Chiudi con qualcosa che lascia una sensazione chiara: mini percorso, gioco, test breve.</p>
+          <div class="prep-stage-actions">${prepSkillButtons(ownerId, doneItems, 'Uscita', 'Nessuna completata da usare come uscita sicura.')}</div>
+        </div>
+      </div>
+
+      <div class="card prep-plan-grid">
+        <div class="field prep-plan-note" style="margin:0">
+          <label>Piano operativo</label>
+          <textarea id="prep-plan-text" oninput="syncPrepPlanToNote()">${esc(note?.value || '')}</textarea>
+        </div>
+        <div>
+          <div class="lesson-prep-title" style="margin-bottom:.45rem">Dentro la lezione aperta</div>
+          <div class="prep-selected-list" id="prep-selected-skills"></div>
+          <button type="button" class="btn btn-outline btn-sm prep-raw-toggle" style="margin-top:.65rem" onclick="togglePrepRawEditor(${jsArg(ownerId)})">Editor dettagli</button>
+        </div>
+      </div>
+    </div>`
+  renderPrepSelectedSkills(ownerId)
 }
 
 function sortedSkillsForLesson() {
@@ -6052,6 +6746,7 @@ function renderLessonWorkButtons(allieviId) {
   return `
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
       <button type="button" class="btn btn-outline btn-sm" onclick="aggiungiSkillRow(${ownerArg})">+ Nuova skill</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="toggleRipassoPanel(${ownerArg})">Ripasso</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo esercizio')">+ Nuovo esercizio</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo percorso')">+ Nuovo percorso</button>
     </div>`
@@ -6071,6 +6766,97 @@ function progressMapForAllievo(allievoId) {
     if (row.allievo_id === allievoId) map.set(row.skill_id, Number(row.stadio || 0))
   })
   return map
+}
+
+function ripassoSkillIdsForOwner(ownerId) {
+  const ownerIds = ownerId === GROUP_SKILL_ROWS_KEY ? selectedLezioneAllieviIds() : [ownerId]
+  const skillIds = new Set()
+  ownerIds.filter(Boolean).forEach(allievoId => {
+    progressMapForAllievo(allievoId).forEach((stadio, skillId) => {
+      if (Number(stadio || 0) > 0) skillIds.add(String(skillId))
+    })
+  })
+  return skillIds
+}
+
+function ripassoPanelId(ownerId) {
+  return `ripasso-panel-${String(ownerId).replace(/[^a-zA-Z0-9_-]/g, '_')}`
+}
+
+function workedSkillGroupsForOwner(ownerId) {
+  const ownerIds = ownerId === GROUP_SKILL_ROWS_KEY ? selectedLezioneAllieviIds() : [ownerId]
+  const bySkill = new Map()
+  ownerIds.filter(Boolean).forEach(allievoId => {
+    progressMapForAllievo(allievoId).forEach((stadio, skillId) => {
+      if (!Number(stadio || 0)) return
+      const key = String(skillId)
+      const prev = bySkill.get(key) || { skillId: key, stadio: 0 }
+      prev.stadio = Math.max(prev.stadio, Number(stadio || 0))
+      bySkill.set(key, prev)
+    })
+  })
+  const list = [...bySkill.values()]
+    .map(item => ({ ...item, skill: allSkills.find(skill => String(skill.id) === item.skillId) }))
+    .filter(item => item.skill)
+    .sort((a, b) => a.stadio - b.stadio || String(a.skill.nome || '').localeCompare(String(b.skill.nome || ''), 'it', { sensitivity: 'base' }))
+  return {
+    work: list.filter(item => item.stadio < 3),
+    done: list.filter(item => item.stadio >= 3),
+  }
+}
+
+function renderRipassoGroup(ownerId, title, rows) {
+  return `<div class="ripasso-group">
+    <div class="ripasso-title">${esc(title)}</div>
+    <div class="lesson-skill-suggestions">
+      ${rows.length ? rows.map(item => `<button type="button" class="skill-suggest" onclick="aggiungiRipassoSkill(${jsArg(ownerId)},${jsArg(item.skillId)})">${esc(item.skill.nome)} · ${esc(lessonStadioLabel(item.stadio))}</button>`).join('') : '<span class="ripasso-empty">Nessuna skill in questo gruppo.</span>'}
+    </div>
+  </div>`
+}
+
+function toggleRipassoPanel(ownerId) {
+  const panel = document.getElementById(ripassoPanelId(ownerId))
+  if (!panel) {
+    aggiungiRipassoRow(ownerId)
+    return
+  }
+  if (!panel.hidden) {
+    panel.hidden = true
+    return
+  }
+  const groups = workedSkillGroupsForOwner(ownerId)
+  if (!groups.work.length && !groups.done.length) {
+    panel.innerHTML = '<div class="ripasso-empty">Nessuna skill gia lavorata per questa selezione.</div>'
+  } else {
+    panel.innerHTML = [
+      renderRipassoGroup(ownerId, 'Richiedono lavoro', groups.work),
+      renderRipassoGroup(ownerId, 'Gia completate', groups.done),
+    ].join('')
+  }
+  panel.hidden = false
+}
+
+function aggiungiRipassoSkill(ownerId, skillId, options = {}) {
+  const skill = allSkills.find(s => String(s.id) === String(skillId))
+  if (!skill) return
+  const previous = workedSkillGroupsForOwner(ownerId)
+  const item = [...previous.work, ...previous.done].find(row => row.skillId === String(skillId))
+  aggiungiSkillRow(ownerId, skill.id, options.stadio || item?.stadio || 1, options.dimensioni || {}, !!options.fakie, [], { ripassoOnly: true, collapseExisting: options.collapseExisting })
+}
+
+function aggiungiRipassoRow(ownerId) {
+  const workedSkillIds = ripassoSkillIdsForOwner(ownerId)
+  const err = document.getElementById('lz-err')
+  if (!workedSkillIds.size) {
+    if (err) {
+      err.textContent = 'Ripasso: nessuna skill gia lavorata per questa selezione.'
+      err.classList.add('show')
+      err.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    return
+  }
+  if (err) err.classList.remove('show')
+  aggiungiSkillRow(ownerId, '', 1, {}, false, [], { ripassoOnly: true })
 }
 
 function fakieProgressMapForAllievo(allievoOrId) {
@@ -6248,10 +7034,12 @@ function renderLessonBranchOptions(selectedBranch = '') {
   return `<option value="">Tutti i rami</option>${branches.map(branch => `<option value="${esc(branch)}" ${branch === selectedBranch ? 'selected' : ''}>${esc(branch)}</option>`).join('')}`
 }
 
-function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = '') {
+function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = '', options = {}) {
   const q = normalizeText(filter)
   const selectedBranch = branch || ''
+  const allowedSkillIds = options.allowedSkillIds || null
   const list = sortedSkillsForLesson().filter(skill => {
+    if (allowedSkillIds && !allowedSkillIds.has(String(skill.id)) && String(skill.id) !== String(selectedSkillId)) return false
     if (selectedBranch && (skill.ramo || 'Altro') !== selectedBranch) return false
     if (!q) return true
     return normalizeText(skill.nome).includes(q)
@@ -6273,7 +7061,8 @@ function filterSkillRow(input) {
   if (!select) return
   const selected = select.value
   const branch = row.querySelector('.skill-branch')?.value || ''
-  select.innerHTML = `<option value="">— Skill —</option>${renderLessonSkillOptions(selected, '', branch)}`
+  const allowedSkillIds = row.dataset.ripassoOnly === '1' ? ripassoSkillIdsForOwner(row.dataset.allieviId) : null
+  select.innerHTML = `<option value="">— Skill —</option>${renderLessonSkillOptions(selected, '', branch, { allowedSkillIds })}`
   if ([...select.options].some(option => option.value === selected)) select.value = selected
   compactSelectedSkillOption(select)
 }
@@ -6286,9 +7075,27 @@ function lessonStadioLabel(stadio) {
   }[stadio] || 'In lavorazione'
 }
 
+const LESSON_STADIO_COLORS = {
+  1: { border: 'rgba(251,191,36,.5)', color: '#facc15', background: 'rgba(251,191,36,.08)' },
+  2: { border: 'rgba(56,189,248,.55)', color: '#67e8f9', background: 'rgba(56,189,248,.1)' },
+  3: { border: 'rgba(52,211,153,.65)', color: 'var(--success)', background: 'rgba(52,211,153,.12)' },
+}
+
+function lessonStadioInlineStyle(stadio) {
+  const colors = LESSON_STADIO_COLORS[Number(stadio) || 1] || LESSON_STADIO_COLORS[1]
+  return `border-color:${colors.border} !important;color:${colors.color} !important;background-color:${colors.background} !important`
+}
+
+function applyLessonStadioVisual(btn, stadio) {
+  const colors = LESSON_STADIO_COLORS[Number(stadio) || 1] || LESSON_STADIO_COLORS[1]
+  btn.style.setProperty('border-color', colors.border, 'important')
+  btn.style.setProperty('color', colors.color, 'important')
+  btn.style.setProperty('background-color', colors.background, 'important')
+}
+
 function renderLessonStadioToggle(stadio = 1) {
   const value = Number(stadio) || 1
-  return `<button type="button" class="btn btn-outline btn-sm stadio-toggle st st${value}" data-stadio="${value}" onclick="toggleLessonStadio(this)">${lessonStadioLabel(value)}</button>`
+  return `<button type="button" class="btn btn-outline btn-sm stadio-toggle st st${value}" data-stadio="${value}" style="${lessonStadioInlineStyle(value)}" onclick="toggleLessonStadio(this)">${lessonStadioLabel(value)}</button>`
 }
 
 function toggleLessonStadio(btn) {
@@ -6297,6 +7104,7 @@ function toggleLessonStadio(btn) {
   btn.textContent = lessonStadioLabel(next)
   btn.classList.remove('st1', 'st2', 'st3')
   btn.classList.add(`st${next}`)
+  applyLessonStadioVisual(btn, next)
 }
 
 const LESSON_RESULT_OPTIONS = [
@@ -6307,6 +7115,8 @@ const LESSON_RESULT_OPTIONS = [
 
 const LESSON_SIDE_FEEDBACK_OPTIONS = [
   { value: 'bilaterale', label: 'Bilaterale', className: '' },
+  { value: 'meglio_sx', label: 'Meglio sx', className: 'side-good' },
+  { value: 'meglio_dx', label: 'Meglio dx', className: 'side-good' },
   { value: 'male_sx', label: 'Male sx', className: 'side-issue' },
   { value: 'male_dx', label: 'Male dx', className: 'side-issue' },
 ]
@@ -6326,6 +7136,22 @@ function lessonOption(options, value) {
 function renderLessonResultToggle(value = 'bene') {
   const option = lessonOption(LESSON_RESULT_OPTIONS, normalizedLessonResult(value))
   return `<button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className}" data-result="${esc(option.value)}" onclick="toggleLessonResult(this)">${esc(option.label)}</button>`
+}
+
+function lessonFormIsOpen() {
+  return document.getElementById('lz-stato')?.value !== 'chiusa'
+}
+
+function renderLessonFeedbackControls(result = 'bene', sideFeedback = 'bilaterale') {
+  return `<div class="lesson-feedback-controls" ${lessonFormIsOpen() ? 'hidden' : ''}>
+    ${renderLessonResultToggle(result)}
+    ${renderLessonSideFeedbackToggle(sideFeedback)}
+  </div>`
+}
+
+function syncLessonFeedbackVisibility() {
+  const hidden = lessonFormIsOpen()
+  document.querySelectorAll('.lesson-feedback-controls').forEach(el => { el.hidden = hidden })
 }
 
 function toggleLessonResult(btn) {
@@ -6354,10 +7180,12 @@ function toggleLessonSideFeedback(btn) {
 }
 
 function skillRowResult(row) {
+  if (row?.querySelector('.lesson-feedback-controls')?.hidden) return ''
   return normalizedLessonResult(row?.querySelector('.lesson-result-toggle')?.dataset.result)
 }
 
 function skillRowSideFeedback(row) {
+  if (row?.querySelector('.lesson-feedback-controls')?.hidden) return ''
   return normalizedLessonSideFeedback(row?.querySelector('.lesson-side-toggle')?.dataset.sideFeedback)
 }
 
@@ -6386,7 +7214,7 @@ function skillRowFakie(row) {
 
 const SKILL_DIMENSION_OPTIONS = {
   lato: ['bilaterale', 'dx', 'sx'],
-  superficie: ['marmo', 'liscio', 'ruvida', 'rovinata', 'crepe/buchi', 'fogliame', 'bagnato'],
+  superficie: ['marmo', 'liscio', 'ruvida', 'rovinata', 'crepe/buchi', 'fogliame', 'bagnato', 'prato'],
   piano: ['piano', 'rialzo', 'discesa', 'salita', 'bank discesa', 'bank salita', 'rampa discesa', 'rampa salita', 'pump down', 'pump up'],
   velocita: ['lenta', 'velocità adeguata', 'veloce'],
   assistenza: ['autonomo', 'assistito'],
@@ -6405,6 +7233,7 @@ const SKILL_DIMENSION_LABELS = {
 const LESSON_EXERCISE_OPTIONS = [
   'slalom',
   'slalom largo',
+  'conetti a 8',
   'curva a 1/4 cerchio',
   'curva a 1/2 cerchio',
   'curva a cerchio',
@@ -6499,8 +7328,10 @@ function skillRowExercises(row) {
 
 function skillRowDimensions(row) {
   const dimensioni = {}
-  dimensioni.esito = skillRowResult(row)
-  dimensioni.lato_feedback = skillRowSideFeedback(row)
+  const esito = skillRowResult(row)
+  const latoFeedback = skillRowSideFeedback(row)
+  if (esito) dimensioni.esito = esito
+  if (latoFeedback) dimensioni.lato_feedback = latoFeedback
   if (row.querySelector('.dimensions-toggle')?.dataset.dimensions === 'on') {
     row.querySelectorAll('.skill-dimension[data-dimension]').forEach(select => {
       if (select.value) dimensioni[select.dataset.dimension] = select.value
@@ -6575,19 +7406,54 @@ function ensureEmptySkillRow(allieviId) {
 
 function onLessonSkillSelected(select) {
   compactSelectedSkillOption(select)
+  renderPrepSelectedSkills(select.closest('.skill-row')?.dataset.allieviId)
 }
 
 function removeSkillRow(btn) {
-  btn.closest('.skill-row')?.remove()
+  const row = btn.closest('.skill-row')
+  const ownerId = row?.dataset.allieviId
+  row?.remove()
+  renderPrepSelectedSkills(ownerId)
 }
 
-function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, selectedDimensioni = {}, selectedFakie = false, selectedExcludedIds = []) {
+function skillRowSummaryText(row) {
+  const select = row?.querySelector('.skill-select')
+  const skillName = select?.selectedOptions?.[0]?.dataset?.name || select?.selectedOptions?.[0]?.textContent || 'Skill'
+  const stadio = parseInt(row?.querySelector('.stadio-toggle')?.dataset.stadio || '1', 10) || 1
+  const bits = [skillName.trim() || 'Skill', lessonStadioLabel(stadio)]
+  const exercises = skillRowExercises(row)
+  if (exercises.length) bits.push(`${exercises.length} esercizi`)
+  if (row?.querySelector('.dimensions-toggle')?.dataset.dimensions === 'on') bits.push('dimensioni')
+  if (skillRowFakie(row)) bits.push('fakie')
+  return bits.join(' · ')
+}
+
+function collapseSkillRow(row) {
+  if (!row || !row.querySelector('.skill-select')?.value) return
+  const summary = row.querySelector('.skill-row-summary')
+  if (summary) summary.textContent = skillRowSummaryText(row)
+  row.classList.add('is-collapsed')
+}
+
+function expandSkillRow(btn) {
+  btn.closest('.skill-row')?.classList.remove('is-collapsed')
+}
+
+function collapseExistingSkillRows(container) {
+  container?.querySelectorAll('.skill-row').forEach(row => collapseSkillRow(row))
+}
+
+function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, selectedDimensioni = {}, selectedFakie = false, selectedExcludedIds = [], options = {}) {
   const container = document.getElementById(`skill-rows-${allieviId}`)
+  if (!container) return
+  if (options.collapseExisting !== false) collapseExistingSkillRows(container)
   const row = document.createElement('div')
   row.className = 'skill-row'
   row.dataset.allieviId = allieviId
-  const selectedSkill = selectedSkillId ? allSkills.find(skill => skill.id === selectedSkillId) : null
+  row.dataset.ripassoOnly = options.ripassoOnly ? '1' : '0'
+  const selectedSkill = selectedSkillId ? allSkills.find(skill => String(skill.id) === String(selectedSkillId)) : null
   const selectedBranch = selectedSkill?.ramo || ''
+  const allowedSkillIds = options.ripassoOnly ? ripassoSkillIdsForOwner(allieviId) : null
   const fakieActive = !!selectedFakie || selectedDimensioni?.direzione === 'fakie'
   const dimensionsActive = hasSkillDimensions(selectedDimensioni)
   const selectedExercises = normalizeExerciseList(selectedDimensioni?.esercizi)
@@ -6596,18 +7462,18 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
   const selectedSideFeedback = normalizedLessonSideFeedback(selectedDimensioni?.lato_feedback)
 
   row.innerHTML = `
+    <button type="button" class="btn btn-outline btn-sm skill-row-summary" onclick="expandSkillRow(this)">Skill</button>
     <select class="skill-branch" onchange="filterSkillRow(this)">
       ${renderLessonBranchOptions(selectedBranch)}
     </select>
     <select class="skill-select" onchange="onLessonSkillSelected(this)">
       <option value="">— Skill —</option>
-      ${renderLessonSkillOptions(selectedSkillId, '', selectedBranch)}
+      ${renderLessonSkillOptions(selectedSkillId, '', selectedBranch, { allowedSkillIds })}
     </select>
     ${renderFakieToggle(fakieActive)}
     ${renderDimensionToggle(dimensionsActive)}
     ${renderExerciseToggle(exercisesActive, selectedExercises.length)}
-    ${renderLessonResultToggle(selectedResult)}
-    ${renderLessonSideFeedbackToggle(selectedSideFeedback)}
+    ${renderLessonFeedbackControls(selectedResult, selectedSideFeedback)}
     ${renderLessonStadioToggle(selectedStadio)}
     <button class="btn btn-ghost btn-sm" onclick="removeSkillRow(this)">✕</button>
     ${allieviId === GROUP_SKILL_ROWS_KEY ? renderGroupExclusionChips(selectedExcludedIds) : ''}
@@ -6634,6 +7500,57 @@ function sanitizeSnapshotRow(row) {
   delete copy.created_at
   delete copy.updated_at
   return copy
+}
+
+function historySetSignature(values = []) {
+  return [...new Set(values.map(valueForHistory))].sort().join('|')
+}
+
+function skillHistorySignature(row = {}) {
+  return [
+    row.allievo_id || '',
+    row.skill_id || '',
+    Number(row.stadio_raggiunto || row.stadio || 0),
+    row.fakie ? 'fakie' : 'frontale',
+    valueForHistory(row.dimensioni || {})
+  ].join('::')
+}
+
+function pendingSkillHistorySignatures(pendingSkillsByAllievo) {
+  const rows = []
+  pendingSkillsByAllievo.forEach((skillMap, allievoId) => {
+    skillMap.forEach(item => rows.push({
+      allievo_id: allievoId,
+      skill_id: item.skillId,
+      stadio_raggiunto: item.stadio,
+      fakie: item.fakie,
+      dimensioni: item.dimensioni
+    }))
+  })
+  return rows.map(skillHistorySignature)
+}
+
+function lessonHistoryChanges(originalLesson, payloadLezione, relationSnapshot, checkedAllievi, pendingSkillsByAllievo) {
+  const changes = historyChangedFields(originalLesson || {}, payloadLezione, {
+    data: 'data',
+    durata_min: 'durata',
+    tipo: 'tipo',
+    luogo: 'luogo',
+    note_speciali: 'note speciali',
+    stato: 'stato',
+    check_bene: 'cosa e andato bene',
+    check_non_fatto: 'non fatto / da riprendere',
+    note: 'note'
+  })
+  if (relationSnapshot) {
+    const beforeAllievi = historySetSignature((relationSnapshot.allievi || []).map(row => row.allievo_id))
+    const afterAllievi = historySetSignature((checkedAllievi || []).map(cb => cb.value))
+    if (beforeAllievi !== afterAllievi) changes.push('allievi')
+    const beforeSkills = historySetSignature((relationSnapshot.skills || []).map(skillHistorySignature))
+    const afterSkills = historySetSignature(pendingSkillHistorySignatures(pendingSkillsByAllievo))
+    if (beforeSkills !== afterSkills) changes.push('skill lavorate')
+  }
+  return changes
 }
 
 async function ripristinaRelazioniLezione(lezioneId, snapshot) {
@@ -6673,13 +7590,15 @@ async function salvaLezione() {
   if (!checkedAllievi.length) { errEl.textContent = 'Seleziona almeno un allievo.'; errEl.classList.add('show'); return }
 
   const buttons = [document.getElementById('btn-salva-lz'), document.getElementById('btn-salva-lz-top')].filter(Boolean)
-  const saveText = editingLezioneId ? 'Salva modifiche' : 'Salva lezione'
+  const saveText = lezioneFormSaveLabel(!!editingLezioneId)
   buttons.forEach(btn => { btn.disabled = true; btn.textContent = 'Salvataggio…' })
 
   const lezioneInModifica = editingLezioneId
+  const originalLessonForHistory = lezioneInModifica ? ((lezioniCache || []).find(l => String(l.id) === String(lezioneInModifica)) || {}) : {}
   let lz = null
   let snapshot = null
   let relazioniSostituite = false
+  let changedFieldsForHistory = []
 
   try {
     if (lezioneInModifica) snapshot = await snapshotLezioneRelazioni(lezioneInModifica)
@@ -6753,11 +7672,13 @@ async function salvaLezione() {
         for (const item of skillMap.values()) {
           const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni })
           if (skillError) throw skillError
-      try {
-            await aggiornaProgressiDaLezione(aid, item.skillId, item.stadio, { fakie: item.fakie })
-      } catch (progressError) {
-        console.warn('Progressi non aggiornati dopo salvataggio lezione', progressError)
-      }
+          if (stato === 'chiusa') {
+            try {
+              await aggiornaProgressiDaLezione(aid, item.skillId, item.stadio, { fakie: item.fakie })
+            } catch (progressError) {
+              console.warn('Progressi non aggiornati dopo salvataggio lezione', progressError)
+            }
+          }
         }
       }
     }
@@ -6791,8 +7712,13 @@ async function salvaLezione() {
         }
       }
     }
+    if (lezioneInModifica) {
+      changedFieldsForHistory = lessonHistoryChanges(originalLessonForHistory, payloadLezione, snapshot, checkedAllievi, pendingSkillsByAllievo)
+    }
     await flushSkills()
-    logModificaLocale('lezione', lz.id, lezioneInModifica ? `Aggiornata lezione (${stato})` : `Creata lezione (${stato})`)
+    logModificaLocale('lezione', lz.id, lezioneInModifica
+      ? historyDescription(`Aggiornata lezione (${stato})`, changedFieldsForHistory)
+      : `Creata lezione (${stato}): ${checkedAllievi.length} allievi, ${pendingSkillHistorySignatures(pendingSkillsByAllievo).length} skill`)
 
     editingLezioneId = null
     editingLezioneAllieviIds = []
