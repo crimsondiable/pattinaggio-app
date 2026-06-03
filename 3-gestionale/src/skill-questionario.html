@@ -448,10 +448,15 @@
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
-          storageKey: 'blading-questionario-auth'
+          storageKey: 'blading-manager-auth'
         }
       })
     } catch (e) { setGlobal('SDK Supabase non disponibile: ' + e.message, 'msg-err') }
+
+    function localDateIso(date = new Date()) {
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      return local.toISOString().slice(0, 10)
+    }
 
     function esc(value) {
       return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -1572,7 +1577,7 @@
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `skill-definizioni-${new Date().toISOString().slice(0,10)}.json`
+      a.download = `skill-definizioni-${localDateIso()}.json`
       a.click()
       URL.revokeObjectURL(url)
     }
