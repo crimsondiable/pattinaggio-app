@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blading Manager Big Ball of Mud</title>
+  <script>
+    if (window.location.protocol === 'file:') {
+      window.location.replace('http://localhost:8027/' + (window.location.hash || ''))
+    }
+  </script>
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -79,6 +86,9 @@
     /* ── Header ── */
     header { background: rgba(8,17,22,.9); border-bottom: 1px solid var(--bordo); padding: .55rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 54px; position: sticky; top: 0; z-index: 100; box-shadow: 0 12px 30px rgba(0,0,0,.22); backdrop-filter: blur(14px); }
     .logo { font-weight: 700; color: var(--testo); font-size: 1.05rem; }
+    .brand-logo { border-radius: 4px; vertical-align: middle; }
+    .login-brand-logo { height: 2rem; margin-right: .4rem; }
+    .header-brand-logo { height: 1.6rem; margin-right: .35rem; }
     .logo img { border-radius: 4px; }
     nav { display: flex; gap: .2rem; margin-left: auto; }
     nav button { background: none; border: none; padding: .38rem .75rem; border-radius: var(--r); font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; }
@@ -98,6 +108,7 @@
       border: 1px solid var(--bordo); background: var(--panel-soft); color: var(--testo);
       font-size: .82rem; font-weight: 600;
     }
+    .god-tools { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; }
     @media (max-width: 760px) {
       header { flex-wrap: wrap; }
       nav { margin-left: 0; }
@@ -310,6 +321,10 @@
     .map-location-point.type-pista .map-point-core { fill: #67e8f9; }
     .map-location-point.type-skatepark .map-point-core { fill: #facc15; }
     .map-location-point.type-gym .map-point-core { fill: #f0abfc; }
+    .map-location-point.type-park .map-point-core { fill: #86efac; }
+    .map-location-point.type-road .map-point-core { fill: #c4b5fd; }
+    .map-location-point.type-square .map-point-core { fill: #fda4af; }
+    .map-location-point.type-basket .map-point-core { fill: #fdba74; }
     .map-location-point.is-selected .map-point-halo { fill: rgba(250,204,21,.18); stroke: rgba(250,204,21,.72); }
     .map-location-point.is-selected .map-point-core { fill: #facc15; }
     .map-location-label { paint-order: stroke; stroke: rgba(4,16,21,.9); stroke-width: 3.2; fill: var(--testo); font-size: 13px; font-weight: 850; pointer-events: none; opacity: 0; transition: opacity .12s; }
@@ -719,18 +734,24 @@
     .sn-name { font-size: .79rem; }
     .skill-tree-legend { font-size: .73rem; }
   </style>
+  <link rel="stylesheet" href="./route-builder/routeBuilder.css">
+  <style>
+    body.route-builder-active #screen-app main { width: 100%; max-width: none; padding-inline: .75rem; }
+    #view-percorsi { width: 100%; max-width: none; margin: 0; transform: none; }
+    #view-percorsi .route-builder-page { width: min(1280px, 100%); margin: 0 auto; }
+  </style>
 </head>
 <body data-design-system="ds.glassy">
 
 <!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
 <div id="screen-login">
   <div class="login-card">
-    <h1><img src="./logo.png" alt="" style="height:2rem;vertical-align:middle;margin-right:.4rem"> Blading Manager Big Ball of Mud</h1>
+    <h1><img src="./logo.png" alt="" class="brand-logo login-brand-logo"> Blading Manager Big Ball of Mud</h1>
     <p>Accedi per gestire i tuoi allievi</p>
     <div id="login-err" class="msg msg-err"></div>
     <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="la@tuaemail.it"></div>
     <div class="field"><label>Password</label><input type="password" id="login-pw" placeholder="••••••••"></div>
-    <button class="btn btn-primary btn-full" onclick="doLogin()">Accedi</button>
+    <button class="btn btn-primary btn-full" onclick="return loginSubmit(event)">Accedi</button>
   </div>
 </div>
 
@@ -738,10 +759,11 @@
 <div id="screen-app" hidden>
 
   <header>
-    <span class="logo" onclick="showView('allievi')" style="cursor:pointer"><img src="./logo.png" alt="" style="height:1.6rem;vertical-align:middle;margin-right:.35rem"> Blading Manager Big Ball of Mud</span>
+    <span class="logo" onclick="showView('allievi')" style="cursor:pointer"><img src="./logo.png" alt="" class="brand-logo header-brand-logo"> Blading Manager Big Ball of Mud</span>
     <nav>
       <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
       <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
+      <button id="nav-percorsi" onclick="showView('percorsi')">Percorsi</button>
       <button id="nav-calendar" class="nav-icon-btn" onclick="showCalendarFromHeader()" title="Calendario" aria-label="Calendario">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
@@ -776,6 +798,11 @@
       <strong>GOD mode</strong>
       <span>Vista account</span>
       <select id="god-account-select" onchange="setGodScope(this.value)"></select>
+      <div class="god-tools">
+        <button type="button" class="btn btn-outline btn-sm" onclick="showView('app-notes')">Note app</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="showView('tuning')">Tuning</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="location.href='./skill-questionario.html'">Questionario</button>
+      </div>
       <span id="god-note">Mostra solo dati leggibili dall'account corrente.</span>
     </div>
   </header>
@@ -882,6 +909,11 @@
       <div id="lezione-content"><div class="loading">Caricamento…</div></div>
     </section>
 
+    <!-- VIEW: percorsi / campo esercizi -->
+    <section id="view-percorsi" hidden>
+      <div id="route-builder-root"><div class="loading">Caricamento percorsi…</div></div>
+    </section>
+
     <!-- VIEW: nuova lezione -->
     <section id="view-nuova-lezione" hidden>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
@@ -913,6 +945,7 @@
             <input type="text" id="lz-luogo" placeholder="es. Pista centrale" autocomplete="off" onfocus="mostraSuggerimentiLuogo()" oninput="mostraSuggerimentiLuogo()" onblur="nascondiSuggerimentiLuogoSoon()">
             <div id="lz-luogo-suggest" class="place-suggest-panel" hidden></div>
           </div>
+          <div class="field"><label>Meteo</label><input type="text" id="lz-meteo" placeholder="Sole, vento, fondo bagnato..."></div>
         </div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
@@ -980,6 +1013,13 @@
             </div>
             <div class="field"><label>Indirizzo / zona</label><input type="text" id="na-indirizzo" placeholder="Es. Milano Nord"></div>
             <div class="field"><label>Casa</label><input type="text" id="na-casa" placeholder="Es. via e civico casa"></div>
+            <div class="field">
+              <label>Condivisione indirizzo</label>
+              <label style="display:flex;align-items:center;gap:.5rem;min-height:2.25rem;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="na-indirizzo-condiviso">
+                Visibile ai maestri condivisi
+              </label>
+            </div>
             <div class="field"><label>Contesto culturale</label><input type="text" id="na-cultura" placeholder="Es. bilingue, straniero…"></div>
           </div>
 
@@ -1053,6 +1093,9 @@
             <div class="dot-row"><span class="dot-row-label">Teorico</span><div class="dots-group" id="dot-teorico"><span class="dot" data-v="1"></span><span class="dot" data-v="2"></span><span class="dot" data-v="3"></span></div></div>
             <div class="dot-row"><span class="dot-row-label">Pratico</span><div class="dots-group" id="dot-pratico"><span class="dot" data-v="1"></span><span class="dot" data-v="2"></span><span class="dot" data-v="3"></span></div></div>
           </div>
+
+          <p class="form-sec">Salute e attenzioni</p>
+          <div class="field"><textarea id="na-note-salute" placeholder="Allergie, diabete, cuore, articolazioni, asimmetrie o altre attenzioni importanti…" style="min-height:76px"></textarea></div>
 
           <p class="form-sec">Note generali</p>
           <div class="field"><textarea id="na-note" placeholder="Carattere, dinamiche familiari, situazioni particolari…" style="min-height:80px"></textarea></div>
@@ -1382,14 +1425,86 @@
 </div>
 
 <!-- ════════════════════════════════ JS ════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3/dist/fetch.umd.js"></script>
+<script>
+(function () {
+  var SUPA_URL_LEGACY = 'https://mhioneawefsvagbccsum.supabase.co';
+  var SUPA_KEY_LEGACY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH';
+  var APP_AUTH_STORAGE_KEY = 'blading-manager-auth';
+
+  function defaultAuthStorageKey() {
+    var match = SUPA_URL_LEGACY.match(/^https:\/\/([^.]+)/);
+    return 'sb-' + (match ? match[1] : 'mhioneawefsvagbccsum') + '-auth-token';
+  }
+
+  function storeLegacySession(payload) {
+    payload.expires_at = Math.floor(Date.now() / 1000) + Number(payload.expires_in || 3600);
+    try { window.localStorage.setItem(APP_AUTH_STORAGE_KEY, JSON.stringify(payload)); } catch (_appStorageError) {}
+    try { window.localStorage.setItem(defaultAuthStorageKey(), JSON.stringify(payload)); } catch (_defaultStorageError) {}
+  }
+
+  function showLoginError(errEl, message) {
+    if (!errEl) return;
+    errEl.textContent = message || 'Errore di connessione.';
+    errEl.className = 'msg msg-err show';
+  }
+
+  window.legacyPasswordLogin = function (email, password, errEl, previousError) {
+    if (!email || !password) {
+      showLoginError(errEl, 'Inserisci email e password.');
+      return false;
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPA_URL_LEGACY + '/auth/v1/token?grant_type=password', true);
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    xhr.setRequestHeader('apikey', SUPA_KEY_LEGACY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY_LEGACY);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      var payload = null;
+      try { payload = JSON.parse(xhr.responseText || '{}'); } catch (_e) {}
+      if (xhr.status >= 200 && xhr.status < 300 && payload && payload.access_token) {
+        storeLegacySession(payload);
+        window.location.reload();
+        return;
+      }
+      showLoginError(errEl, (payload && (payload.msg || payload.message || payload.error_description)) || (previousError && previousError.message) || 'Login non riuscito.');
+    };
+    xhr.send(JSON.stringify({ email: email, password: password }));
+    return false;
+  };
+
+  window.loginSubmit = function (event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (typeof window.doLogin === 'function' && window.sb && window.sb.auth) {
+      window.doLogin();
+      return false;
+    }
+    var emailInput = document.getElementById('login-email');
+    var passwordInput = document.getElementById('login-pw');
+    var errEl = document.getElementById('login-err');
+    return window.legacyPasswordLogin(emailInput ? emailInput.value.replace(/^\s+|\s+$/g, '') : '', passwordInput ? passwordInput.value : '', errEl);
+  };
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs/dist/bundles/anime.umd.min.js"></script>
 <script src="./skilltree-catalog.js"></script>
+<script src="./route-builder/routeModels.js"></script>
+<script src="./route-builder/routeStorage.js"></script>
+<script src="./route-builder/routeJsonUtils.js"></script>
+<script src="./route-builder/ElementPalette.js"></script>
+<script src="./route-builder/CanvasArea.js"></script>
+<script src="./route-builder/ElementPropertiesPanel.js"></script>
+<script src="./route-builder/RouteToolbar.js"></script>
+<script src="./route-builder/RouteBuilderPage.js"></script>
 <script>
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
 let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
 let mappaTipoFiltro = 'all', mappaSelectedLocationName = null
 const lezioniColumnState = { data: false, luogo: false, note: false }
@@ -1401,6 +1516,7 @@ const LOCATION_MAP_COORDS_KEY = 'bladingManagerLocationMapCoords'
 const MILANO_MAP_BOUNDS = Object.freeze({ north: 45.56, south: 45.36, west: 9.05, east: 9.32 })
 const MILANO_MAP_VIEWBOX = Object.freeze({ width: 1114, height: 993 })
 const MILANO_MAP_IMAGE = './mappa-milano-quartieri-dark@2x.png'
+const LOCATION_CATEGORIES = ['Location', 'Parco', 'Ciclabile', 'Piazza', 'Pista di pattinaggio', 'Skatepark', 'Strada', 'Campi da basket', 'Palestra', 'Casa allievo', 'Altro']
 const MILANO_COORD_HINTS = [
   { match: ['centro'], x: 675, y: 478, label: 'Centro' },
   { match: ['arco della pace', 'arena', 'pagano'], x: 599, y: 431, label: 'Arco della Pace / Arena' },
@@ -1462,6 +1578,8 @@ let godMode = false, godScope = 'all', shareContext = null
 let appNotesTimer = null, appNotesRemoteAvailable = null
 let appNotesReturnView = null
 const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
+const APP_BOOT_HASH = window.location.hash
+let appBootRouteConsumed = false
 
 const safeStorage = (() => {
   try {
@@ -1500,6 +1618,7 @@ try {
       storage: safeStorage,
     }
   })
+  window.sb = sb
 } catch(e) {
   document.getElementById('login-err').textContent = 'Errore SDK: ' + e.message + ' — apri il file direttamente nel browser (non nel preview).'
   document.getElementById('login-err').classList.add('show')
@@ -1601,6 +1720,7 @@ async function handleAuthSession(session) {
     if (!appInited) { appInited = true; initApp() }
   } else {
     appInited = false
+    appHistoryStarted = false
     document.getElementById('screen-login').hidden = false
     document.getElementById('screen-app').hidden   = true
   }
@@ -1627,6 +1747,10 @@ async function doLogin() {
     const { error } = await sb.auth.signInWithPassword({ email, password: pw })
     if (error) throw error
   } catch (e) {
+    if (window.legacyPasswordLogin) {
+      window.legacyPasswordLogin(email, pw, errEl, e)
+      return
+    }
     errEl.textContent = e.message || 'Errore di connessione. Controlla la console.'
     errEl.classList.add('show')
   }
@@ -1637,6 +1761,30 @@ async function doLogout() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
+
+function initialRouteFromHash(hashValue = window.location.hash) {
+  const raw = String(hashValue || '').replace(/^#/, '')
+  if (!raw) return { name: 'allievi', id: null }
+  const [encodedName, ...encodedRest] = raw.split('/')
+  let name = ''
+  let id = null
+  try {
+    name = decodeURIComponent(encodedName || '')
+    id = encodedRest.length ? decodeURIComponent(encodedRest.join('/')) : null
+  } catch {
+    return { name: 'allievi', id: null }
+  }
+  const allowed = ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  if (!allowed.includes(name)) return { name: 'allievi', id: null }
+  if (routeNeedsId(name) && !id) return { name: 'allievi', id: null }
+  return { name, id }
+}
+
+function consumeInitialRoute() {
+  if (appBootRouteConsumed) return { name: 'allievi', id: null }
+  appBootRouteConsumed = true
+  return initialRouteFromHash(APP_BOOT_HASH)
+}
 
 async function initApp() {
   const { data: { user } } = await sb.auth.getUser()
@@ -1659,7 +1807,8 @@ async function initApp() {
   await loadLocations()
   renderGodPanel()
   renderAllievi()
-  showView('allievi')
+  const initialRoute = consumeInitialRoute()
+  showView(initialRoute.name, initialRoute.id || undefined)
   refreshDashboardData()
 }
 
@@ -1671,6 +1820,46 @@ async function loadSkillDefinitions() {
     return []
   }
   return visibleCatalogSkills(data || [])
+}
+
+function isOwnedByCurrentMaestro(record = {}) {
+  return !record?.maestro_id || String(record.maestro_id) === String(currentUid || '') || (godMode && isSuperMaestro())
+}
+
+function canEditAllievoAddress(allievo = null) {
+  return !allievo || isOwnedByCurrentMaestro(allievo)
+}
+
+function canViewAllievoAddress(allievo = null) {
+  if (!allievo) return true
+  if (canEditAllievoAddress(allievo)) return true
+  return !!allievo.profilo?.indirizzo_condiviso
+}
+
+function visibleAllievoAddress(allievo = {}) {
+  const profilo = allievo?.profilo || {}
+  if (!canViewAllievoAddress(allievo)) return { indirizzo: '', casa: '' }
+  return {
+    indirizzo: profilo.indirizzo || '',
+    casa: profilo.casa || '',
+  }
+}
+
+function locationCategoryOptions(selected = 'Location') {
+  const value = selected && LOCATION_CATEGORIES.includes(selected) ? selected : (selected || 'Location')
+  const options = LOCATION_CATEGORIES.includes(value) ? LOCATION_CATEGORIES : [...LOCATION_CATEGORIES, value]
+  return options.map(t => `<option value="${esc(t)}" ${t === value ? 'selected' : ''}>${esc(t)}</option>`).join('')
+}
+
+function canEditLocation(record = null) {
+  if (!record) return true
+  if (record.source === 'allievo-casa') return canEditAllievoAddress(allievoById(record.allievo_id))
+  return isOwnedByCurrentMaestro(record)
+}
+
+function canViewLocation(record = null) {
+  if (!record) return true
+  return canEditLocation(record) || !!record.condivisa
 }
 
 function locationMapStorageKey(nome) {
@@ -1765,12 +1954,13 @@ function readCoordinateInputs(latId, lngId) {
   return { lat, lng }
 }
 
-function buildLocationPayload({ nome, tipologia, indirizzo, note, latitudine = null, longitudine = null, allievo_id = null }) {
+function buildLocationPayload({ nome, tipologia, indirizzo, note, latitudine = null, longitudine = null, allievo_id = null, condivisa = false }) {
   const payload = {
     nome,
     tipologia: tipologia || 'Location',
     indirizzo: indirizzo || null,
     note: note || null,
+    condivisa: !!condivisa,
     maestro_id: currentUid || null,
     updated_at: new Date().toISOString(),
   }
@@ -1784,16 +1974,62 @@ function buildLocationPayload({ nome, tipologia, indirizzo, note, latitudine = n
   return payload
 }
 
+function isMissingLocationPrivacyColumnsError(error) {
+  const text = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`
+  return /\b(condivisa|shared)\b/i.test(text)
+}
+
+function isMissingLocationCompositeConflictError(error) {
+  const text = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`
+  return /maestro_id.*nome|nome.*maestro_id|unique|exclusion|constraint|on conflict/i.test(text)
+}
+
+function localLocationMatches(row, payload, originalName = null) {
+  const sameOriginal = originalName && normalizeText(row.nome) === normalizeText(originalName)
+  const sameName = normalizeText(row.nome) === normalizeText(payload.nome)
+  const sameOwner = String(row.maestro_id || '') === String(payload.maestro_id || '')
+  return (sameOriginal || sameName) && sameOwner
+}
+
+async function writeLocationPayload(payload, originalName = null, { withoutCoords = false, withoutPrivacy = false, legacyConflict = false } = {}) {
+  const cleanPayload = { ...payload }
+  if (withoutCoords) {
+    delete cleanPayload.latitudine
+    delete cleanPayload.longitudine
+  }
+  if (withoutPrivacy) delete cleanPayload.condivisa
+
+  const existing = originalName ? locationRecordByName(originalName) : locationRecordByName(payload.nome)
+  if (!legacyConflict && existing?.id && canEditLocation(existing)) {
+    return sb.from('locations').update(cleanPayload).eq('id', existing.id)
+  }
+
+  let result = await sb.from('locations').upsert(cleanPayload, { onConflict: legacyConflict ? 'nome' : 'maestro_id,nome' })
+  if (result.error && !legacyConflict && isMissingLocationCompositeConflictError(result.error)) {
+    result = await sb.from('locations').upsert(cleanPayload, { onConflict: 'nome' })
+  }
+  return result
+}
+
 async function persistLocationPayload(payload, originalName = null) {
   const hasCoords = parseMapCoordinate(payload.latitudine) !== null && parseMapCoordinate(payload.longitudine) !== null
-  let { error } = await sb.from('locations').upsert(payload, { onConflict: 'nome' })
+  let strippedLocationPrivacy = false
+  let { error } = await writeLocationPayload(payload, originalName)
+
+  if (error && isMissingLocationPrivacyColumnsError(error) && !isMissingLocationTableError(error)) {
+    strippedLocationPrivacy = true
+    const retry = await writeLocationPayload(payload, originalName, { withoutPrivacy: true })
+    error = retry.error
+  }
 
   if (error && hasCoords && isMissingLocationMapColumnsError(error) && !isMissingLocationTableError(error)) {
-    const { latitudine, longitudine, ...payloadWithoutCoords } = payload
-    const retry = await sb.from('locations').upsert(payloadWithoutCoords, { onConflict: 'nome' })
+    const retry = await writeLocationPayload(payload, originalName, {
+      withoutCoords: true,
+      withoutPrivacy: strippedLocationPrivacy || isMissingLocationPrivacyColumnsError(error),
+    })
     error = retry.error
     if (!error) {
-      saveLocationMapCoordsLocal(payload.nome, latitudine, longitudine, originalName)
+      saveLocationMapCoordsLocal(payload.nome, payload.latitudine, payload.longitudine, originalName)
       await loadLocations(true)
       return { ok: true, mapCoordsLocal: true }
     }
@@ -1801,7 +2037,7 @@ async function persistLocationPayload(payload, originalName = null) {
 
   if (error) {
     if (isMissingLocationTableError(error)) {
-      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => normalizeText(l.nome) !== normalizeText(originalName) && normalizeText(l.nome) !== normalizeText(payload.nome))
+      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => !localLocationMatches(l, payload, originalName))
       local.push(payload)
       safeStorage.setItem('locationsLocal', JSON.stringify(local))
       allLocations = local.map(locationWithLocalMapCoords)
@@ -1831,18 +2067,22 @@ async function loadLocations(force = false) {
   if (error) {
     const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
     if (!/locations|schema cache|could not find the table|does not exist/i.test(text)) console.warn('locations non caricate', error)
-    try { allLocations = (JSON.parse(safeStorage.getItem('locationsLocal') || '[]') || []).map(locationWithLocalMapCoords) } catch { allLocations = [] }
+    try { allLocations = (JSON.parse(safeStorage.getItem('locationsLocal') || '[]') || []).map(locationWithLocalMapCoords).filter(canViewLocation) } catch { allLocations = [] }
     locationsLoaded = true
     return allLocations
   }
-  allLocations = (data || []).map(locationWithLocalMapCoords)
+  allLocations = (data || []).map(locationWithLocalMapCoords).filter(canViewLocation)
   locationsLoaded = true
   return allLocations
 }
 
 function locationRecordByName(nome) {
   const key = normalizeText(nome || '')
-  return allLocations.find(l => normalizeText(l.nome || '') === key) || null
+  const matches = allLocations.filter(l => normalizeText(l.nome || '') === key)
+  return matches.find(l => String(l.maestro_id || '') === String(currentUid || ''))
+    || matches.find(l => !!l.condivisa)
+    || matches[0]
+    || null
 }
 
 function locationNamesFromLessons() {
@@ -1888,14 +2128,80 @@ async function refreshDashboardData() {
 
 // ── Views ─────────────────────────────────────────────────────────────
 
+const APP_HISTORY_KEY = 'blading-manager-view'
+
+function routeNeedsId(name) {
+  return ['scheda', 'gruppo', 'location', 'lezione'].includes(name)
+}
+
+function normalizeRoute(name = 'allievi', id = null) {
+  const cleanName = name || 'allievi'
+  return { app: APP_HISTORY_KEY, name: cleanName, id: id || null }
+}
+
+function homeBoundaryRoute() {
+  return { ...normalizeRoute('allievi'), boundary: true }
+}
+
+function routeHash(route) {
+  const base = route.name || 'allievi'
+  return route.id ? `#${encodeURIComponent(base)}/${encodeURIComponent(route.id)}` : `#${encodeURIComponent(base)}`
+}
+
+function sameRoute(a, b) {
+  return !!a && !!b && a.app === APP_HISTORY_KEY && a.name === b.name && String(a.id || '') === String(b.id || '')
+}
+
+function recordAppHistory(name, id = null) {
+  if (appHistoryApplying) return
+  if (document.getElementById('screen-app')?.hidden) return
+  if (routeNeedsId(name) && !id) return
+  const route = normalizeRoute(name, id)
+  if (!window.history?.pushState) return
+  if (!appHistoryStarted) {
+    const boundary = homeBoundaryRoute()
+    history.replaceState(boundary, '', routeHash(boundary))
+    history.pushState(route, '', routeHash(route))
+    appHistoryStarted = true
+    return
+  }
+  if (sameRoute(history.state, route)) return
+  history.pushState(route, '', routeHash(route))
+}
+
+function showHomeFromHistoryBoundary() {
+  appHistoryApplying = true
+  showView('allievi')
+  appHistoryApplying = false
+  const home = normalizeRoute('allievi')
+  history.pushState(home, '', routeHash(home))
+}
+
+window.addEventListener('popstate', event => {
+  if (document.getElementById('screen-app')?.hidden) return
+  const route = event.state
+  if (!route || route.app !== APP_HISTORY_KEY) {
+    showHomeFromHistoryBoundary()
+    return
+  }
+  if (route.boundary) {
+    showHomeFromHistoryBoundary()
+    return
+  }
+  appHistoryApplying = true
+  showView(route.name || 'allievi', route.id || null)
+  appHistoryApplying = false
+})
+
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  return ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
 function syncNavActive(name) {
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','location','lezione','nuova-lezione'].includes(name))
+  document.getElementById('nav-percorsi').classList.toggle('active', name === 'percorsi')
   document.getElementById('nav-calendar').classList.toggle('active', name === 'appuntamenti')
   document.getElementById('nav-mappa').classList.toggle('active', name === 'mappa')
   document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
@@ -1909,7 +2215,7 @@ function currentReturnTarget() {
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
   if (view === 'location') return { name: 'lezioni', id: null }
-  if (view === 'allievi' || view === 'lezioni' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
+  if (view === 'allievi' || view === 'lezioni' || view === 'percorsi' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
   return null
 }
 
@@ -1933,17 +2239,19 @@ async function goToReturnTarget(target, fallback) {
 
 function showView(name, id) {
   if ((name === 'tuning' || name === 'app-notes') && !godMode) name = 'allievi'
+  document.body.classList.toggle('route-builder-active', name === 'percorsi')
   if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
     const returnTarget = currentReturnTarget()
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
+  ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   syncNavActive(name)
 
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
+  if (name === 'percorsi')      ensureRouteBuilderMounted()
   if (name === 'appuntamenti')  renderAppuntamenti()
   if (name === 'mappa')         renderMappa(id || null)
   if (name === 'location' && id) loadLocation(id)
@@ -1957,6 +2265,37 @@ function showView(name, id) {
   if (name === 'tuning')        initTuning()
   if (name === 'app-notes')     initAppNotes()
   requestAnimationFrame(() => motion.view(name))
+  recordAppHistory(name, id || null)
+}
+
+function ensureRouteBuilderMounted() {
+  const view = document.getElementById('view-percorsi')
+  const root = document.getElementById('route-builder-root')
+  if (!view || view.hidden || !root) return
+  if (typeof initRouteBuilderPage === 'function') {
+    try {
+      initRouteBuilderPage()
+    } catch (error) {
+      console.error('Errore inizializzazione editor percorsi', error)
+      root.innerHTML = routeBuilderLoadErrorHtml(error?.message || 'Errore JavaScript durante il caricamento.')
+    }
+    return
+  }
+  root.innerHTML = routeBuilderLoadErrorHtml('Script route-builder non caricati.')
+}
+
+function routeBuilderLoadErrorHtml(detail) {
+  return `
+    <div class="card">
+      <div class="msg msg-err show" style="display:block;margin-bottom:.7rem">
+        Editor percorsi non caricato.
+      </div>
+      <div style="color:var(--muted);font-size:.86rem;line-height:1.45">
+        ${esc(detail || 'Errore non specificato.')}<br>
+        Apri il gestionale tramite server locale:
+        <a href="http://localhost:8027/#percorsi" style="color:var(--blu);font-weight:800">http://localhost:8027/#percorsi</a>
+      </div>
+    </div>`
 }
 
 function openAppNotes() {
@@ -2713,6 +3052,7 @@ async function loadLocation(luogo) {
   const el = document.getElementById('location-content')
   const nome = String(luogo || '').trim()
   el.innerHTML = '<div class="loading">Caricamento…</div>'
+  recordAppHistory('location', nome)
   if (!lezioniCache) await loadLezioni(true)
   await loadLocations()
   if (nome === '__index__') {
@@ -2724,7 +3064,7 @@ async function loadLocation(luogo) {
         ${names.length ? names.map(name => {
           const rec = locationRecordByName(name)
           const count = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(name)).length
-          return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> · ${esc(rec?.tipologia || 'Location')} · ${count} lezion${count === 1 ? 'e' : 'i'}</span>${rec?.indirizzo ? `<span> · ${esc(rec.indirizzo)}</span>` : ''}</div>`
+          return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> · ${esc(rec?.tipologia || 'Location')} · ${count} lezion${count === 1 ? 'e' : 'i'}</span>${rec?.indirizzo ? `<span> · ${esc(rec.indirizzo)}</span>` : ''}${rec?.condivisa ? '<span> · condivisa</span>' : ''}</div>`
         }).join('') : '<div class="empty">Nessuna location registrata.</div>'}
       </div>`
     return
@@ -2735,41 +3075,50 @@ async function loadLocation(luogo) {
   const allievi = allieviIds.map(id => allAllievi.find(a => a.id === id)).filter(Boolean)
   const casaDi = allievi.length === 1 ? `Casa di ${allievoDisplayName(allievi[0].id)}` : ''
   const tipologia = stored.tipologia || (/casa|home|abitazione/i.test(nome) || casaDi ? 'Casa allievo' : 'Location')
-  const indirizzo = stored.indirizzo || allievi.map(a => a.profilo?.indirizzo).find(Boolean) || ''
+  const indirizzo = stored.indirizzo || allievi.map(a => visibleAllievoAddress(a).indirizzo).find(Boolean) || ''
   const coords = locationCoordinatesFromRecord(stored)
   const displayNome = stored.nome || casaDi || nome
+  const editable = canEditLocation(stored)
+  const disabledAttr = editable ? '' : ' disabled'
   el.innerHTML = `
     <button class="back-btn" onclick="showView('lezioni')">← Lezioni</button>
     <div class="card">
       <div class="lezione-read-title">${esc(displayNome)}</div>
-      <div class="scheda-meta">${esc(tipologia)}${indirizzo ? ` · ${esc(indirizzo)}` : ''}${coords ? ` · ${esc(formatMapCoordinate(coords.lat))}, ${esc(formatMapCoordinate(coords.lng))}` : ''}</div>
+      <div class="scheda-meta">${esc(tipologia)}${indirizzo ? ` · ${esc(indirizzo)}` : ''}${coords ? ` · ${esc(formatMapCoordinate(coords.lat))}, ${esc(formatMapCoordinate(coords.lng))}` : ''}${stored.condivisa ? ' · condivisa' : ''}</div>
     </div>
     <p class="sec-title">Dati location</p>
     <div class="card">
       <div id="location-status" class="msg"></div>
       <div class="location-form-grid">
-        <div class="field"><label>Nome</label><input id="loc-nome" value="${esc(stored.nome || nome)}"></div>
+        <div class="field"><label>Nome</label><input id="loc-nome" value="${esc(stored.nome || nome)}"${disabledAttr}></div>
         <div class="field">
-          <label>Tipologia</label>
-          <select id="loc-tipologia">
-            ${['Location','Casa allievo','Pista','Skatepark','Palestra','Altro'].map(t => `<option value="${t}" ${t === tipologia ? 'selected' : ''}>${t}</option>`).join('')}
+          <label>Categoria</label>
+          <select id="loc-tipologia"${disabledAttr}>
+            ${locationCategoryOptions(tipologia)}
           </select>
         </div>
       </div>
-      <div class="field"><label>Indirizzo</label><input id="loc-indirizzo" value="${esc(indirizzo)}" placeholder="Via, civico, zona"></div>
+      <div class="field"><label>Indirizzo</label><input id="loc-indirizzo" value="${esc(indirizzo)}" placeholder="Via, civico, zona"${disabledAttr}></div>
       <div class="location-form-grid location-map-grid">
-        <div class="field"><label>Latitudine</label><input id="loc-latitudine" value="${coords ? esc(formatMapCoordinate(coords.lat)) : ''}" placeholder="45.46420" inputmode="decimal"></div>
-        <div class="field"><label>Longitudine</label><input id="loc-longitudine" value="${coords ? esc(formatMapCoordinate(coords.lng)) : ''}" placeholder="9.19000" inputmode="decimal"></div>
+        <div class="field"><label>Latitudine</label><input id="loc-latitudine" value="${coords ? esc(formatMapCoordinate(coords.lat)) : ''}" placeholder="45.46420" inputmode="decimal"${disabledAttr}></div>
+        <div class="field"><label>Longitudine</label><input id="loc-longitudine" value="${coords ? esc(formatMapCoordinate(coords.lng)) : ''}" placeholder="9.19000" inputmode="decimal"${disabledAttr}></div>
       </div>
-      <div class="field"><label>Note</label><textarea id="loc-note" placeholder="Dettagli accesso, pavimentazione, criticita...">${esc(stored.note || '')}</textarea></div>
+      <div class="field"><label>Note</label><textarea id="loc-note" placeholder="Dettagli accesso, pavimentazione, criticita..."${disabledAttr}>${esc(stored.note || '')}</textarea></div>
+      <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem;color:var(--muted);font-size:.86rem;font-weight:700">
+        <input type="checkbox" id="loc-condivisa" ${stored.condivisa ? 'checked' : ''}${disabledAttr}>
+        Condivisa con altri maestri
+      </label>
       <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="salvaLocation(${jsArg(nome)})">Salva location</button>
+        ${editable ? `<button class="btn btn-primary btn-sm" onclick="salvaLocation(${jsArg(nome)})">Salva location</button>` : ''}
         <button class="btn btn-outline btn-sm" onclick="showView('mappa',${jsArg(displayNome)})">Apri in mappa</button>
       </div>
     </div>
     <p class="sec-title">Allievi collegati</p>
     <div class="card">
-      ${allievi.length ? allievi.map(a => `<div class="lezione-read-person clickable" onclick="loadScheda('${a.id}')"><strong>${esc(allievoDisplayName(a.id))}</strong>${a.profilo?.indirizzo ? `<span> · ${esc(a.profilo.indirizzo)}</span>` : ''}</div>`).join('') : '<div class="empty">Nessun allievo collegato.</div>'}
+      ${allievi.length ? allievi.map(a => {
+        const address = visibleAllievoAddress(a)
+        return `<div class="lezione-read-person clickable" onclick="loadScheda('${a.id}')"><strong>${esc(allievoDisplayName(a.id))}</strong>${address.indirizzo ? `<span> · ${esc(address.indirizzo)}</span>` : ''}</div>`
+      }).join('') : '<div class="empty">Nessun allievo collegato.</div>'}
     </div>
     <p class="sec-title">Lezioni in questa location</p>
     <div class="card">${lezioni.length ? renderLezioniTable(lezioni, { showYearGroups: false }) : '<div class="empty">Nessuna lezione registrata.</div>'}</div>
@@ -2794,8 +3143,9 @@ function mappaHomeRecordsFromAllievi() {
     .filter(allievo => allievo?.stato !== 'archiviato')
     .map(allievo => {
       const profilo = allievo.profilo || {}
-      const casa = String(profilo.casa || '').trim()
-      const zona = String(profilo.indirizzo || '').trim()
+      const visibleAddress = visibleAllievoAddress(allievo)
+      const casa = String(visibleAddress.casa || '').trim()
+      const zona = String(visibleAddress.indirizzo || '').trim()
       const indirizzo = casa || zona
       if (!indirizzo) return null
       const nome = `Casa di ${mappaAllievoHomeName(allievo)}`
@@ -2804,6 +3154,7 @@ function mappaHomeRecordsFromAllievi() {
         tipologia: 'Casa allievo',
         indirizzo,
         note: casa && zona && normalizeText(casa) !== normalizeText(zona) ? `Zona: ${zona}` : '',
+        condivisa: !!profilo.indirizzo_condiviso,
         source: 'allievo-casa',
         allievo_id: allievo.id,
       })
@@ -2848,6 +3199,10 @@ function mappaTipoClass(tipologia = '') {
   if (/pista/.test(key)) return 'type-pista'
   if (/skate/.test(key)) return 'type-skatepark'
   if (/palestra|gym/.test(key)) return 'type-gym'
+  if (/parco/.test(key)) return 'type-park'
+  if (/strada|ciclabile/.test(key)) return 'type-road'
+  if (/piazza/.test(key)) return 'type-square'
+  if (/basket/.test(key)) return 'type-basket'
   return 'type-location'
 }
 
@@ -2952,6 +3307,8 @@ async function renderMappa(selectedName) {
   const inferredCount = records.filter(record => record.coords?.source === 'stimato').length
   const pendingCount = Math.max(0, records.length - placedCount)
   const formTipologia = selected?.tipologia || 'Location'
+  const selectedEditable = !selected || canEditLocation(selected)
+  const selectedDisabledAttr = selectedEditable ? '' : ' disabled'
 
   el.innerHTML = `
     <div class="map-shell">
@@ -2979,21 +3336,25 @@ async function renderMappa(selectedName) {
           <div id="map-status" class="msg"></div>
           <input type="hidden" id="map-loc-original" value="${esc(selected?.nome || '')}">
           <div class="map-form-grid">
-            <div class="field map-form-full"><label>Nome</label><input id="map-loc-nome" value="${esc(selected?.nome || '')}" placeholder="Es. Pista Portello"></div>
+            <div class="field map-form-full"><label>Nome</label><input id="map-loc-nome" value="${esc(selected?.nome || '')}" placeholder="Es. Pista Portello"${selectedDisabledAttr}></div>
             <div class="field">
-              <label>Tipologia</label>
-              <select id="map-loc-tipologia">
-                ${['Location','Casa allievo','Pista','Skatepark','Palestra','Altro'].map(t => `<option value="${t}" ${t === formTipologia ? 'selected' : ''}>${t}</option>`).join('')}
+              <label>Categoria</label>
+              <select id="map-loc-tipologia"${selectedDisabledAttr}>
+                ${locationCategoryOptions(formTipologia)}
               </select>
             </div>
-            <div class="field"><label>Indirizzo / zona</label><input id="map-loc-indirizzo" value="${esc(selected?.indirizzo || '')}" placeholder="Via, quartiere, comune"></div>
-            <div class="field"><label>Latitudine</label><input id="map-loc-latitudine" value="${selectedCoords ? esc(formatMapCoordinate(selectedCoords.lat)) : ''}" placeholder="45.46420" inputmode="decimal"></div>
-            <div class="field"><label>Longitudine</label><input id="map-loc-longitudine" value="${selectedCoords ? esc(formatMapCoordinate(selectedCoords.lng)) : ''}" placeholder="9.19000" inputmode="decimal"></div>
-            <div class="field map-form-full"><label>Note</label><textarea id="map-loc-note" placeholder="Accesso, superficie, riferimenti...">${esc(selected?.note || '')}</textarea></div>
+            <div class="field"><label>Indirizzo / zona</label><input id="map-loc-indirizzo" value="${esc(selected?.indirizzo || '')}" placeholder="Via, quartiere, comune"${selectedDisabledAttr}></div>
+            <div class="field"><label>Latitudine</label><input id="map-loc-latitudine" value="${selectedCoords ? esc(formatMapCoordinate(selectedCoords.lat)) : ''}" placeholder="45.46420" inputmode="decimal"${selectedDisabledAttr}></div>
+            <div class="field"><label>Longitudine</label><input id="map-loc-longitudine" value="${selectedCoords ? esc(formatMapCoordinate(selectedCoords.lng)) : ''}" placeholder="9.19000" inputmode="decimal"${selectedDisabledAttr}></div>
+            <div class="field map-form-full"><label>Note</label><textarea id="map-loc-note" placeholder="Accesso, superficie, riferimenti..."${selectedDisabledAttr}>${esc(selected?.note || '')}</textarea></div>
           </div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin:.2rem 0 .75rem;color:var(--muted);font-size:.86rem;font-weight:700">
+            <input type="checkbox" id="map-loc-condivisa" ${selected?.condivisa ? 'checked' : ''}${selectedDisabledAttr}>
+            Condivisa con altri maestri
+          </label>
           <div class="map-panel-meta">${selectedCoords?.source === 'stimato' ? 'Coordinate stimate dal nome/indirizzo: salva il punto se la posizione e corretta.' : 'Per aggiungere o spostare un punto: seleziona la location, clicca sulla mappa e salva.'}</div>
           <div class="map-form-actions">
-            <button class="btn btn-primary btn-sm" onclick="salvaMappaLocation()">Salva punto</button>
+            ${selectedEditable ? '<button class="btn btn-primary btn-sm" onclick="salvaMappaLocation()">Salva punto</button>' : ''}
             <button class="btn btn-outline btn-sm" onclick="preparaNuovaMappaLocation()">Nuovo</button>
             ${selected ? selected.source === 'allievo-casa'
               ? `<button class="btn btn-outline btn-sm" onclick="loadScheda(${jsArg(selected.allievo_id)})">Allievo</button>`
@@ -3007,7 +3368,7 @@ async function renderMappa(selectedName) {
           <div class="map-list">
             ${visibleRecords.length ? visibleRecords.map(record => {
               const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)
-              const meta = [record.tipologia || 'Location', record.indirizzo || '', record.lessonCount ? `${record.lessonCount} lezion${record.lessonCount === 1 ? 'e' : 'i'}` : ''].filter(Boolean).join(' · ')
+              const meta = [record.tipologia || 'Location', record.indirizzo || '', record.condivisa ? 'condivisa' : '', record.lessonCount ? `${record.lessonCount} lezion${record.lessonCount === 1 ? 'e' : 'i'}` : ''].filter(Boolean).join(' · ')
               const coordLabel = record.coords?.source === 'stimato' ? 'Stimato' : record.coords ? 'Salvato' : 'Da posizionare'
               return `<button type="button" class="map-location-row${selectedRow ? ' is-selected' : ''}" onclick="selectMappaLocation(${jsArg(record.nome)})">
                 <span><strong>${esc(record.nome)}</strong><br><span>${esc(meta || 'Nessun dettaglio')}</span></span>
@@ -3083,6 +3444,7 @@ async function salvaMappaLocation() {
     note: document.getElementById('map-loc-note')?.value.trim() || null,
     latitudine: coords.lat,
     longitudine: coords.lng,
+    condivisa: document.getElementById('map-loc-condivisa')?.checked || false,
   })
   setMappaStatus('Salvataggio...', 'msg-info')
   const result = await persistLocationPayload(payload, originalName)
@@ -3121,6 +3483,7 @@ async function salvaLocation(originalName) {
     note: document.getElementById('loc-note')?.value.trim() || null,
     latitudine: coords.lat,
     longitudine: coords.lng,
+    condivisa: document.getElementById('loc-condivisa')?.checked || false,
   })
   if (status) { status.textContent = 'Salvataggio...'; status.className = 'msg msg-info show' }
   const result = await persistLocationPayload(payload, originalName)
@@ -3148,16 +3511,18 @@ async function ensureLocationDaLezione(luogo, allieviIds = []) {
   const payload = {
     nome,
     tipologia: linked && /casa|home|abitazione/i.test(nome) ? 'Casa allievo' : 'Location',
-    indirizzo: linked?.profilo?.indirizzo || null,
+    indirizzo: linked ? (visibleAllievoAddress(linked).indirizzo || null) : null,
     allievo_id: linked?.id || null,
     maestro_id: currentUid || null,
+    condivisa: false,
     updated_at: new Date().toISOString(),
   }
-  const { error } = await sb.from('locations').upsert(payload, { onConflict: 'nome' })
+  const result = await persistLocationPayload(payload)
+  const error = result.ok ? null : result.error
   if (error) {
     const text = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`
     if (/locations|schema cache|does not exist|could not find/i.test(text)) {
-      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => normalizeText(l.nome) !== normalizeText(nome))
+      const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => !localLocationMatches(l, payload, nome))
       local.push(payload)
       safeStorage.setItem('locationsLocal', JSON.stringify(local))
       allLocations = local
@@ -3253,7 +3618,8 @@ async function renderGlobalSearch() {
   const results = []
   allieviVisibiliGod().forEach(a => {
     const name = allievoDisplayName(a.id)
-    const haystack = normalizeText([name, a.nome, a.cognome, a.nickname, a.gruppo, a.email, a.telefono, a.note_generali, a.profilo?.indirizzo, a.profilo?.casa, a.profilo?.luogo_incontro].filter(Boolean).join(' '))
+    const address = visibleAllievoAddress(a)
+    const haystack = normalizeText([name, a.nome, a.cognome, a.nickname, a.gruppo, a.email, a.telefono, a.note_generali, a.profilo?.note_salute, address.indirizzo, address.casa, a.profilo?.luogo_incontro].filter(Boolean).join(' '))
     if (haystack.includes(query)) results.push({ type: 'Allievo', title: name, detail: a.gruppo || a.profilo?.luogo_incontro || '', action: `loadScheda('${a.id}')` })
   })
   gruppiEsistenti().forEach(gruppo => {
@@ -3270,7 +3636,7 @@ async function renderGlobalSearch() {
   })
   ;(lezioniCache || []).forEach(l => {
     const parsed = lessonParsedNotes(l)
-    const haystack = normalizeText([formatDate(l.data), labelPartecipantiLezione(l), l.luogo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
+    const haystack = normalizeText([formatDate(l.data), labelPartecipantiLezione(l), l.luogo, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
     if (haystack.includes(query)) results.push({ type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatDate(l.data)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})` })
   })
 
@@ -3396,6 +3762,7 @@ function lessonStatus(lezione) {
 
 const LESSON_CHECK_MARKERS = {
   stato: '[[stato]]',
+  meteo: '[[meteo]]',
   speciali: '[[note_speciali]]',
   bene: '[[check_bene]]',
   nonFatto: '[[check_non_fatto]]',
@@ -3406,27 +3773,36 @@ function splitLessonNotes(raw = '') {
   const text = String(raw || '')
   const hasMarkers = Object.values(LESSON_CHECK_MARKERS).some(marker => text.includes(marker))
   if (!hasMarkers) return { bene: '', nonFatto: '', note: text }
-  const read = (start, end) => {
+  const markerEntries = Object.entries(LESSON_CHECK_MARKERS)
+  const read = key => {
+    const start = LESSON_CHECK_MARKERS[key]
     const from = text.indexOf(start)
     if (from < 0) return ''
     const after = from + start.length
-    const to = end ? text.indexOf(end, after) : text.length
-    return text.slice(after, to < 0 ? text.length : to).trim()
+    const nextMarkerIndex = markerEntries
+      .filter(([nextKey]) => nextKey !== key)
+      .map(([, marker]) => text.indexOf(marker, after))
+      .filter(index => index >= 0)
+      .sort((a, b) => a - b)[0]
+    return text.slice(after, nextMarkerIndex ?? text.length).trim()
   }
   return {
-    stato: read(LESSON_CHECK_MARKERS.stato, LESSON_CHECK_MARKERS.speciali),
-    speciali: read(LESSON_CHECK_MARKERS.speciali, LESSON_CHECK_MARKERS.bene),
-    bene: read(LESSON_CHECK_MARKERS.bene, LESSON_CHECK_MARKERS.nonFatto),
-    nonFatto: read(LESSON_CHECK_MARKERS.nonFatto, LESSON_CHECK_MARKERS.note),
-    note: read(LESSON_CHECK_MARKERS.note, null),
+    stato: read('stato'),
+    meteo: read('meteo'),
+    speciali: read('speciali'),
+    bene: read('bene'),
+    nonFatto: read('nonFatto'),
+    note: read('note'),
   }
 }
 
-function composeLessonNotes(note, bene, nonFatto, speciali = '', stato = '') {
-  if (!bene && !nonFatto && !speciali && !stato) return note || null
+function composeLessonNotes(note, bene, nonFatto, speciali = '', stato = '', meteo = '') {
+  if (!bene && !nonFatto && !speciali && !stato && !meteo) return note || null
   return [
     LESSON_CHECK_MARKERS.stato,
     stato || '',
+    LESSON_CHECK_MARKERS.meteo,
+    meteo || '',
     LESSON_CHECK_MARKERS.speciali,
     speciali || '',
     LESSON_CHECK_MARKERS.bene,
@@ -3450,6 +3826,7 @@ function lessonParsedNotes(lezione) {
   const parsed = splitLessonNotes(lezione?.note || '')
   return {
     ...parsed,
+    meteo: lezione?.meteo || parsed.meteo || '',
     bene: lezione?.check_bene || parsed.bene || '',
     nonFatto: lezione?.check_non_fatto || parsed.nonFatto || '',
   }
@@ -3486,7 +3863,7 @@ function renderGodPanel() {
 }
 
 function syncGodOnlyNav() {
-  document.querySelectorAll('.god-only-nav').forEach(el => { el.hidden = !godMode })
+  document.querySelectorAll('.god-only-nav').forEach(el => { el.hidden = true })
 }
 
 function toggleGodMode() {
@@ -3779,6 +4156,8 @@ function initNuovoAllievo(id) {
   const p = allievo?.profilo || {}
   const hasGruppo = !!allievo?.gruppo
   const logisticaIndividuale = logisticaIndividualeProfilo(p, hasGruppo)
+  const addressVisible = canViewAllievoAddress(allievo)
+  const addressEditable = canEditAllievoAddress(allievo)
 
   // Titolo e bottone back
   document.getElementById('na-titolo').textContent = allievo
@@ -3816,9 +4195,19 @@ function initNuovoAllievo(id) {
   document.getElementById('na-vip-btn').classList.toggle('on', vipVal)
 
   // Profilo logistica
-  document.getElementById('na-indirizzo').value    = p.indirizzo     || ''
-  document.getElementById('na-casa').value         = p.casa          || ''
+  const indirizzoInput = document.getElementById('na-indirizzo')
+  const casaInput = document.getElementById('na-casa')
+  const indirizzoCondivisoInput = document.getElementById('na-indirizzo-condiviso')
+  indirizzoInput.value = addressVisible ? (p.indirizzo || '') : ''
+  casaInput.value = addressVisible ? (p.casa || '') : ''
+  indirizzoInput.disabled = !addressEditable
+  casaInput.disabled = !addressEditable
+  indirizzoInput.placeholder = addressVisible ? 'Es. Milano Nord' : 'Privato del maestro proprietario'
+  casaInput.placeholder = addressVisible ? 'Es. via e civico casa' : 'Privato del maestro proprietario'
+  indirizzoCondivisoInput.checked = !!p.indirizzo_condiviso
+  indirizzoCondivisoInput.disabled = !addressEditable
   document.getElementById('na-cultura').value      = p.cultura       || ''
+  document.getElementById('na-note-salute').value  = p.note_salute   || ''
   document.getElementById('na-cert').value          = dateIsoToInput(p.scadenza_cert)
   document.getElementById('na-durata').value    = logisticaIndividuale.durata_lezione || ''
   document.getElementById('na-compenso').value  = logisticaIndividuale.compenso       || ''
@@ -4111,7 +4500,9 @@ async function salvaAllievo() {
   }
 
   const gruppoAttivo = !isAss && document.getElementById('na-gruppo-cb').checked
-  const profiloOriginale = editingAllieviId ? (allAllievi.find(a => a.id === editingAllieviId)?.profilo || {}) : {}
+  const allievoOriginale = editingAllieviId ? (allAllievi.find(a => a.id === editingAllieviId) || null) : null
+  const profiloOriginale = allievoOriginale?.profilo || {}
+  const addressEditable = canEditAllievoAddress(allievoOriginale)
   let profilo
   if (isAss) {
     profilo = {
@@ -4138,9 +4529,11 @@ async function salvaAllievo() {
     }
     const baseProfilo = {
       ...profiloSenzaLogisticaTopLevel(profiloOriginale),
-      indirizzo:        document.getElementById('na-indirizzo').value.trim()    || null,
-      casa:             document.getElementById('na-casa').value.trim()         || null,
+      indirizzo:        addressEditable ? (document.getElementById('na-indirizzo').value.trim() || null) : (profiloOriginale.indirizzo || null),
+      casa:             addressEditable ? (document.getElementById('na-casa').value.trim() || null) : (profiloOriginale.casa || null),
+      indirizzo_condiviso: addressEditable ? !!document.getElementById('na-indirizzo-condiviso')?.checked : !!profiloOriginale.indirizzo_condiviso,
       cultura:          document.getElementById('na-cultura').value.trim()      || null,
+      note_salute:      document.getElementById('na-note-salute').value.trim()  || null,
       scadenza_cert:    dateInputToIso(document.getElementById('na-cert').value)        || null,
       disponibilita:    document.getElementById('na-disponibilita').value.trim()   || null,
       competenze:       document.getElementById('na-competenze').value.trim()   || null,
@@ -4726,6 +5119,7 @@ function profiloComuneGruppo(membri) {
 async function loadGruppo(nomeGruppo) {
   showView('gruppo')
   currentGruppoNome = nomeGruppo
+  recordAppHistory('gruppo', nomeGruppo)
   const el = document.getElementById('gruppo-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
 
@@ -4738,8 +5132,13 @@ async function loadGruppo(nomeGruppo) {
   const profilo = profiloComuneGruppo(membri)
   const ids = membri.map(a => a.id)
   let { data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
-    .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome)))')
-    .in('allievo_id', ids)
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, meteo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome)))')
+      .in('allievo_id', ids)
+  if (isMissingLessonMeteoError(lzErr)) {
+    ;({ data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome)))')
+      .in('allievo_id', ids))
+  }
   if (isMissingDimensioniError(lzErr)) {
     ;({ data: laRows, error: lzErr } = await sb.from('lezioni_allievi')
       .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, skills(nome)))')
@@ -4833,6 +5232,7 @@ async function loadGruppo(nomeGruppo) {
 async function loadScheda(id) {
   showView('scheda')
   currentSchedaId = id
+  recordAppHistory('scheda', id)
   const shortcut = document.getElementById('scheda-nuova-lezione')
   const prepShortcut = document.getElementById('scheda-prepara-lezione')
   const postumaShortcut = document.getElementById('scheda-lezione-postuma')
@@ -4867,8 +5267,13 @@ async function loadScheda(id) {
   let lezioniScheda = []
   if (laRows?.length) {
     let { data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
-      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(allievo_id, stadio_raggiunto, dimensioni, skills(nome)))')
+      .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, meteo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(allievo_id, stadio_raggiunto, dimensioni, skills(nome)))')
       .eq('allievo_id', id)
+    if (isMissingLessonMeteoError(lzErr)) {
+      ;({ data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
+        .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(allievo_id, stadio_raggiunto, dimensioni, skills(nome)))')
+        .eq('allievo_id', id))
+    }
     if (isMissingDimensioniError(lzErr)) {
       ;({ data: lzRows, error: lzErr } = await sb.from('lezioni_allievi')
         .select('lezione_id, lezioni(id, data, tipo, durata_min, luogo, note, note_speciali, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(allievo_id, stadio_raggiunto, skills(nome)))')
@@ -4926,6 +5331,7 @@ async function loadScheda(id) {
 
   const p = allievo.profilo || {}
   const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo)
+  const addressScheda = visibleAllievoAddress(allievo)
 
   function dotsRo(val) {
     return [1,2,3].map(i => `<span class="dot-ro${i <= val ? ' filled' : ''}"></span>`).join('')
@@ -4996,12 +5402,17 @@ async function loadScheda(id) {
           ${infoRow('Email', allievo.email ? `<a href="mailto:${esc(allievo.email)}" style="color:var(--blu)">${esc(allievo.email)}</a>` : null, true)}
           ${infoRow('Telefono', allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
           ${infoRow('Iscritto il', allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
-          ${infoRow('Indirizzo', p.indirizzo)}
-          ${infoRow('Casa', p.casa)}
+          ${infoRow('Indirizzo', addressScheda.indirizzo)}
+          ${infoRow('Casa', addressScheda.casa)}
+          ${p.indirizzo_condiviso ? infoRow('Privacy indirizzo', 'Condiviso con altri maestri') : ''}
           ${infoRow('Cultura / lingua', p.cultura)}
           ${infoRow('Gruppo', allievo.gruppo)}
         </div>
       </div>
+
+      ${p.note_salute ? `
+      <p class="sec-title">Salute e attenzioni</p>
+      <div class="card"><div class="lezione-read-note">${esc(p.note_salute)}</div></div>` : ''}
 
       ${(logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento) ? `
       <p class="sec-title">Logistica</p>
@@ -6518,6 +6929,7 @@ function stampaScheda(id) {
   const famRows = (p.familiari||[]).map(f =>
     row(f.relazione||'Familiare', [f.nome, f.cognome].filter(Boolean).join(' ') + (f.telefono ? ' · ' + f.telefono : ''))
   ).join('')
+  const address = visibleAllievoAddress(allievo)
 
   const html = `<!DOCTYPE html>
 <html lang="it"><head><meta charset="UTF-8">
@@ -6564,8 +6976,10 @@ function stampaScheda(id) {
 
 <div class="box">
   <div class="sec-title">Contatti</div>
-  <table>${row('Email', allievo.email)}${row('Telefono', allievo.telefono)}${row('Indirizzo', p.indirizzo)}${row('Casa', p.casa)}${row('Cultura / lingua', p.cultura)}${famRows}</table>
+  <table>${row('Email', allievo.email)}${row('Telefono', allievo.telefono)}${row('Indirizzo', address.indirizzo)}${row('Casa', address.casa)}${row('Cultura / lingua', p.cultura)}${famRows}</table>
 </div>
+
+${p.note_salute ? `<div class="box"><div class="sec-title">Salute e attenzioni</div><table>${row('Note', p.note_salute)}</table></div>` : ''}
 
 <div class="box">
   <div class="sec-title">Logistica</div>
@@ -6681,6 +7095,10 @@ function isMissingLessonCheckError(error) {
   return !!error && /\b(check_bene|check_non_fatto)\b/i.test(error.message || error.details || error.hint || '')
 }
 
+function isMissingLessonMeteoError(error) {
+  return !!error && /\b(meteo|weather)\b/i.test(error.message || error.details || error.hint || '')
+}
+
 function hasLessonSkillMetadata(payload = {}) {
   return !!payload?.dimensioni && Object.keys(payload.dimensioni).length > 0
 }
@@ -6701,8 +7119,13 @@ async function loadLezioni(force = false) {
   const el = document.getElementById('lezioni-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
   let { data, error } = await sb.from('lezioni')
-    .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+    .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
     .order('data', { ascending: false })
+  if (isMissingLessonMeteoError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+      .order('data', { ascending: false }))
+  }
   if (isMissingLessonCheckError(error)) {
     ;({ data, error } = await sb.from('lezioni')
       .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
@@ -7074,7 +7497,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
       }).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
   const parsedNotes = lessonParsedNotes(lezione)
-  const notePreview = [parsedNotes.bene ? `Bene: ${parsedNotes.bene}` : '', parsedNotes.nonFatto ? `Da riprendere: ${parsedNotes.nonFatto}` : '', parsedNotes.note].filter(Boolean).join('\n')
+  const notePreview = [parsedNotes.meteo ? `Meteo: ${parsedNotes.meteo}` : '', parsedNotes.bene ? `Bene: ${parsedNotes.bene}` : '', parsedNotes.nonFatto ? `Da riprendere: ${parsedNotes.nonFatto}` : '', parsedNotes.note].filter(Boolean).join('\n')
   const noteHtml = notePreview
     ? `<div class="lezione-note-preview">${esc(notePreview)}</div>`
     : '<span class="lezione-empty-detail">Nessuna nota.</span>'
@@ -7228,6 +7651,7 @@ async function cancellaLezioneInModifica() {
 
 async function loadLezione(id) {
   currentLezioneId = id
+  recordAppHistory('lezione', id)
   const el = document.getElementById('lezione-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
 
@@ -7360,6 +7784,11 @@ async function loadLezione(id) {
       <div class="card"><div class="lezione-read-note">${esc(noteSpecialiRead)}</div></div>
     ` : ''}
 
+    ${parsedNotes.meteo ? `
+      <p class="sec-title">Meteo</p>
+      <div class="card"><div class="lezione-read-note">${esc(parsedNotes.meteo)}</div></div>
+    ` : ''}
+
     <div class="lezione-read-grid">
       <div>
         <p class="sec-title">Allievi presenti</p>
@@ -7438,6 +7867,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-data').value    = localDateIso()
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
+  document.getElementById('lz-meteo').value   = ''
   setLessonStatus(lezioneFormMode === 'postuma' ? 'chiusa' : 'aperta')
   document.getElementById('lz-luogo-suggest').hidden = true
   document.getElementById('lz-luogo-suggest').innerHTML = ''
@@ -7461,9 +7891,15 @@ async function initNuovaLezione(presetAllievoId = null) {
 
   if (editId) {
     let { data: lezione, error } = await sb.from('lezioni')
-      .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+      .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
       .eq('id', editId)
       .single()
+    if (isMissingLessonMeteoError(error)) {
+      ;({ data: lezione, error } = await sb.from('lezioni')
+        .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+        .eq('id', editId)
+        .single())
+    }
     if (isMissingLessonCheckError(error)) {
       ;({ data: lezione, error } = await sb.from('lezioni')
         .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
@@ -7521,6 +7957,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     document.getElementById('lz-luogo').value = lezione.luogo || ''
     setLessonStatus(lessonStatus(lezione))
     const parsedNotes = lessonParsedNotes(lezione)
+    document.getElementById('lz-meteo').value = parsedNotes.meteo || ''
     document.getElementById('lz-note-speciali').value = lezione.note_speciali || parsedNotes.speciali || ''
     document.getElementById('lz-check-bene').value = parsedNotes.bene || ''
     document.getElementById('lz-check-non-fatto').value = parsedNotes.nonFatto || ''
@@ -8021,6 +8458,7 @@ function collectLezioneDraft() {
     durata: document.getElementById('lz-durata')?.value || '',
     stato: document.getElementById('lz-stato')?.value || 'aperta',
     luogo: document.getElementById('lz-luogo')?.value || '',
+    meteo: document.getElementById('lz-meteo')?.value || '',
     noteSpeciali: document.getElementById('lz-note-speciali')?.value || '',
     checkBene: document.getElementById('lz-check-bene')?.value || '',
     checkNonFatto: document.getElementById('lz-check-non-fatto')?.value || '',
@@ -8053,6 +8491,7 @@ function restoreLezioneDraft(draft) {
   document.getElementById('lz-durata').value = draft.durata || ''
   setLessonStatus(draft.stato || 'aperta')
   document.getElementById('lz-luogo').value = draft.luogo || ''
+  document.getElementById('lz-meteo').value = draft.meteo || ''
   document.getElementById('lz-note-speciali').value = draft.noteSpeciali || ''
   document.getElementById('lz-check-bene').value = draft.checkBene || ''
   document.getElementById('lz-check-non-fatto').value = draft.checkNonFatto || ''
@@ -8091,8 +8530,13 @@ function toggleAllievo(cb, nomeCompleto) {
 async function ultimaLezioneAllievo(allievoId) {
   if (!allievoId) return null
   let { data, error } = await sb.from('lezioni_allievi')
-    .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
+    .select('lezione_id, lezioni(id, data, durata_min, luogo, meteo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
     .eq('allievo_id', allievoId)
+  if (isMissingLessonMeteoError(error)) {
+    ;({ data, error } = await sb.from('lezioni_allievi')
+      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
+      .eq('allievo_id', allievoId))
+  }
   if (isMissingLessonStatusError(error)) {
     ;({ data, error } = await sb.from('lezioni_allievi')
       .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
@@ -9148,6 +9592,7 @@ function lessonHistoryChanges(originalLesson, payloadLezione, relationSnapshot, 
     durata_min: 'durata',
     tipo: 'tipo',
     luogo: 'luogo',
+    meteo: 'meteo',
     note_speciali: 'note speciali',
     stato: 'stato',
     check_bene: 'cosa e andato bene',
@@ -9188,10 +9633,11 @@ async function salvaLezione() {
   const target = document.getElementById('lz-tipo').value
   const tipo   = target.startsWith('gruppo:') ? 'gruppo' : target.startsWith('allievo:') ? 'individuale' : 'campo_libero'
   const luogo  = document.getElementById('lz-luogo').value.trim() || null
+  const meteo  = document.getElementById('lz-meteo')?.value.trim() || null
   const noteSpeciali = document.getElementById('lz-note-speciali').value.trim() || null
   const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
   const checkNonFatto = document.getElementById('lz-check-non-fatto')?.value.trim() || ''
-  const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato)
+  const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato, meteo || '')
   const errEl  = document.getElementById('lz-err')
   errEl.classList.remove('show')
 
@@ -9217,40 +9663,58 @@ async function salvaLezione() {
 
     // 1 — crea o aggiorna lezione
     let e1
-    const payloadLezione = { data, durata_min: durata, tipo, luogo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
+    const payloadLezione = { data, durata_min: durata, tipo, luogo, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
     const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
     const payloadLezioneNuova = { ...payloadLezione, maestro_id: currentUid || null }
     const payloadLezioneNuovaCompat = { ...payloadLezioneCompat, maestro_id: currentUid || null }
     if (lezioneInModifica) {
-      ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezione).eq('id', lezioneInModifica).select().single())
+      let payloadCorrente = payloadLezione
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
+      if (isMissingLessonMeteoError(e1)) {
+        const { meteo: _meteo, ...withoutMeteo } = payloadCorrente
+        payloadCorrente = withoutMeteo
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
+      }
       if (isMissingLessonCheckError(e1)) {
-        const { check_bene, check_non_fatto, ...withoutCheck } = payloadLezione
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutCheck).eq('id', lezioneInModifica).select().single())
+        const { check_bene, check_non_fatto, ...withoutCheck } = payloadCorrente
+        payloadCorrente = withoutCheck
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
       }
       if (isMissingLessonStatusError(e1)) {
-        const { stato: _stato, ...withoutStatus } = payloadLezione
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutStatus).eq('id', lezioneInModifica).select().single())
+        const { stato: _stato, ...withoutStatus } = payloadCorrente
+        payloadCorrente = withoutStatus
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
       }
       if (isMissingLessonCheckError(e1)) {
-        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadLezione
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(withoutStatusAndCheck).eq('id', lezioneInModifica).select().single())
+        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadCorrente
+        payloadCorrente = withoutStatusAndCheck
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
       }
       if (isMissingNoteSpecialiError(e1)) {
         ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadLezioneCompat).eq('id', lezioneInModifica).select().single())
       }
     } else {
-      ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneNuova).select().single())
+      let payloadCorrente = payloadLezioneNuova
+      ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
+      if (isMissingLessonMeteoError(e1)) {
+        const { meteo: _meteo, ...withoutMeteo } = payloadCorrente
+        payloadCorrente = withoutMeteo
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
+      }
       if (isMissingLessonCheckError(e1)) {
-        const { check_bene, check_non_fatto, ...withoutCheck } = payloadLezioneNuova
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutCheck).select().single())
+        const { check_bene, check_non_fatto, ...withoutCheck } = payloadCorrente
+        payloadCorrente = withoutCheck
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
       }
       if (isMissingLessonStatusError(e1)) {
-        const { stato: _stato, ...withoutStatus } = payloadLezioneNuova
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutStatus).select().single())
+        const { stato: _stato, ...withoutStatus } = payloadCorrente
+        payloadCorrente = withoutStatus
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
       }
       if (isMissingLessonCheckError(e1)) {
-        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadLezioneNuova
-        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(withoutStatusAndCheck).select().single())
+        const { stato: _stato, check_bene, check_non_fatto, ...withoutStatusAndCheck } = payloadCorrente
+        payloadCorrente = withoutStatusAndCheck
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
       }
       if (isMissingNoteSpecialiError(e1)) {
         ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadLezioneNuovaCompat).select().single())
@@ -10048,8 +10512,8 @@ function esc(s) {
 }
 
 // Enter su email e password
-document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() })
-document.getElementById('login-pw').addEventListener('keydown',    e => { if (e.key === 'Enter') doLogin() })
+document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') loginSubmit(e) })
+document.getElementById('login-pw').addEventListener('keydown',    e => { if (e.key === 'Enter') loginSubmit(e) })
 </script>
 </body>
 </html>
