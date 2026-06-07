@@ -156,6 +156,25 @@ async function getCurrentAuthUser() {
   return session?.user || null
 }
 
+async function refreshCurrentAuthIdentity() {
+  const user = await getCurrentAuthUser()
+  currentUid = user?.id || null
+  currentEmail = (user?.email || '').toLowerCase()
+  currentUserMetadata = user?.user_metadata || {}
+  return currentUid
+}
+
+async function requireCurrentUidForWrite(errEl = null) {
+  const uid = currentUid || await refreshCurrentAuthIdentity()
+  if (uid) return uid
+  const message = 'Sessione maestro non pronta: esci, rientra e riprova a salvare.'
+  if (errEl) {
+    errEl.textContent = message
+    errEl.classList.add('show')
+  }
+  throw new Error(message)
+}
+
 async function signInWithPasswordCompat(email, password) {
   if (supabaseClientIsV2()) {
     return sb.auth.signInWithPassword({ email, password })
@@ -286,10 +305,16 @@ async function handleAuthSession(session) {
   if (session) {
     document.getElementById('screen-login').hidden = true
     document.getElementById('screen-app').hidden   = false
-    if (!appInited) { appInited = true; initApp() }
+    if (!appInited) {
+      appInited = true
+      await initApp()
+    }
   } else {
     appInited = false
     appHistoryStarted = false
+    currentUid = null
+    currentEmail = ''
+    currentUserMetadata = {}
     document.getElementById('screen-login').hidden = false
     document.getElementById('screen-app').hidden   = true
   }
@@ -4286,6 +4311,15 @@ async function salvaAllievo() {
   btn.disabled = true;    btn.textContent    = 'Salvataggio…'
   btnTop.disabled = true; btnTop.textContent = 'Salvataggio…'
 
+  let writeUid = currentUid
+  try {
+    if (!editingAllieviId) writeUid = await requireCurrentUidForWrite(errEl)
+  } catch (e) {
+    btn.disabled = false;    btn.textContent    = labelOrig
+    btnTop.disabled = false; btnTop.textContent = labelOrig
+    return
+  }
+
   const payload = {
     nome, cognome, tipo,
     nickname:        isAss ? (document.getElementById('ass-nick').value.trim() || null) : (document.getElementById('na-nickname').value.trim() || null),
@@ -4299,7 +4333,7 @@ async function salvaAllievo() {
     note_generali:   isAss ? (document.getElementById('ass-note').value.trim() || null) : (document.getElementById('na-note').value.trim() || null),
     profilo,
     aggiornato_il:   new Date().toISOString(),
-    ...(editingAllieviId ? {} : { maestro_id: currentUid }),
+    ...(editingAllieviId ? {} : { maestro_id: writeUid }),
   }
 
   const savedId = editingAllieviId
@@ -4358,7 +4392,9 @@ async function salvaAllievo() {
       showView('allievi')
     }
   } catch (e) {
-    errEl.textContent = e.message || 'Errore di rete. Riprova.'
+    errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
+      ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
+      : (e.message || 'Errore di rete. Riprova.')
     errEl.classList.add('show')
     btn.disabled = false;    btn.textContent    = labelOrig
     btnTop.disabled = false; btnTop.textContent = labelOrig
@@ -4680,6 +4716,15 @@ async function salvaGruppo() {
   btn.disabled = true; btn.textContent = 'Salvataggio…'
   btnTop.disabled = true; btnTop.textContent = 'Salvataggio…'
 
+  let writeUid = currentUid
+  try {
+    if (allievi.some(a => !a.id)) writeUid = await requireCurrentUidForWrite(errEl)
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Salva gruppo'
+    btnTop.disabled = false; btnTop.textContent = 'Salva gruppo'
+    return
+  }
+
   const oggi = localDateIso()
   const commonLogistica = {
     appuntamento: orario || null,
@@ -4731,7 +4776,7 @@ async function salvaGruppo() {
             data_iscrizione: oggi,
             note_generali: a.note || null,
             profilo: { ...commonProfile, familiari: a.referenti },
-            maestro_id: currentUid,
+            maestro_id: writeUid,
           })
           if (error) throw error
         }
@@ -4745,7 +4790,9 @@ async function salvaGruppo() {
       await ricaricaAllievi()
       await goToReturnTarget(destination, { name: 'gruppo', id: nextGroup })
     } catch (e) {
-      errEl.textContent = e.message || 'Errore di rete. Riprova.'
+      errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
+        ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
+        : (e.message || 'Errore di rete. Riprova.')
       errEl.classList.add('show')
     } finally {
       btn.disabled = false; btn.textContent = 'Salva gruppo'
@@ -4781,7 +4828,7 @@ async function salvaGruppo() {
           data_iscrizione: oggi,
           note_generali: a.note || null,
           profilo: { ...commonProfile, familiari: a.referenti },
-          maestro_id: currentUid,
+          maestro_id: writeUid,
         })
       }
     }
@@ -4794,7 +4841,9 @@ async function salvaGruppo() {
     await ricaricaAllievi()
     showView('gruppo', nomeGruppo)
   } catch (e) {
-    errEl.textContent = e.message || 'Errore di rete. Riprova.'
+    errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
+      ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
+      : (e.message || 'Errore di rete. Riprova.')
     errEl.classList.add('show')
   } finally {
     btn.disabled = false; btn.textContent = 'Salva gruppo'
@@ -6611,7 +6660,14 @@ async function importaAllievo(input) {
 
   // Rimuove id e campi auto-generati, forza maestro_id al corrente
   const { id: _old, creato_il, aggiornato_il, maestro_id: _mid, ...rest } = src
-  const payload = { ...rest, maestro_id: currentUid, stato: rest.stato || 'attivo' }
+  let writeUid
+  try {
+    writeUid = await requireCurrentUidForWrite()
+  } catch (e) {
+    alert(e.message)
+    return
+  }
+  const payload = { ...rest, maestro_id: writeUid, stato: rest.stato || 'attivo' }
 
   const { data, error } = await sb.from('allievi').insert(payload).select().single()
   if (error) { alert('Errore importazione: ' + error.message); return }
