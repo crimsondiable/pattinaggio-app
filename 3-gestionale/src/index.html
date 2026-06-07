@@ -249,17 +249,21 @@
     .appointments-card-title { display: grid; gap: .15rem; }
     .appointments-card-title h3 { font-size: 1rem; }
     .appointments-card-title span { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+    .appointments-preferences { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; align-items: end; margin-bottom: .75rem; }
+    .appointments-preferences .field { margin-bottom: 0; }
+    .appointments-check { min-height: 38px; display: inline-flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .8rem; font-weight: 750; cursor: pointer; }
+    .appointments-check input { accent-color: var(--blu); }
     .availability-planner { display: grid; gap: .55rem; }
     .availability-planner-help { color: var(--muted); font-size: .8rem; line-height: 1.35; }
     .availability-grid-wrap { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); overflow-x: auto; background: rgba(255,255,255,.014); }
-    .availability-week-head { min-width: 760px; display: grid; grid-template-columns: 52px repeat(7, minmax(94px,1fr)); border-bottom: 1px solid rgba(148,163,184,.18); background: rgba(255,255,255,.025); }
+    .availability-week-head { min-width: 620px; display: grid; grid-template-columns: 46px repeat(7, minmax(72px,1fr)); border-bottom: 1px solid rgba(148,163,184,.18); background: rgba(255,255,255,.025); }
     .availability-week-head div { padding: .42rem .35rem; color: var(--muted); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .045em; text-align: center; }
-    .availability-week-body { min-width: 760px; display: grid; grid-template-columns: 52px repeat(7, minmax(94px,1fr)); height: 560px; overflow-y: auto; position: relative; }
+    .availability-week-body { min-width: 620px; display: grid; grid-template-columns: 46px repeat(7, minmax(72px,1fr)); height: 560px; overflow-y: auto; position: relative; }
     .availability-time-axis { position: relative; height: var(--availability-grid-height); border-right: 1px solid rgba(148,163,184,.16); background: rgba(255,255,255,.012); }
-    .availability-time-label { position: absolute; right: .35rem; transform: translateY(-50%); color: var(--muted); font-size: .68rem; font-weight: 800; }
+    .availability-time-label { position: absolute; right: .26rem; transform: translateY(-50%); color: var(--muted); font-size: .64rem; font-weight: 800; }
     .availability-day-col { position: relative; height: var(--availability-grid-height); border-left: 1px solid rgba(148,163,184,.11); cursor: crosshair; touch-action: none; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.11) 0, rgba(148,163,184,.11) 1px, transparent 1px, transparent var(--availability-hour-px)); }
     .availability-day-col:hover { background-color: rgba(110,231,249,.025); }
-    .availability-slot-block, .availability-drag-preview { position: absolute; left: .28rem; right: .28rem; border: 1px solid rgba(110,231,249,.46); border-radius: 6px; background: linear-gradient(135deg, rgba(34,184,207,.9), rgba(110,231,249,.86)); color: #041015; box-shadow: 0 10px 18px rgba(0,0,0,.24); padding: .35rem .42rem .5rem; overflow: hidden; cursor: grab; font-size: .76rem; line-height: 1.18; z-index: 3; }
+    .availability-slot-block, .availability-drag-preview { position: absolute; left: .2rem; right: .2rem; border: 1px solid rgba(110,231,249,.46); border-radius: 6px; background: linear-gradient(135deg, rgba(34,184,207,.9), rgba(110,231,249,.86)); color: #041015; box-shadow: 0 10px 18px rgba(0,0,0,.24); padding: .32rem .34rem .48rem; overflow: hidden; cursor: grab; font-size: .7rem; line-height: 1.16; z-index: 3; }
     .availability-slot-block:active { cursor: grabbing; }
     .availability-drag-preview { pointer-events: none; opacity: .72; z-index: 5; }
     .availability-slot-time { display: block; font-weight: 900; white-space: nowrap; }
@@ -270,17 +274,54 @@
     .availability-empty { color: var(--muted); font-size: .84rem; line-height: 1.4; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); padding: .75rem; background: rgba(255,255,255,.012); }
     .appointments-toolbar { display: grid; grid-template-columns: minmax(0,1fr) minmax(150px,.45fr) auto; gap: .5rem; align-items: end; margin-bottom: .75rem; }
     .appointments-toolbar .field { margin-bottom: 0; }
+    .appointments-explainer { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .65rem .75rem; display: grid; gap: .18rem; color: var(--muted); font-size: .82rem; line-height: 1.38; }
+    .appointments-explainer strong { color: var(--testo); font-size: .86rem; }
     .appointments-results { display: grid; gap: .45rem; margin-top: .85rem; }
-    .appointment-result { display: grid; grid-template-columns: 130px minmax(0,1fr) auto; gap: .65rem; align-items: center; border: 1px solid rgba(110,231,249,.22); border-radius: var(--r); background: rgba(110,231,249,.055); padding: .55rem .65rem; }
-    .appointment-result strong { color: var(--blu); }
-    .appointment-result span { color: var(--testo); font-size: .9rem; }
-    .appointment-result small { color: var(--muted); font-size: .74rem; }
+    .appointment-plan { border: 1px solid rgba(110,231,249,.22); border-radius: var(--r); background: rgba(110,231,249,.045); padding: .65rem; display: grid; gap: .55rem; }
+    .appointment-plan-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; align-items: baseline; }
+    .appointment-plan-head strong { color: var(--testo); font-size: .9rem; }
+    .appointment-plan-head span { color: var(--muted); font-size: .74rem; font-weight: 750; }
+    .appointment-plan-slots { display: flex; flex-wrap: wrap; gap: .38rem; }
+    .appointment-plan-slot { display: inline-flex; align-items: center; gap: .32rem; border: 1px solid rgba(110,231,249,.28); border-radius: 999px; background: rgba(7,17,22,.42); color: var(--testo); padding: .28rem .55rem; font-size: .78rem; font-weight: 750; }
+    .appointment-plan-slot strong { color: var(--blu); }
+    .appointment-plan-warning { color: #facc15; font-size: .78rem; line-height: 1.35; }
+    .appointment-schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .75rem; align-items: start; }
+    .appointment-schedule-variant { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .75rem; display: grid; gap: .65rem; }
+    .appointment-schedule-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .75rem; align-items: start; }
+    .appointment-schedule-head h4 { margin: 0; font-size: .94rem; line-height: 1.2; }
+    .appointment-schedule-head span { display: block; color: var(--muted); font-size: .75rem; line-height: 1.35; margin-top: .16rem; }
+    .appointment-schedule-head > strong { color: var(--blu); white-space: nowrap; font-size: .86rem; }
+    .appointment-schedule-meta { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .appointment-schedule-meta span { border: 1px solid rgba(148,163,184,.18); border-radius: 999px; color: var(--muted); background: rgba(7,17,22,.34); padding: .18rem .48rem; font-size: .72rem; font-weight: 800; }
+    .appointment-schedule-meta .ok { border-color: rgba(52,211,153,.35); color: var(--success); background: rgba(52,211,153,.08); }
+    .appointment-schedule-meta .warn { border-color: rgba(251,191,36,.34); color: #facc15; background: rgba(251,191,36,.08); }
+    .appointment-unplaced { border: 1px solid rgba(251,191,36,.22); border-radius: calc(var(--r) - 2px); background: rgba(251,191,36,.055); padding: .5rem .55rem; display: grid; gap: .2rem; color: #facc15; font-size: .75rem; line-height: 1.3; }
+    .appointment-unplaced strong { color: #fde68a; font-size: .76rem; }
+    .appointment-unplaced span { color: #facc15; }
+    .appointment-agenda-day { display: grid; gap: .35rem; padding-top: .1rem; }
+    .appointment-agenda-day-title { color: var(--blu); font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
+    .appointment-route-map { border: 1px solid rgba(110,231,249,.18); border-radius: calc(var(--r) - 2px); background: rgba(7,17,22,.42); overflow: hidden; }
+    .appointment-route-meta { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .5rem; align-items: center; padding: .42rem .5rem; border-bottom: 1px solid rgba(148,163,184,.14); }
+    .appointment-route-meta strong { color: var(--testo); font-size: .78rem; }
+    .appointment-route-meta span { color: var(--muted); font-size: .7rem; font-weight: 800; }
+    .appointment-route-stage { position: relative; width: 100%; aspect-ratio: 1114 / 993; min-height: 150px; max-height: 260px; overflow: hidden; background: #03090d; }
+    .appointment-route-stage .map-base-image { object-fit: contain; object-position: center; opacity: .82; }
+    .appointment-route-svg { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; display: block; }
+    .appointment-route-line { fill: none; stroke: #facc15; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; opacity: .86; filter: drop-shadow(0 0 10px rgba(250,204,21,.35)); }
+    .appointment-route-point circle { fill: var(--blu); stroke: #041015; stroke-width: 5; filter: drop-shadow(0 0 10px rgba(110,231,249,.55)); }
+    .appointment-route-point text { fill: #041015; font-size: 17px; font-weight: 900; pointer-events: none; }
+    .appointment-agenda-items { display: grid; gap: .3rem; }
+    .appointment-agenda-item { display: grid; grid-template-columns: 78px minmax(0,1fr) auto; gap: .45rem; align-items: baseline; border: 1px solid rgba(110,231,249,.15); border-radius: calc(var(--r) - 2px); background: rgba(110,231,249,.04); padding: .42rem .5rem; }
+    .appointment-agenda-item strong { color: var(--testo); font-size: .8rem; white-space: nowrap; }
+    .appointment-agenda-item span { color: var(--muted); font-size: .78rem; line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .appointment-agenda-item small { color: #facc15; font-size: .68rem; font-weight: 800; white-space: nowrap; }
     .appointments-warning { color: #facc15; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.24); border-radius: var(--r); padding: .6rem .7rem; font-size: .84rem; line-height: 1.38; margin-top: .75rem; }
     .appointments-status { color: var(--muted); font-size: .8rem; min-height: 1.15rem; margin-top: .55rem; }
     body.availability-dragging { user-select: none; }
     @media (max-width: 980px) {
-      .appointments-grid, .appointments-toolbar, .appointment-result { grid-template-columns: 1fr; }
-      .appointment-result { align-items: start; }
+      .appointments-grid, .appointments-toolbar, .appointments-preferences, .appointment-plan-head, .appointment-schedule-grid, .appointment-schedule-head, .appointment-agenda-item { grid-template-columns: 1fr; }
+      .appointment-route-meta { grid-template-columns: 1fr; }
+      .appointment-agenda-item span { white-space: normal; }
     }
     .global-search { position: relative; width: min(300px, 28vw); min-width: 190px; }
     .global-search input { width: 100%; padding: .42rem .65rem; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); font-size: .84rem; }
@@ -351,9 +392,18 @@
     }
     .map-location-row:hover,
     .map-location-row.is-selected { border-color: rgba(110,231,249,.55); background: rgba(110,231,249,.08); }
+    .map-location-row:focus-visible { outline: 2px solid rgba(110,231,249,.65); outline-offset: 2px; }
+    .map-location-row-main { min-width: 0; }
     .map-location-row strong { font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .map-location-row span { color: var(--muted); font-size: .72rem; line-height: 1.25; }
+    .map-row-status { white-space: nowrap; font-weight: 850; }
     .map-location-row .map-missing { color: #facc15; font-weight: 850; }
+    .map-mini-preview { width: 58px; height: 42px; border: 1px solid rgba(110,231,249,.34); border-radius: 5px; padding: 0; overflow: hidden; background: #03090d; cursor: zoom-in; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
+    .map-mini-preview:hover,
+    .map-mini-preview.is-selected { border-color: #facc15; box-shadow: 0 0 0 2px rgba(250,204,21,.16), 0 8px 18px rgba(0,0,0,.22); }
+    .map-mini-preview svg { display: block; width: 100%; height: 100%; }
+    .map-mini-halo { fill: rgba(250,204,21,.18); stroke: rgba(250,204,21,.74); stroke-width: 4; }
+    .map-mini-core { fill: #facc15; stroke: #041015; stroke-width: 3; }
     .map-stat-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .4rem; margin-bottom: .65rem; }
     .map-stat { border: 1px solid rgba(148,163,184,.14); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .45rem .5rem; }
     .map-stat strong { display: block; font-size: 1rem; }
@@ -532,6 +582,7 @@
     .vip-toggle { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
     .vip-toggle label { font-size: .83rem; font-weight: 600; }
     .vip-star { color: var(--blu); text-shadow: 0 0 10px rgba(110,231,249,.28); }
+    .vacation-icon { display: inline-block; margin-left: .18rem; color: #b45309; filter: drop-shadow(0 0 8px rgba(245,158,11,.2)); }
     .star-btn { font-size: 1.6rem; cursor: pointer; line-height: 1; user-select: none; color: var(--muted); opacity: .45; transition: color .15s, opacity .15s, text-shadow .15s; }
     .star-btn.on { color: var(--blu); opacity: 1; text-shadow: 0 0 10px rgba(110,231,249,.28); }
     .group-count { color: var(--blu); font-weight: 800; font-size: .8rem; }
@@ -935,6 +986,7 @@
         </div>
         <div class="form-grid">
           <div class="field"><label>Data *</label><input type="date" id="lz-data"></div>
+          <div class="field"><label>Ora</label><input type="time" id="lz-ora"></div>
           <div class="field"><label>Durata (min)</label><input type="number" id="lz-durata" placeholder="60" min="1"></div>
           <div class="field">
             <label>Lezione di</label>
@@ -1013,8 +1065,17 @@
                 <option value="Master">Master</option>
               </select>
             </div>
+            <div class="field">
+              <label>Stato lezioni</label>
+              <label style="display:flex;align-items:center;gap:.5rem;min-height:2.25rem;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="na-in-vacanza">
+                In vacanza
+              </label>
+            </div>
             <div class="field"><label>Indirizzo / zona</label><input type="text" id="na-indirizzo" placeholder="Es. Milano Nord"></div>
             <div class="field"><label>Casa</label><input type="text" id="na-casa" placeholder="Es. via e civico casa"></div>
+            <div class="field"><label>GPS casa · latitudine</label><input type="text" id="na-casa-latitudine" placeholder="45.46420" inputmode="decimal"></div>
+            <div class="field"><label>GPS casa · longitudine</label><input type="text" id="na-casa-longitudine" placeholder="9.19000" inputmode="decimal"></div>
             <div class="field">
               <label>Condivisione indirizzo</label>
               <label style="display:flex;align-items:center;gap:.5rem;min-height:2.25rem;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer">
@@ -1120,7 +1181,7 @@
           <div class="form-grid">
             <div class="field"><label>Appuntamento</label><input type="text" id="ass-appuntamento" placeholder="Es. Sabato 10:00"></div>
             <div class="field"><label>Durata (min)</label><input type="number" id="ass-durata" placeholder="60" min="0"></div>
-            <div class="field"><label>Luogo</label><input type="text" id="ass-luogo" placeholder="Es. Pista principale"></div>
+            <div class="field"><label>Luogo di incontro</label><input type="text" id="ass-luogo" placeholder="Es. Pista principale"></div>
           </div>
 
           <p class="form-sec">Partecipante</p>
@@ -1163,8 +1224,15 @@
         <div class="form-grid">
           <div class="field"><label>Nome gruppo *</label><input type="text" id="gr-nome" placeholder="Es. Sabato mattina"></div>
           <div class="field"><label>Orario</label><input type="text" id="gr-orario" placeholder="Es. Sabato 10:00"></div>
-          <div class="field"><label>Luogo</label><input type="text" id="gr-luogo" placeholder="Es. Pista centrale"></div>
+          <div class="field"><label>Luogo di incontro</label><input type="text" id="gr-luogo" placeholder="Es. Pista centrale"></div>
           <div class="field"><label>Durata (min)</label><input type="number" id="gr-durata" placeholder="60" min="1"></div>
+          <div class="field">
+            <label>Stato lezioni</label>
+            <label style="display:flex;align-items:center;gap:.5rem;min-height:2.25rem;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer">
+              <input type="checkbox" id="gr-in-vacanza">
+              In vacanza
+            </label>
+          </div>
         </div>
 
         <p class="form-sec">Pagamento</p>
@@ -1494,7 +1562,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260606-map-calibration';
+  var appVersion = '20260607-map-mini-preview';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }

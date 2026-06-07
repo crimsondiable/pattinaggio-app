@@ -1,15 +1,16 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
 let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
-let mappaTipoFiltro = 'all', mappaSelectedLocationName = null
+let mappaTipoFiltro = 'all', mappaSelectedLocationName = null, mappaSingleFocusName = null
 const lezioniColumnState = { data: false, luogo: false, note: false }
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
 const GROUP_SKILL_ROWS_KEY = '__group__'
 const APP_NOTES_KEY = 'bladingManagerAppNotes'
 const APP_NOTES_REMOTE_KEY = 'gestionale'
 const LOCATION_MAP_COORDS_KEY = 'bladingManagerLocationMapCoords'
+const LOCATION_BACK_TARGET_KEY = 'bladingManagerLocationBackTarget'
 const MILANO_MAP_BOUNDS = Object.freeze({ north: 45.5433822361299, south: 45.38158101556157, west: 9.034115819444445, east: 9.286647969771241 })
 const MILANO_MAP_VIEWBOX = Object.freeze({ width: 1114, height: 993 })
 const MILANO_MAP_IMAGE = './mappa-milano-quartieri-dark@2x.png'
@@ -69,6 +70,11 @@ const AVAILABILITY_STEP_MIN = 15
 const AVAILABILITY_HOUR_PX = 44
 const APPOINTMENT_BUFFER_MIN = 15
 const APPOINTMENT_MIN_LESSON_MIN = 60
+const APPOINTMENT_DEFAULT_WEEKLY_COUNT = 1
+const APPOINTMENT_MAX_WEEKLY_COUNT = 7
+const APPOINTMENT_GROUP_TARGET_PREFIX = 'gruppo:'
+const APPOINTMENT_HEAT_START_MIN = 13 * 60
+const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30
 let maestroAvailabilitySlots = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
 let godMode = false, godScope = 'all', shareContext = null
@@ -405,6 +411,8 @@ function visibleAllievoAddress(allievo = {}) {
   return {
     indirizzo: profilo.indirizzo || '',
     casa: profilo.casa || '',
+    casa_latitudine: profilo.casa_latitudine ?? profilo.casa_lat ?? null,
+    casa_longitudine: profilo.casa_longitudine ?? profilo.casa_lng ?? profilo.casa_lon ?? null,
   }
 }
 
@@ -648,19 +656,64 @@ function locationRecordByName(nome) {
     || null
 }
 
+function lessonParticipantsFromLesson(lezione = {}) {
+  return (lezione.lezioni_allievi || [])
+    .map(row => row.allievi?.id ? (allAllievi.find(a => String(a.id) === String(row.allievi.id)) || row.allievi) : null)
+    .filter(Boolean)
+}
+
+function addLocationNameCandidate(map, nome) {
+  const clean = String(nome || '').trim()
+  if (!clean) return
+  const key = normalizeText(clean)
+  if (key && !map.has(key)) map.set(key, clean)
+}
+
+function addLessonLocationCandidates(map, lezione = {}) {
+  const luogo = String(lezione.luogo || '').trim()
+  if (!luogo) return
+  const parts = appointmentLocationRouteParts(luogo)
+  const participants = lessonParticipantsFromLesson(lezione)
+  const homeLike = part => /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(normalizeMapMatchText(part))
+  if (parts.length > 1) {
+    parts.forEach(part => {
+      if (homeLike(part) && participants.length === 1) addLocationNameCandidate(map, `Casa di ${mappaAllievoHomeName(participants[0])}`)
+      else addLocationNameCandidate(map, part)
+    })
+    return
+  }
+  if (homeLike(luogo) && participants.length === 1) addLocationNameCandidate(map, `Casa di ${mappaAllievoHomeName(participants[0])}`)
+  else addLocationNameCandidate(map, luogo)
+}
+
+function addDefaultMeetingLocationCandidates(map) {
+  allieviVisibiliGod().filter(a => a.stato !== 'archiviato').forEach(allievo => {
+    const individuale = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
+    addLocationNameCandidate(map, individuale.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : ''))
+  })
+  gruppiEsistenti().forEach(gruppo => {
+    const luogo = profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro
+    addLocationNameCandidate(map, luogo)
+  })
+}
+
 function locationNamesFromLessons() {
   const map = new Map()
-  ;(lezioniCache || []).forEach(l => {
-    const nome = String(l.luogo || '').trim()
-    if (!nome) return
-    const key = normalizeText(nome)
-    if (!map.has(key)) map.set(key, nome)
-  })
+  ;(lezioniCache || []).forEach(l => addLessonLocationCandidates(map, l))
+  addDefaultMeetingLocationCandidates(map)
   allLocations.forEach(l => {
     const nome = String(l.nome || '').trim()
     if (nome && !map.has(normalizeText(nome))) map.set(normalizeText(nome), nome)
   })
   return [...map.values()].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))
+}
+
+function lessonLocationUsesName(lezione = {}, nome = '') {
+  const target = normalizeText(nome)
+  if (!target) return false
+  const candidates = new Map()
+  addLessonLocationCandidates(candidates, lezione)
+  return [...candidates.values()].some(candidate => normalizeText(candidate) === target)
 }
 
 function renderDashboard() {
@@ -762,14 +815,64 @@ function visibleViewName() {
 }
 
 function syncNavActive(name) {
+  const locationFromMap = name === 'location' && locationBackTarget?.name === 'mappa'
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
-  document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','location','lezione','nuova-lezione'].includes(name))
+  document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name) || (name === 'location' && !locationFromMap))
   document.getElementById('nav-percorsi').classList.toggle('active', name === 'percorsi')
   document.getElementById('nav-calendar').classList.toggle('active', name === 'appuntamenti')
-  document.getElementById('nav-mappa').classList.toggle('active', name === 'mappa')
+  document.getElementById('nav-mappa').classList.toggle('active', name === 'mappa' || locationFromMap)
   document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
   document.getElementById('nav-app-notes').classList.toggle('active', name === 'app-notes')
+}
+
+function isValidLocationBackTarget(target) {
+  if (!target || target.name === 'location') return false
+  if (target.name === 'scheda' || target.name === 'gruppo' || target.name === 'lezione') return !!target.id
+  return ['allievi','lezioni','percorsi','appuntamenti','mappa','skills','tuning','app-notes'].includes(target.name)
+}
+
+function readLocationBackTarget() {
+  try {
+    const target = JSON.parse(safeStorage.getItem(LOCATION_BACK_TARGET_KEY) || 'null')
+    return isValidLocationBackTarget(target) ? target : null
+  } catch {
+    return null
+  }
+}
+
+function setLocationBackTarget(target) {
+  locationBackTarget = isValidLocationBackTarget(target) ? { name: target.name, id: target.id || null } : null
+  if (locationBackTarget) safeStorage.setItem(LOCATION_BACK_TARGET_KEY, JSON.stringify(locationBackTarget))
+  else safeStorage.removeItem(LOCATION_BACK_TARGET_KEY)
+}
+
+function locationBackLabel(target = locationBackTarget) {
+  const labels = {
+    allievi: 'Allievi',
+    lezioni: 'Lezioni',
+    percorsi: 'Percorsi',
+    appuntamenti: 'Appuntamenti',
+    mappa: 'Mappa',
+    skills: 'Skills',
+    tuning: 'Tuning',
+    'app-notes': 'Note',
+    scheda: 'Scheda allievo',
+    gruppo: 'Scheda gruppo',
+    lezione: 'Lezione',
+  }
+  return labels[target?.name] || 'Lezioni'
+}
+
+function locationBackButtonHtml() {
+  const target = locationBackTarget || readLocationBackTarget() || { name: 'lezioni', id: null }
+  locationBackTarget = target
+  return `<button class="back-btn" onclick="tornaDaLocation()">← ${esc(locationBackLabel(target))}</button>`
+}
+
+function tornaDaLocation() {
+  const target = locationBackTarget || readLocationBackTarget()
+  goToReturnTarget(target, { name: 'lezioni', id: null })
 }
 
 function currentReturnTarget() {
@@ -777,7 +880,7 @@ function currentReturnTarget() {
   if (view === 'scheda' && currentSchedaId) return { name: 'scheda', id: currentSchedaId }
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
-  if (view === 'location') return { name: 'lezioni', id: null }
+  if (view === 'location') return locationBackTarget || readLocationBackTarget() || { name: 'lezioni', id: null }
   if (view === 'allievi' || view === 'lezioni' || view === 'percorsi' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
   return null
 }
@@ -802,9 +905,16 @@ async function goToReturnTarget(target, fallback) {
 
 function showView(name, id) {
   if ((name === 'tuning' || name === 'app-notes') && !godMode) name = 'allievi'
+  const previousReturnTarget = currentReturnTarget()
+  if (name === 'location') {
+    const storedTarget = readLocationBackTarget()
+    const target = !appHistoryStarted && storedTarget ? storedTarget : previousReturnTarget
+    if (!appHistoryApplying && isValidLocationBackTarget(target)) setLocationBackTarget(target)
+    else if (!locationBackTarget && storedTarget) locationBackTarget = storedTarget
+  }
   document.body.classList.toggle('route-builder-active', name === 'percorsi')
   if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
-    const returnTarget = currentReturnTarget()
+    const returnTarget = previousReturnTarget
     if (returnTarget) editReturnTarget = returnTarget
   }
   ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
@@ -1001,16 +1111,75 @@ function setAvailabilityStatus(owner, text, cls = '') {
 }
 
 function activeAppointmentAllievi() {
-  return ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato'))
+  return ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato' && !allievoInVacanza(a)))
 }
 
-function availabilityAllievoOptions(selected = '') {
+function appointmentGroups() {
+  return [...new Set(activeAppointmentAllievi().map(a => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+}
+
+function appointmentGroupTargetValue(gruppo) {
+  return `${APPOINTMENT_GROUP_TARGET_PREFIX}${gruppo}`
+}
+
+function appointmentTargetIsGroup(value) {
+  return String(value || '').startsWith(APPOINTMENT_GROUP_TARGET_PREFIX)
+}
+
+function appointmentGroupFromTarget(value) {
+  return appointmentTargetIsGroup(value) ? String(value).slice(APPOINTMENT_GROUP_TARGET_PREFIX.length) : ''
+}
+
+function appointmentGroupMembers(gruppo) {
+  return activeAppointmentAllievi().filter(a => a.gruppo === gruppo)
+}
+
+function appointmentTargetExists(value) {
+  if (!value) return false
+  if (appointmentTargetIsGroup(value)) return appointmentGroupMembers(appointmentGroupFromTarget(value)).length > 0
+  return activeAppointmentAllievi().some(a => String(a.id) === String(value))
+}
+
+function selectedAppointmentTarget() {
+  const selected = appuntamentiSelectedAllievoId
+  if (!selected) return null
+  if (appointmentTargetIsGroup(selected)) {
+    const gruppo = appointmentGroupFromTarget(selected)
+    const members = appointmentGroupMembers(gruppo)
+    if (!members.length) return null
+    return {
+      type: 'gruppo',
+      value: selected,
+      gruppo,
+      label: gruppo,
+      members,
+    }
+  }
+  const allievo = allievoById(selected)
+  return allievo ? {
+    type: 'allievo',
+    value: String(allievo.id),
+    allievo,
+    label: lezioneTargetLabelAllievo(allievo),
+    members: [allievo],
+  } : null
+}
+
+function availabilityTargetOptions(selected = '') {
   const attivi = activeAppointmentAllievi()
-  const gruppi = [...new Set(attivi.map(a => a.gruppo).filter(Boolean))].sort()
+  const gruppi = appointmentGroups()
   return `
-    <option value="">— Scegli allievo —</option>
+    <option value="">— Scegli allievo o gruppo —</option>
+    ${gruppi.length ? `
+      <optgroup label="Gruppi">
+        ${gruppi.map(gruppo => {
+          const value = appointmentGroupTargetValue(gruppo)
+          const count = appointmentGroupMembers(gruppo).length
+          return `<option value="${esc(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${esc(gruppo)} (${count})</option>`
+        }).join('')}
+      </optgroup>` : ''}
     ${gruppi.map(gruppo => `
-      <optgroup label="${esc(gruppo)}">
+      <optgroup label="Allievi · ${esc(gruppo)}">
         ${attivi.filter(a => a.gruppo === gruppo).map(a => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? 'selected' : ''}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join('')}
       </optgroup>`).join('')}
     ${attivi.some(a => !a.gruppo) ? `
@@ -1020,16 +1189,85 @@ function availabilityAllievoOptions(selected = '') {
 }
 
 function selectedAppointmentAllievo() {
-  return appuntamentiSelectedAllievoId ? allievoById(appuntamentiSelectedAllievoId) : null
+  const target = selectedAppointmentTarget()
+  return target?.type === 'allievo' ? target.allievo : null
 }
 
 function availabilitySlotsForAllievo(allievo) {
   return normalizeAvailabilitySlots(allievo?.profilo?.disponibilita_slots || allievo?.profilo?.availability_slots || [])
 }
 
+function availabilitySlotsForGroup(gruppo) {
+  const members = appointmentGroupMembers(gruppo)
+  const source = members.find(member => availabilitySlotsForAllievo(member).length)
+  return source ? availabilitySlotsForAllievo(source) : []
+}
+
+function availabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return []
+  if (target.type === 'gruppo') return availabilitySlotsForGroup(target.gruppo)
+  return availabilitySlotsForAllievo(target.allievo)
+}
+
+function availabilityNoteForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return ''
+  if (target.type === 'gruppo') return mergeAvailabilityNotes(...target.members.map(member => member.profilo?.disponibilita))
+  return target.allievo?.profilo?.disponibilita || ''
+}
+
+function normalizeAppointmentWeeklyCount(value) {
+  const parsed = parseInt(value, 10)
+  if (!Number.isFinite(parsed)) return APPOINTMENT_DEFAULT_WEEKLY_COUNT
+  return Math.max(APPOINTMENT_DEFAULT_WEEKLY_COUNT, Math.min(APPOINTMENT_MAX_WEEKLY_COUNT, parsed))
+}
+
+function appointmentWeeklyCountForAllievo(allievo) {
+  return normalizeAppointmentWeeklyCount(allievo?.profilo?.appuntamenti_settimanali || allievo?.profilo?.lezioni_settimanali || APPOINTMENT_DEFAULT_WEEKLY_COUNT)
+}
+
+function appointmentWeeklyCountForTarget(target = selectedAppointmentTarget()) {
+  if (!target) return APPOINTMENT_DEFAULT_WEEKLY_COUNT
+  if (target.type === 'gruppo') {
+    const source = target.members.find(member => member.profilo?.appuntamenti_settimanali || member.profilo?.lezioni_settimanali)
+    return appointmentWeeklyCountForAllievo(source || target.members[0])
+  }
+  return appointmentWeeklyCountForAllievo(target.allievo)
+}
+
+function appointmentAvoidConsecutiveForAllievo(allievo) {
+  return allievo?.profilo?.appuntamenti_evita_giorni_consecutivi !== false
+}
+
+function appointmentAvoidConsecutiveForTarget(target = selectedAppointmentTarget()) {
+  if (!target) return true
+  if (target.type === 'gruppo') {
+    const source = target.members.find(member => member.profilo && Object.prototype.hasOwnProperty.call(member.profilo, 'appuntamenti_evita_giorni_consecutivi'))
+    return appointmentAvoidConsecutiveForAllievo(source || target.members[0])
+  }
+  return appointmentAvoidConsecutiveForAllievo(target.allievo)
+}
+
+function normalizeAppointmentLessonDuration(value, fallback = APPOINTMENT_MIN_LESSON_MIN) {
+  const parsed = parseInt(value, 10)
+  const fallbackValue = Number.isFinite(Number(fallback)) ? Number(fallback) : APPOINTMENT_MIN_LESSON_MIN
+  if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(AVAILABILITY_STEP_MIN, fallbackValue)
+  return Math.max(AVAILABILITY_STEP_MIN, availabilitySnap(parsed))
+}
+
+function appointmentLessonDurationForTarget(target = selectedAppointmentTarget(), fallback = APPOINTMENT_MIN_LESSON_MIN) {
+  if (!target) return normalizeAppointmentLessonDuration(null, fallback)
+  if (target.type === 'gruppo') {
+    const duration = profiloComuneGruppo(target.members).durata_lezione
+    return normalizeAppointmentLessonDuration(duration, fallback)
+  }
+  const allievo = target.allievo
+  const logistica = logisticaIndividualeProfilo(allievo?.profilo || {}, !!allievo?.gruppo)
+  return normalizeAppointmentLessonDuration(logistica.durata_lezione || allievo?.profilo?.durata_lezione, fallback)
+}
+
 function availabilitySlotsForOwner(owner) {
   if (owner === 'maestro') return normalizeAvailabilitySlots(maestroAvailabilitySlots)
-  return availabilitySlotsForAllievo(selectedAppointmentAllievo())
+  return availabilitySlotsForAppointmentTarget()
 }
 
 function availabilityGridHeight() {
@@ -1113,12 +1351,14 @@ function renderAppuntamenti() {
   const el = document.getElementById('appuntamenti-content')
   if (!el) return
   const attivi = activeAppointmentAllievi()
-  if (appuntamentiSelectedAllievoId && !attivi.some(a => String(a.id) === String(appuntamentiSelectedAllievoId))) appuntamentiSelectedAllievoId = null
+  if (appuntamentiSelectedAllievoId && !appointmentTargetExists(appuntamentiSelectedAllievoId)) appuntamentiSelectedAllievoId = null
   if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id
-  const selectedAllievo = selectedAppointmentAllievo()
-  const selectedSlots = availabilitySlotsForAllievo(selectedAllievo)
-  const selectedNote = selectedAllievo?.profilo?.disponibilita || ''
-  const gruppi = [...new Set(attivi.map(a => a.gruppo).filter(Boolean))].sort()
+  const selectedTarget = selectedAppointmentTarget()
+  const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget)
+  const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget)
+  const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget)
+  const selectedAvoidConsecutive = appointmentAvoidConsecutiveForTarget(selectedTarget)
+  const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
 
   el.innerHTML = `
@@ -1137,24 +1377,34 @@ function renderAppuntamenti() {
       <div class="card">
         <div class="appointments-card-head">
           <div class="appointments-card-title">
-            <h3>Disponibilita allievo</h3>
-            <span>Le fasce vengono salvate nel profilo dell allievo selezionato.</span>
+            <h3>Disponibilita ${selectedTarget?.type === 'gruppo' ? 'gruppo' : 'allievo'}</h3>
+            <span>${selectedTarget?.type === 'gruppo' ? 'Le fasce vengono salvate su tutti i membri attivi del gruppo selezionato.' : 'Le fasce vengono salvate nel profilo dell allievo selezionato.'}</span>
           </div>
         </div>
         <div class="field">
-          <label>Allievo</label>
+          <label>Allievo o gruppo</label>
           <select id="appointments-allievo-select" onchange="setAppuntamentiAllievo(this.value)">
-            ${availabilityAllievoOptions(appuntamentiSelectedAllievoId)}
+            ${availabilityTargetOptions(appuntamentiSelectedAllievoId)}
           </select>
         </div>
-        ${selectedAllievo ? `
+        ${selectedTarget ? `
+          <div class="appointments-preferences">
+            <div class="field">
+              <label>Appuntamenti a settimana</label>
+              <input type="number" id="appointments-weekly-count" min="${APPOINTMENT_DEFAULT_WEEKLY_COUNT}" max="${APPOINTMENT_MAX_WEEKLY_COUNT}" step="1" value="${selectedWeeklyCount}" onchange="saveSelectedAppointmentPreferences()">
+            </div>
+            <label class="appointments-check">
+              <input type="checkbox" id="appointments-avoid-consecutive" ${selectedAvoidConsecutive ? 'checked' : ''} onchange="saveSelectedAppointmentPreferences()">
+              <span>Evita giorni consecutivi</span>
+            </label>
+          </div>
           ${availabilityPlannerHtml('allievo', selectedSlots)}
           <div class="field" style="margin-top:.75rem">
             <label>Note disponibilita</label>
             <textarea id="appointments-allievo-note" placeholder="Testo libero, vincoli dei genitori, preferenze...">${esc(selectedNote)}</textarea>
           </div>
           <button type="button" class="btn btn-outline btn-sm" onclick="saveSelectedAllievoAvailabilityNote()">Salva note</button>
-        ` : '<div class="availability-empty">Nessun allievo attivo disponibile.</div>'}
+        ` : '<div class="availability-empty">Nessun allievo o gruppo attivo disponibile.</div>'}
         <div class="appointments-status" id="allievo-availability-status"></div>
       </div>
 
@@ -1179,7 +1429,7 @@ function renderAppuntamenti() {
             </select>
           </div>
           <div class="field">
-            <label>Durata lezione min.</label>
+            <label>Durata fallback</label>
             <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="renderAppointmentIntersections()">
           </div>
         </div>
@@ -1227,9 +1477,15 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
     setAvailabilityStatus('maestro', saved.remote ? message : 'Salvata localmente. Sync online non disponibile.', saved.remote ? 'ok' : '')
     return
   }
-  const allievo = selectedAppointmentAllievo()
-  if (!allievo) return
-  await saveAllievoAvailability(allievo.id, slots)
+  const target = selectedAppointmentTarget()
+  if (!target) return
+  if (target.type === 'gruppo') {
+    await saveGroupAvailability(target.gruppo, slots)
+    renderAppuntamenti()
+    setAvailabilityStatus('allievo', `${message} Salvata su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
+    return
+  }
+  await saveAllievoAvailability(target.allievo.id, slots)
   renderAppuntamenti()
   setAvailabilityStatus('allievo', message, 'ok')
 }
@@ -1413,9 +1669,16 @@ async function removeAvailabilitySlot(owner, slotId) {
       setAvailabilityStatus('maestro', saved.remote ? 'Fascia rimossa.' : 'Fascia rimossa localmente.', saved.remote ? 'ok' : '')
       return
     }
-    const allievo = selectedAppointmentAllievo()
-    if (!allievo) return
-    await saveAllievoAvailability(allievo.id, availabilitySlotsForAllievo(allievo).filter(slot => String(slot.id) !== String(slotId)))
+    const target = selectedAppointmentTarget()
+    if (!target) return
+    const next = availabilitySlotsForAppointmentTarget(target).filter(slot => String(slot.id) !== String(slotId))
+    if (target.type === 'gruppo') {
+      await saveGroupAvailability(target.gruppo, next)
+      renderAppuntamenti()
+      setAvailabilityStatus('allievo', `Fascia rimossa dal gruppo ${target.gruppo}.`, 'ok')
+      return
+    }
+    await saveAllievoAvailability(target.allievo.id, next)
     renderAppuntamenti()
     setAvailabilityStatus('allievo', 'Fascia rimossa.', 'ok')
   } catch (e) {
@@ -1458,12 +1721,76 @@ async function saveAllievoAvailability(allievoId, slots, noteValue = undefined) 
   logModificaLocale('allievo', allievoId, 'Aggiornate disponibilita')
 }
 
+async function saveAllievoAppointmentPreferences(allievoId, preferences) {
+  const allievo = allievoById(allievoId)
+  if (!allievo) throw new Error('Allievo non trovato.')
+  const profilo = {
+    ...(allievo.profilo || {}),
+    appuntamenti_settimanali: normalizeAppointmentWeeklyCount(preferences.weeklyCount),
+    appuntamenti_evita_giorni_consecutivi: preferences.avoidConsecutive !== false,
+    appuntamenti_preferenze_updated_at: new Date().toISOString(),
+  }
+  let payload = { profilo, aggiornato_il: new Date().toISOString() }
+  let { data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single()
+  if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+    payload = { profilo }
+    ;({ data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single())
+  }
+  if (error) throw error
+  allAllievi = allAllievi.map(a => String(a.id) === String(allievoId) ? (data || { ...a, ...payload }) : a)
+  logModificaLocale('allievo', allievoId, 'Aggiornate preferenze appuntamenti')
+}
+
+async function saveGroupAvailability(gruppo, slots, noteValue = undefined) {
+  const members = appointmentGroupMembers(gruppo)
+  if (!members.length) throw new Error('Gruppo non trovato.')
+  for (const member of members) {
+    await saveAllievoAvailability(member.id, slots, noteValue)
+  }
+}
+
+async function saveGroupAppointmentPreferences(gruppo, preferences) {
+  const members = appointmentGroupMembers(gruppo)
+  if (!members.length) throw new Error('Gruppo non trovato.')
+  for (const member of members) {
+    await saveAllievoAppointmentPreferences(member.id, preferences)
+  }
+}
+
+async function saveSelectedAppointmentPreferences() {
+  const target = selectedAppointmentTarget()
+  if (!target) return
+  const weeklyCount = normalizeAppointmentWeeklyCount(document.getElementById('appointments-weekly-count')?.value)
+  const avoidConsecutive = document.getElementById('appointments-avoid-consecutive')?.checked !== false
+  try {
+    if (target.type === 'gruppo') {
+      await saveGroupAppointmentPreferences(target.gruppo, { weeklyCount, avoidConsecutive })
+      document.getElementById('appointments-weekly-count').value = String(weeklyCount)
+      setAvailabilityStatus('allievo', `Preferenze salvate su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
+      renderAppointmentIntersections()
+      return
+    }
+    await saveAllievoAppointmentPreferences(target.allievo.id, { weeklyCount, avoidConsecutive })
+    document.getElementById('appointments-weekly-count').value = String(weeklyCount)
+    setAvailabilityStatus('allievo', 'Preferenze appuntamenti salvate.', 'ok')
+    renderAppointmentIntersections()
+  } catch (e) {
+    setAvailabilityStatus('allievo', e.message || 'Errore salvataggio preferenze.', 'err')
+  }
+}
+
 async function saveSelectedAllievoAvailabilityNote() {
-  const allievo = selectedAppointmentAllievo()
-  if (!allievo) return
+  const target = selectedAppointmentTarget()
+  if (!target) return
   const note = document.getElementById('appointments-allievo-note')?.value || ''
   try {
-    await saveAllievoAvailability(allievo.id, availabilitySlotsForAllievo(allievo), note)
+    if (target.type === 'gruppo') {
+      await saveGroupAvailability(target.gruppo, availabilitySlotsForAppointmentTarget(target), note)
+      renderAppuntamenti()
+      setAvailabilityStatus('allievo', `Note disponibilita salvate su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
+      return
+    }
+    await saveAllievoAvailability(target.allievo.id, availabilitySlotsForAppointmentTarget(target), note)
     renderAppuntamenti()
     setAvailabilityStatus('allievo', 'Note disponibilita salvate.', 'ok')
   } catch (e) {
@@ -1533,37 +1860,548 @@ function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_
     .sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || a.endMin - b.endMin)
 }
 
-function computePairwiseAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
-  return (allievoIds || []).flatMap(id => {
-    const allievo = allievoById(id)
-    return computeAvailabilityIntersections([id], minDuration, bufferMin).map(window => ({
-      ...window,
-      allievoId: id,
-      allievoName: allievo ? lezioneTargetLabelAllievo(allievo) : id,
-    }))
-  }).sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.allievoName).localeCompare(String(b.allievoName), 'it', { sensitivity: 'base' }))
+function appointmentDayCombinations(days, count) {
+  const results = []
+  function visit(start, combo) {
+    if (combo.length === count) {
+      results.push(combo.slice())
+      return
+    }
+    for (let index = start; index < days.length; index += 1) {
+      combo.push(days[index])
+      visit(index + 1, combo)
+      combo.pop()
+    }
+  }
+  visit(0, [])
+  return results
 }
 
-function appointmentResultHtml(window, detail = '') {
-  const tail = detail ? '' : (window.labels?.slice(1).join(', ') || '')
-  const bufferText = window.bufferMin ? ` · max lezione ${window.lessonDuration} min + pausa ${window.bufferMin} min` : ''
+function appointmentConsecutiveDayPairs(days) {
+  const orders = days.map(day => availabilityDayOrder(day)).sort((a, b) => a - b)
+  let pairs = 0
+  for (let index = 1; index < orders.length; index += 1) {
+    if (orders[index] - orders[index - 1] === 1) pairs += 1
+  }
+  if (orders.includes(0) && orders.includes(6)) pairs += 1
+  return pairs
+}
+
+function appointmentDaySpreadScore(days) {
+  const orders = days.map(day => availabilityDayOrder(day))
+  let score = 0
+  for (let i = 0; i < orders.length; i += 1) {
+    for (let j = i + 1; j < orders.length; j += 1) {
+      const distance = Math.abs(orders[i] - orders[j])
+      score += Math.min(distance, 7 - distance)
+    }
+  }
+  return score
+}
+
+function chooseAppointmentWeeklyPlan(windows, weeklyCount, avoidConsecutive = true) {
+  const needed = normalizeAppointmentWeeklyCount(weeklyCount)
+  const byDay = new Map()
+  normalizeAvailabilitySlots(windows).forEach(window => {
+    if (!byDay.has(window.day)) byDay.set(window.day, [])
+    byDay.get(window.day).push(window)
+  })
+  byDay.forEach(items => items.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start) || timeToMinutes(b.end) - timeToMinutes(a.end)))
+  const days = [...byDay.keys()].sort((a, b) => availabilityDayOrder(a) - availabilityDayOrder(b))
+  const planSize = Math.min(needed, days.length)
+  if (!planSize) return []
+  const combinations = appointmentDayCombinations(days, planSize)
+  const ranked = combinations.map(combo => ({
+    days: combo,
+    consecutivePairs: appointmentConsecutiveDayPairs(combo),
+    spreadScore: appointmentDaySpreadScore(combo),
+    startSum: combo.reduce((sum, day) => sum + timeToMinutes(byDay.get(day)[0].start), 0),
+  })).sort((a, b) => {
+    if (avoidConsecutive && a.consecutivePairs !== b.consecutivePairs) return a.consecutivePairs - b.consecutivePairs
+    if (a.spreadScore !== b.spreadScore) return b.spreadScore - a.spreadScore
+    return a.startSum - b.startSum
+  })
+  const best = ranked[0]?.days || []
+  return best
+    .map(day => byDay.get(day)[0])
+    .sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start))
+}
+
+function appointmentLocationForTarget(target) {
+  if (!target) return ''
+  if (target.type === 'gruppo') return profiloComuneGruppo(target.members).luogo_incontro || target.gruppo || ''
+  const allievo = target.allievo
+  const logistica = logisticaIndividualeProfilo(allievo?.profilo || {}, !!allievo?.gruppo)
+  return logistica.luogo_incontro || allievo?.profilo?.luogo_incontro || visibleAllievoAddress(allievo).indirizzo || ''
+}
+
+function appointmentLocationRouteParts(location) {
+  const text = String(location || '').trim()
+  if (!text) return []
+  return text
+    .split(/\s*(?:->|→|–|—|\s-\s)\s*/g)
+    .map(part => part.trim())
+    .filter(Boolean)
+}
+
+function appointmentHomeLocationRecord(allievo, fallbackName = 'casa') {
+  const address = allievo ? visibleAllievoAddress(allievo) : {}
+  const homeName = allievo ? `Casa di ${mappaAllievoHomeName(allievo)}` : fallbackName
+  return locationRecordByName(homeName) || {
+    nome: homeName,
+    indirizzo: address.indirizzo || address.casa || '',
+    latitudine: address.casa_latitudine,
+    longitudine: address.casa_longitudine,
+    tipologia: 'Casa allievo',
+  }
+}
+
+function appointmentLocationPointInfo(part, allievo = null) {
+  const label = String(part || '').trim()
+  const key = normalizeMapMatchText(label)
+  const homeLike = !label || /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(key)
+  const record = homeLike
+    ? appointmentHomeLocationRecord(allievo, label || 'casa')
+    : (locationRecordByName(label) || { nome: label, indirizzo: label, tipologia: 'Location' })
+  const coords = locationMapCoords(record)
+  const canonical = coords?.label || record.nome || record.indirizzo || label
+  return {
+    label: homeLike ? (record.nome || label || 'casa') : label,
+    key: normalizeMapMatchText(canonical),
+    point: coords ? mappaProjectCoord(coords) : null,
+  }
+}
+
+function appointmentLocationInfoForTarget(target) {
+  const location = appointmentLocationForTarget(target)
+  const allievo = target?.allievo || target?.members?.[0] || null
+  const parts = appointmentLocationRouteParts(location)
+  const startInfo = appointmentLocationPointInfo(parts[0] || location, allievo)
+  const endInfo = appointmentLocationPointInfo(parts.length > 1 ? parts[parts.length - 1] : (parts[0] || location), allievo)
+  const key = startInfo.key === endInfo.key ? startInfo.key : `${startInfo.key}->${endInfo.key}`
+  return {
+    label: location,
+    key,
+    point: startInfo.point,
+    startLabel: startInfo.label,
+    startKey: startInfo.key,
+    startPoint: startInfo.point,
+    endLabel: endInfo.label,
+    endKey: endInfo.key,
+    endPoint: endInfo.point,
+    isRoute: parts.length > 1 && startInfo.key !== endInfo.key,
+  }
+}
+
+function appointmentSchedulableTargets(filteredAllievi = []) {
+  const fallbackDuration = appointmentCurrentFallbackDuration()
+  const targets = []
+  const grouped = new Set()
+  filteredAllievi.forEach(allievo => {
+    if (allievo.gruppo) {
+      if (grouped.has(allievo.gruppo)) return
+      grouped.add(allievo.gruppo)
+      const members = appointmentGroupMembers(allievo.gruppo)
+      if (!members.length) return
+      const target = {
+        type: 'gruppo',
+        id: appointmentGroupTargetValue(allievo.gruppo),
+        label: allievo.gruppo,
+        gruppo: allievo.gruppo,
+        members,
+        memberIds: members.map(member => member.id),
+      }
+      target.weeklyCount = appointmentWeeklyCountForTarget(target)
+      target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
+      target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration)
+      target.locationInfo = appointmentLocationInfoForTarget(target)
+      target.location = target.locationInfo.label
+      target.locationKey = target.locationInfo.key
+      target.locationPoint = target.locationInfo.point
+      target.routeStartLabel = target.locationInfo.startLabel
+      target.routeStartKey = target.locationInfo.startKey
+      target.routeStartPoint = target.locationInfo.startPoint
+      target.routeEndLabel = target.locationInfo.endLabel
+      target.routeEndKey = target.locationInfo.endKey
+      target.routeEndPoint = target.locationInfo.endPoint
+      target.routeIsItinerary = target.locationInfo.isRoute
+      targets.push(target)
+      return
+    }
+    const target = {
+      type: 'allievo',
+      id: `allievo:${allievo.id}`,
+      label: lezioneTargetLabelAllievo(allievo),
+      allievo,
+      members: [allievo],
+      memberIds: [allievo.id],
+    }
+    target.weeklyCount = appointmentWeeklyCountForTarget(target)
+    target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
+    target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration)
+    target.locationInfo = appointmentLocationInfoForTarget(target)
+    target.location = target.locationInfo.label
+    target.locationKey = target.locationInfo.key
+    target.locationPoint = target.locationInfo.point
+    target.routeStartLabel = target.locationInfo.startLabel
+    target.routeStartKey = target.locationInfo.startKey
+    target.routeStartPoint = target.locationInfo.startPoint
+    target.routeEndLabel = target.locationInfo.endLabel
+    target.routeEndKey = target.locationInfo.endKey
+    target.routeEndPoint = target.locationInfo.endPoint
+    target.routeIsItinerary = target.locationInfo.isRoute
+    targets.push(target)
+  })
+  return targets.sort((a, b) => String(a.label).localeCompare(String(b.label), 'it', { sensitivity: 'base' }))
+}
+
+function appointmentWindowHeatOverlap(startMin, endMin) {
+  return Math.max(0, Math.min(endMin, APPOINTMENT_HEAT_END_MIN) - Math.max(startMin, APPOINTMENT_HEAT_START_MIN))
+}
+
+function appointmentTargetFromResult(result) {
+  return {
+    id: result.targetId,
+    label: result.targetName,
+    type: result.targetType,
+    weeklyCount: result.weeklyCount,
+    avoidConsecutive: result.avoidConsecutive,
+    lessonDuration: result.lessonDuration,
+    location: result.location,
+    locationKey: result.locationKey,
+    locationPoint: result.locationPoint,
+    routeStartLabel: result.routeStartLabel,
+    routeStartKey: result.routeStartKey,
+    routeStartPoint: result.routeStartPoint,
+    routeEndLabel: result.routeEndLabel,
+    routeEndKey: result.routeEndKey,
+    routeEndPoint: result.routeEndPoint,
+    routeIsItinerary: result.routeIsItinerary,
+  }
+}
+
+function buildAppointmentScheduleCandidates(results, bufferMin) {
+  const candidates = []
+  results.forEach(result => {
+    const target = appointmentTargetFromResult(result)
+    const lessonDuration = target.lessonDuration || APPOINTMENT_MIN_LESSON_MIN
+    const requiredDuration = lessonDuration + bufferMin
+    result.windows.forEach(window => {
+      const latestStart = window.endMin - requiredDuration
+      for (let startMin = window.startMin; startMin <= latestStart; startMin += AVAILABILITY_STEP_MIN) {
+        const lessonEndMin = startMin + lessonDuration
+        const blockEndMin = startMin + requiredDuration
+        candidates.push({
+          targetId: target.id,
+          targetName: target.label,
+          targetType: target.type,
+          weeklyCount: target.weeklyCount,
+          avoidConsecutive: target.avoidConsecutive,
+          lessonDuration,
+          location: target.location,
+          locationKey: target.locationKey,
+          locationPoint: target.locationPoint,
+          routeStartLabel: target.routeStartLabel,
+          routeStartKey: target.routeStartKey,
+          routeStartPoint: target.routeStartPoint,
+          routeEndLabel: target.routeEndLabel,
+          routeEndKey: target.routeEndKey,
+          routeEndPoint: target.routeEndPoint,
+          routeIsItinerary: target.routeIsItinerary,
+          day: window.day,
+          startMin,
+          lessonEndMin,
+          blockEndMin,
+          start: minutesToTime(startMin),
+          lessonEnd: minutesToTime(lessonEndMin),
+          blockEnd: minutesToTime(blockEndMin),
+          heatOverlap: appointmentWindowHeatOverlap(startMin, lessonEndMin),
+        })
+      }
+    })
+  })
+  const countByTarget = new Map()
+  candidates.forEach(candidate => countByTarget.set(candidate.targetId, (countByTarget.get(candidate.targetId) || 0) + 1))
+  candidates.forEach(candidate => { candidate.targetCandidateCount = countByTarget.get(candidate.targetId) || 0 })
+  return candidates
+}
+
+function appointmentCandidateConflicts(candidate, scheduled) {
+  return scheduled.some(item =>
+    Number(item.day) === Number(candidate.day) &&
+    candidate.startMin < item.blockEndMin &&
+    candidate.blockEndMin > item.startMin
+  )
+}
+
+function appointmentSameTargetSameDay(candidate, scheduled) {
+  return scheduled.some(item => item.targetId === candidate.targetId && Number(item.day) === Number(candidate.day))
+}
+
+function appointmentHasConsecutiveDay(candidate, scheduled) {
+  const days = scheduled.filter(item => item.targetId === candidate.targetId).map(item => item.day)
+  return days.some(day => appointmentConsecutiveDayPairs([day, candidate.day]) > 0)
+}
+
+function appointmentTransitionEndpoints(a, b) {
+  if (a.startMin >= b.blockEndMin) {
+    return {
+      fromKey: b.routeEndKey,
+      fromPoint: b.routeEndPoint,
+      toKey: a.routeStartKey,
+      toPoint: a.routeStartPoint,
+    }
+  }
+  if (b.startMin >= a.blockEndMin) {
+    return {
+      fromKey: a.routeEndKey,
+      fromPoint: a.routeEndPoint,
+      toKey: b.routeStartKey,
+      toPoint: b.routeStartPoint,
+    }
+  }
+  return {
+    fromKey: b.routeEndKey || a.routeEndKey,
+    fromPoint: b.routeEndPoint || a.routeEndPoint,
+    toKey: a.routeStartKey || b.routeStartKey,
+    toPoint: a.routeStartPoint || b.routeStartPoint,
+  }
+}
+
+function appointmentSameLocation(candidate, item) {
+  const transition = appointmentTransitionEndpoints(candidate, item)
+  return transition.fromKey && transition.toKey && transition.fromKey === transition.toKey
+}
+
+function appointmentLocationDistance(candidate, item) {
+  const transition = appointmentTransitionEndpoints(candidate, item)
+  if (!transition.fromPoint || !transition.toPoint) return null
+  const dx = transition.toPoint.x - transition.fromPoint.x
+  const dy = transition.toPoint.y - transition.fromPoint.y
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function appointmentNearbyLocation(candidate, item) {
+  if (appointmentSameLocation(candidate, item)) return true
+  const distance = appointmentLocationDistance(candidate, item)
+  return distance !== null && distance <= 75
+}
+
+function scoreAppointmentCandidate(candidate, scheduled, variant) {
+  const sameDay = scheduled.filter(item => Number(item.day) === Number(candidate.day))
+  const dayLoad = sameDay.length
+  const scarcity = candidate.targetCandidateCount || 999
+  let score = scarcity * 2 + availabilityDayOrder(candidate.day) * 6 + candidate.startMin / 60
+  if (appointmentHasConsecutiveDay(candidate, scheduled)) score += candidate.avoidConsecutive ? 90 : 25
+  if (variant.id === 'balanced') score += dayLoad * 16
+  if (variant.id === 'max') score += dayLoad * 4
+  if (variant.id === 'compact') {
+    if (!sameDay.length) score += 28
+    sameDay.forEach(item => {
+      const gap = Math.min(Math.abs(candidate.startMin - item.blockEndMin), Math.abs(item.startMin - candidate.blockEndMin))
+      const distance = appointmentLocationDistance(candidate, item)
+      if (appointmentSameLocation(candidate, item)) score -= 140
+      else if (appointmentNearbyLocation(candidate, item)) score -= 85
+      if (gap <= 90) score -= 50 - (gap / 3)
+      if (candidate.locationKey && item.locationKey && !appointmentNearbyLocation(candidate, item) && gap < 45) score += 95
+      if (distance !== null && !appointmentSameLocation(candidate, item)) score += Math.min(70, distance / 3)
+    })
+  }
+  if (variant.id === 'anti_heat') {
+    score += candidate.heatOverlap ? 260 + candidate.heatOverlap : 0
+    score += dayLoad * 7
+  }
+  return score
+}
+
+function buildAppointmentScheduleVariant(results, variant, bufferMin) {
+  const totalDemand = results.reduce((sum, result) => sum + result.weeklyCount, 0)
+  const candidates = buildAppointmentScheduleCandidates(results, bufferMin)
+  const remaining = new Map(results.map(result => [result.targetId, result.weeklyCount]))
+  const scheduled = []
+  let guard = 0
+  while (guard < totalDemand && scheduled.length < totalDemand) {
+    guard += 1
+    const viable = candidates
+      .filter(candidate => (remaining.get(candidate.targetId) || 0) > 0)
+      .filter(candidate => !appointmentSameTargetSameDay(candidate, scheduled))
+      .filter(candidate => !appointmentCandidateConflicts(candidate, scheduled))
+    if (!viable.length) break
+    viable.sort((a, b) => scoreAppointmentCandidate(a, scheduled, variant) - scoreAppointmentCandidate(b, scheduled, variant))
+    const chosen = viable[0]
+    scheduled.push(chosen)
+    remaining.set(chosen.targetId, (remaining.get(chosen.targetId) || 0) - 1)
+  }
+  scheduled.sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), 'it', { sensitivity: 'base' }))
+  const unplaced = results
+    .map(result => {
+      const missing = remaining.get(result.targetId) || 0
+      if (!missing) return null
+      const availableDays = [...new Set(result.windows.map(window => window.day))].length
+      const scheduledForTarget = scheduled.filter(item => item.targetId === result.targetId).length
+      let reason = 'finestre compatibili occupate da altri appuntamenti'
+      if (!result.windows.length) reason = 'nessuna sovrapposizione utile con la disponibilita maestro'
+      else if (availableDays < result.weeklyCount) reason = `solo ${availableDays} giorn${availableDays === 1 ? 'o' : 'i'} disponibile${availableDays === 1 ? '' : 'i'} per ${result.weeklyCount} richiesti`
+      else if (scheduledForTarget > 0) reason = 'non resta spazio senza sovrapporre lezioni gia piazzate'
+      return {
+        targetName: result.targetName,
+        missing,
+        reason,
+      }
+    })
+    .filter(Boolean)
+  return {
+    ...variant,
+    scheduled,
+    totalDemand,
+    placed: scheduled.length,
+    missing: Math.max(0, totalDemand - scheduled.length),
+    remaining,
+    unplaced,
+  }
+}
+
+function buildAppointmentScheduleVariants(results, bufferMin) {
+  const variants = [
+    { id: 'max', title: 'Massima copertura', note: 'Piazza il maggior numero di lezioni, dando priorita a chi ha meno finestre disponibili.' },
+    { id: 'compact', title: 'Compatta spostamenti', note: 'Tiene vicine nello stesso giorno le lezioni con stesso luogo, alias simili o coordinate vicine.' },
+    { id: 'anti_heat', title: 'Anti-caldo', note: 'Evita il piu possibile le lezioni tra 13:00 e 15:30.' },
+    { id: 'balanced', title: 'Distribuita', note: 'Distribuisce il carico sui giorni, utile quando non vuoi giornate troppo dense.' },
+  ]
+  return variants.map(variant => buildAppointmentScheduleVariant(results, variant, bufferMin))
+}
+
+function appointmentScheduleByDayHtml(items) {
+  if (!items.length) return '<div class="availability-empty">Nessuna lezione piazzabile con le disponibilita correnti.</div>'
+  return AVAILABILITY_DAYS.map(day => {
+    const dayItems = items.filter(item => Number(item.day) === Number(day.value))
+    if (!dayItems.length) return ''
+    return `
+      <div class="appointment-agenda-day">
+        <div class="appointment-agenda-day-title">${esc(day.label)}</div>
+        ${appointmentDayRouteMapHtml(dayItems)}
+        <div class="appointment-agenda-items">
+          ${dayItems.map(item => `
+            <div class="appointment-agenda-item">
+              <strong>${esc(item.start)}-${esc(item.lessonEnd)}</strong>
+              <span>${esc(item.targetName)} · ${item.lessonDuration} min${item.routeIsItinerary ? ` · ${esc(item.routeStartLabel || '')} → ${esc(item.routeEndLabel || '')}` : (item.location ? ` · ${esc(item.location)}` : '')}</span>
+              ${item.heatOverlap ? '<small>fascia calda</small>' : ''}
+            </div>`).join('')}
+        </div>
+      </div>`
+  }).join('')
+}
+
+function appointmentPointDistance(a, b) {
+  if (!a || !b) return null
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function appointmentRouteItems(items) {
+  const points = []
+  items.forEach((item, index) => {
+    const startPoint = item.routeStartPoint || item.locationPoint
+    const endPoint = item.routeEndPoint || item.locationPoint
+    if (startPoint) {
+      points.push({
+        point: startPoint,
+        label: item.routeIsItinerary ? (item.routeStartLabel || item.location || item.targetName) : (item.location || item.targetName),
+        targetName: item.targetName,
+        marker: String(index + 1),
+        title: `${index + 1}. ${item.targetName}${item.location ? ' · ' + item.location : ''}`,
+      })
+    }
+    const samePoint = startPoint && endPoint && Math.abs(startPoint.x - endPoint.x) < 1 && Math.abs(startPoint.y - endPoint.y) < 1
+    if (item.routeIsItinerary && endPoint && !samePoint) {
+      points.push({
+        point: endPoint,
+        label: item.routeEndLabel || item.location || item.targetName,
+        targetName: item.targetName,
+        marker: `${index + 1}b`,
+        title: `${index + 1}. fine · ${item.targetName}${item.routeEndLabel ? ' · ' + item.routeEndLabel : ''}`,
+      })
+    }
+  })
+  return points
+}
+
+function appointmentRouteStats(routeItems) {
+  if (routeItems.length < 2) return null
+  let total = 0
+  for (let index = 1; index < routeItems.length; index += 1) {
+    total += appointmentPointDistance(routeItems[index - 1].point, routeItems[index].point) || 0
+  }
+  const direct = appointmentPointDistance(routeItems[0].point, routeItems[routeItems.length - 1].point) || 0
+  const ratio = direct > 1 ? total / direct : total > 1 ? 99 : 1
+  const label = ratio > 1.7 && total > 90 ? 'poco lineare' : ratio > 1.25 && total > 70 ? 'migliorabile' : 'lineare'
+  return { total, direct, ratio, label }
+}
+
+function appointmentDayRouteMapHtml(items) {
+  const routeItems = appointmentRouteItems(items)
+  if (routeItems.length < 2) return ''
+  const stats = appointmentRouteStats(routeItems)
+  const points = routeItems.map(item => `${item.point.x.toFixed(1)},${item.point.y.toFixed(1)}`).join(' ')
+  const mappedLessons = items.filter(item => item.routeStartPoint || item.locationPoint).length
   return `
-    <div class="appointment-result">
-      <strong>${availabilityDayLabel(window.day)}</strong>
-      <span>${esc(window.start)} - ${esc(window.end)}<small>${window.duration} min totali${bufferText}${detail ? ` · ${esc(detail)}` : ''}</small></span>
-      <small>${esc(tail)}</small>
+    <div class="appointment-route-map">
+      <div class="appointment-route-meta">
+        <strong>Tracciato giornata</strong>
+        <span>${esc(stats?.label || 'tracciato')} · ${mappedLessons}/${items.length} lezioni in mappa</span>
+      </div>
+      <div class="appointment-route-stage">
+        <img class="map-base-image" src="${MILANO_MAP_IMAGE}" alt="Mappa di Milano divisa per quartieri">
+        <svg class="appointment-route-svg" viewBox="0 0 ${MILANO_MAP_VIEWBOX.width} ${MILANO_MAP_VIEWBOX.height}" role="img" aria-label="Tracciato giornata">
+          <polyline class="appointment-route-line" points="${points}"></polyline>
+          ${routeItems.map(item => `
+            <g class="appointment-route-point" transform="translate(${item.point.x.toFixed(1)} ${item.point.y.toFixed(1)})">
+              <title>${esc(item.title)}</title>
+              <circle r="17"></circle>
+              <text y="4" text-anchor="middle">${esc(item.marker)}</text>
+            </g>`).join('')}
+        </svg>
+      </div>
     </div>`
+}
+
+function appointmentScheduleVariantHtml(variant) {
+  const heatCount = variant.scheduled.filter(item => item.heatOverlap).length
+  const score = `${variant.placed}/${variant.totalDemand} lezioni`
+  return `
+    <div class="appointment-schedule-variant">
+      <div class="appointment-schedule-head">
+        <div>
+          <h4>${esc(variant.title)}</h4>
+          <span>${esc(variant.note)}</span>
+        </div>
+        <strong>${esc(score)}</strong>
+      </div>
+      <div class="appointment-schedule-meta">
+        ${variant.missing ? `<span class="warn">${variant.missing} non piazzat${variant.missing === 1 ? 'a' : 'e'}</span>` : '<span class="ok">Tutte piazzate</span>'}
+        ${heatCount ? `<span>${heatCount} in fascia calda</span>` : '<span>Zero fascia calda</span>'}
+      </div>
+      ${variant.unplaced?.length ? `<div class="appointment-unplaced">
+        <strong>Non piazzate</strong>
+        ${variant.unplaced.map(item => `<span>${esc(item.targetName)}: ${item.missing} · ${esc(item.reason)}</span>`).join('')}
+      </div>` : ''}
+      ${appointmentScheduleByDayHtml(variant.scheduled)}
+    </div>`
+}
+
+function appointmentCurrentFallbackDuration() {
+  const durationInput = document.getElementById('appointments-min-duration')
+  const fallback = normalizeAppointmentLessonDuration(durationInput?.value || APPOINTMENT_MIN_LESSON_MIN, APPOINTMENT_MIN_LESSON_MIN)
+  if (durationInput && Number(durationInput.value) !== fallback) durationInput.value = String(fallback)
+  return fallback
 }
 
 function renderAppointmentIntersections() {
   const el = document.getElementById('appointments-intersections')
   if (!el) return
-  const durationInput = document.getElementById('appointments-min-duration')
-  const rawDuration = Number(durationInput?.value || APPOINTMENT_MIN_LESSON_MIN)
-  const minDuration = Number.isFinite(rawDuration) ? Math.max(APPOINTMENT_MIN_LESSON_MIN, rawDuration) : APPOINTMENT_MIN_LESSON_MIN
-  if (durationInput && Number(durationInput.value) !== minDuration) durationInput.value = String(minDuration)
+  const fallbackDuration = appointmentCurrentFallbackDuration()
   const filtered = filteredAppointmentAllievi()
-  const filteredIds = filtered.map(a => a.id)
   const missing = []
   if (!normalizeAvailabilitySlots(maestroAvailabilitySlots).length) missing.push('Maestro')
   const withoutSlots = filtered.filter(a => !availabilitySlotsForAllievo(a).length)
@@ -1571,16 +2409,45 @@ function renderAppointmentIntersections() {
     const preview = withoutSlots.slice(0, 4).map(a => lezioneTargetLabelAllievo(a)).join(', ')
     missing.push(`${withoutSlots.length} alliev${withoutSlots.length === 1 ? 'o' : 'i'} senza fasce${preview ? ` (${preview}${withoutSlots.length > 4 ? ', ...' : ''})` : ''}`)
   }
-  const pairwise = computePairwiseAvailabilityIntersections(filteredIds, minDuration, APPOINTMENT_BUFFER_MIN)
+  const targets = appointmentSchedulableTargets(filtered)
+  const targetResults = targets.map(target => {
+    const windows = computeAvailabilityIntersections(target.memberIds, target.lessonDuration, APPOINTMENT_BUFFER_MIN)
+    return {
+      targetId: target.id,
+      targetName: target.label,
+      targetType: target.type,
+      weeklyCount: target.weeklyCount,
+      avoidConsecutive: target.avoidConsecutive,
+      lessonDuration: target.lessonDuration,
+      location: target.location,
+      locationKey: target.locationKey,
+      locationPoint: target.locationPoint,
+      routeStartLabel: target.routeStartLabel,
+      routeStartKey: target.routeStartKey,
+      routeStartPoint: target.routeStartPoint,
+      routeEndLabel: target.routeEndLabel,
+      routeEndKey: target.routeEndKey,
+      routeEndPoint: target.routeEndPoint,
+      routeIsItinerary: target.routeIsItinerary,
+      windows,
+      plan: chooseAppointmentWeeklyPlan(windows, target.weeklyCount, target.avoidConsecutive),
+    }
+  })
+  const scheduleVariants = buildAppointmentScheduleVariants(targetResults, APPOINTMENT_BUFFER_MIN)
   el.innerHTML = `
     ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(', '))}.</div>` : ''}
+    <div class="appointments-explainer">
+      <strong>Planner automatico</strong>
+      <span>Il gestionale prova a piazzare tutte le lezioni richieste nella settimana tipo. Ogni elemento usa la durata lezione salvata nella sua logistica; se manca, usa il fallback di ${fallbackDuration} min. A ogni lezione aggiunge ${APPOINTMENT_BUFFER_MIN} min di pausa/spostamento.</span>
+    </div>
     <div class="appointments-results">
       <div class="appointments-card-title">
-        <h3>Incroci disponibili</h3>
-        <span>${filtered.length} alliev${filtered.length === 1 ? 'o' : 'i'} nel filtro corrente · durata lezione minima ${minDuration} min · pausa ${APPOINTMENT_BUFFER_MIN} min</span>
+        <h3>Agende automatiche</h3>
+        <span>${targets.length} element${targets.length === 1 ? 'o' : 'i'} da pianificare · ${scheduleVariants[0]?.totalDemand || 0} lezion${(scheduleVariants[0]?.totalDemand || 0) === 1 ? 'e' : 'i'} richieste</span>
       </div>
-      ${pairwise.length ? pairwise.slice(0, 80).map(window => appointmentResultHtml(window, window.allievoName)).join('') : `<div class="availability-empty">Nessun incrocio maestro-allievo trovato con ${minDuration} min di lezione e ${APPOINTMENT_BUFFER_MIN} min di pausa.</div>`}
-      ${pairwise.length > 80 ? `<div class="appointments-status">Mostro i primi 80 incroci su ${pairwise.length}. Restringi il filtro per vedere meno risultati.</div>` : ''}
+      <div class="appointment-schedule-grid">
+        ${scheduleVariants.map(appointmentScheduleVariantHtml).join('')}
+      </div>
     </div>`
 }
 
@@ -1626,14 +2493,14 @@ async function loadLocation(luogo) {
       <div class="card">
         ${names.length ? names.map(name => {
           const rec = locationRecordByName(name)
-          const count = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(name)).length
+          const count = (lezioniCache || []).filter(l => lessonLocationUsesName(l, name)).length
           return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> · ${esc(rec?.tipologia || 'Location')} · ${count} lezion${count === 1 ? 'e' : 'i'}</span>${rec?.indirizzo ? `<span> · ${esc(rec.indirizzo)}</span>` : ''}${rec?.condivisa ? '<span> · condivisa</span>' : ''}</div>`
         }).join('') : '<div class="empty">Nessuna location registrata.</div>'}
       </div>`
     return
   }
   const stored = locationRecordByName(nome) || {}
-  const lezioni = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(nome))
+  const lezioni = (lezioniCache || []).filter(l => lessonLocationUsesName(l, nome))
   const allieviIds = [...new Set(lezioni.flatMap(l => (l.lezioni_allievi || []).map(la => la.allievi?.id).filter(Boolean)))]
   const allievi = allieviIds.map(id => allAllievi.find(a => a.id === id)).filter(Boolean)
   const casaDi = allievi.length === 1 ? `Casa di ${allievoDisplayName(allievi[0].id)}` : ''
@@ -1644,7 +2511,7 @@ async function loadLocation(luogo) {
   const editable = canEditLocation(stored)
   const disabledAttr = editable ? '' : ' disabled'
   el.innerHTML = `
-    <button class="back-btn" onclick="showView('lezioni')">← Lezioni</button>
+    ${locationBackButtonHtml()}
     <div class="card">
       <div class="lezione-read-title">${esc(displayNome)}</div>
       <div class="scheda-meta">${esc(tipologia)}${indirizzo ? ` · ${esc(indirizzo)}` : ''}${coords ? ` · ${esc(formatMapCoordinate(coords.lat))}, ${esc(formatMapCoordinate(coords.lng))}` : ''}${stored.condivisa ? ' · condivisa' : ''}</div>
@@ -1716,6 +2583,8 @@ function mappaHomeRecordsFromAllievi() {
         nome,
         tipologia: 'Casa allievo',
         indirizzo,
+        latitudine: visibleAddress.casa_latitudine,
+        longitudine: visibleAddress.casa_longitudine,
         note: casa && zona && normalizeText(casa) !== normalizeText(zona) ? `Zona: ${zona}` : '',
         condivisa: !!profilo.indirizzo_condiviso,
         source: 'allievo-casa',
@@ -1734,7 +2603,7 @@ function mappaLocationRecords() {
   const locationRecords = locationNamesFromLessons().map(nome => {
     const rec = locationRecordByName(nome) || { nome }
     const displayName = rec.nome || nome
-    const lessonCount = (lezioniCache || []).filter(l => normalizeText(l.luogo || '') === normalizeText(nome)).length
+    const lessonCount = (lezioniCache || []).filter(l => lessonLocationUsesName(l, nome)).length
     const coords = locationMapCoords({ ...rec, nome: displayName })
     return {
       ...rec,
@@ -1798,6 +2667,33 @@ function mappaCoordFromPoint(x, y) {
 function mappaShortName(name) {
   const clean = String(name || 'Location').replace(/\s+/g, ' ').trim()
   return clean.length > 18 ? clean.slice(0, 16) + '...' : clean
+}
+
+function clampMapPreview(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function renderMappaMiniPreview(record = {}) {
+  if (!record.coords || record.coords.source === 'stimato') {
+    const coordLabel = record.coords?.source === 'stimato' ? 'Stimato' : 'Da posizionare'
+    return `<span class="map-row-status map-missing">${esc(coordLabel)}</span>`
+  }
+  const point = mappaProjectCoord(record.coords)
+  if (!point) return '<span class="map-row-status map-missing">Da posizionare</span>'
+  const viewW = 190
+  const viewH = 142
+  const viewX = clampMapPreview(point.x - viewW / 2, 0, MILANO_MAP_VIEWBOX.width - viewW)
+  const viewY = clampMapPreview(point.y - viewH / 2, 0, MILANO_MAP_VIEWBOX.height - viewH)
+  const selected = normalizeText(record.nome) === normalizeText(mappaSingleFocusName)
+  return `
+    <button type="button" class="map-mini-preview${selected ? ' is-selected' : ''}" title="Mostra solo questo punto sulla mappa"
+      onclick="event.stopPropagation(); focusMappaLocation(${jsArg(record.nome)})">
+      <svg viewBox="${viewX.toFixed(1)} ${viewY.toFixed(1)} ${viewW} ${viewH}" aria-hidden="true" focusable="false">
+        <image href="${MILANO_MAP_IMAGE}" x="0" y="0" width="${MILANO_MAP_VIEWBOX.width}" height="${MILANO_MAP_VIEWBOX.height}" preserveAspectRatio="xMidYMid meet"></image>
+        <circle class="map-mini-halo" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="18"></circle>
+        <circle class="map-mini-core" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="9"></circle>
+      </svg>
+    </button>`
 }
 
 function renderMilanoMapSvg(records, selectedName) {
@@ -1865,6 +2761,8 @@ async function renderMappa(selectedName) {
   if (mappaTipoFiltro !== 'all' && !types.some(t => normalizeText(t) === normalizeText(mappaTipoFiltro))) mappaTipoFiltro = 'all'
   const visibleRecords = mappaVisibleRecords(records)
   const selected = records.find(record => normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)) || null
+  const focusedRecord = mappaSingleFocusName ? records.find(record => normalizeText(record.nome) === normalizeText(mappaSingleFocusName)) : null
+  const mapRecords = focusedRecord ? [focusedRecord] : visibleRecords
   const selectedCoords = selected?.coords || null
   const placedCount = records.filter(record => record.coords).length
   const inferredCount = records.filter(record => record.coords?.source === 'stimato').length
@@ -1872,6 +2770,9 @@ async function renderMappa(selectedName) {
   const formTipologia = selected?.tipologia || 'Location'
   const selectedEditable = !selected || canEditLocation(selected)
   const selectedDisabledAttr = selectedEditable ? '' : ' disabled'
+  const mergeTargets = selected && selected.source !== 'allievo-casa' && selectedEditable
+    ? records.filter(record => normalizeText(record.nome) !== normalizeText(selected.nome))
+    : []
 
   el.innerHTML = `
     <div class="map-shell">
@@ -1879,13 +2780,14 @@ async function renderMappa(selectedName) {
         <div class="map-canvas-head">
           <div class="map-canvas-title">
             <strong>Milano operativa</strong>
-            <span>Mappa quartieri ricolorata con la palette del gestionale. Clicca sulla mappa per impostare il punto.</span>
+            <span>${focusedRecord ? `Vista singola: ${esc(focusedRecord.nome)}` : 'Mappa quartieri ricolorata con la palette del gestionale. Clicca sulla mappa per impostare il punto.'}</span>
           </div>
           <div class="map-filter-row">
+            ${focusedRecord ? '<button type="button" class="chip chip-on" onclick="clearMappaSingleFocus()">Mostra tutti</button>' : ''}
             ${types.map(type => `<button type="button" class="chip${normalizeText(type) === normalizeText(mappaTipoFiltro) ? ' chip-on' : ''}" onclick="setMappaFiltro(${jsArg(type)})">${esc(type === 'all' ? 'Tutte' : type)}</button>`).join('')}
           </div>
         </div>
-        <div class="map-canvas-wrap">${renderMilanoMapSvg(visibleRecords, mappaSelectedLocationName)}</div>
+        <div class="map-canvas-wrap">${renderMilanoMapSvg(mapRecords, mappaSelectedLocationName)}</div>
       </div>
 
       <div class="map-side">
@@ -1924,6 +2826,16 @@ async function renderMappa(selectedName) {
               : `<button class="btn btn-outline btn-sm" onclick="showView('location',${jsArg(selected.nome)})">Scheda</button>`
             : ''}
           </div>
+          ${selected && selected.source !== 'allievo-casa' && selectedEditable ? `
+            <div class="map-panel-meta" style="margin-top:.85rem">Fondi questo punto in una location gia presente quando due nomi indicano lo stesso posto.</div>
+            <div class="map-form-actions">
+              <select id="map-merge-target" class="btn btn-outline btn-sm" style="min-width:180px;max-width:100%">
+                <option value="">Fondi in...</option>
+                ${mergeTargets.map(record => `<option value="${esc(record.nome)}">${esc(record.nome)}</option>`).join('')}
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="mergeMappaLocation(${jsArg(selected.nome)})">Merge</button>
+            </div>
+          ` : ''}
         </div>
 
         <div class="map-panel">
@@ -1932,11 +2844,12 @@ async function renderMappa(selectedName) {
             ${visibleRecords.length ? visibleRecords.map(record => {
               const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)
               const meta = [record.tipologia || 'Location', record.indirizzo || '', record.condivisa ? 'condivisa' : '', record.lessonCount ? `${record.lessonCount} lezion${record.lessonCount === 1 ? 'e' : 'i'}` : ''].filter(Boolean).join(' · ')
-              const coordLabel = record.coords?.source === 'stimato' ? 'Stimato' : record.coords ? 'Salvato' : 'Da posizionare'
-              return `<button type="button" class="map-location-row${selectedRow ? ' is-selected' : ''}" onclick="selectMappaLocation(${jsArg(record.nome)})">
-                <span><strong>${esc(record.nome)}</strong><br><span>${esc(meta || 'Nessun dettaglio')}</span></span>
-                <span class="${record.coords && record.coords.source !== 'stimato' ? '' : 'map-missing'}">${esc(coordLabel)}</span>
-              </button>`
+              return `<div class="map-location-row${selectedRow ? ' is-selected' : ''}" role="button" tabindex="0"
+                onclick="selectMappaLocation(${jsArg(record.nome)})"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); selectMappaLocation(${jsArg(record.nome)})}">
+                <span class="map-location-row-main"><strong>${esc(record.nome)}</strong><br><span>${esc(meta || 'Nessun dettaglio')}</span></span>
+                ${renderMappaMiniPreview(record)}
+              </div>`
             }).join('') : '<div class="map-empty-inline">Nessuna location per questo filtro.</div>'}
           </div>
         </div>
@@ -1953,16 +2866,30 @@ function setMappaStatus(message, className = 'msg-info') {
 
 function setMappaFiltro(tipologia) {
   mappaTipoFiltro = tipologia || 'all'
+  mappaSingleFocusName = null
   renderMappa()
 }
 
 function selectMappaLocation(nome) {
   mappaSelectedLocationName = nome || null
+  mappaSingleFocusName = null
+  renderMappa(mappaSelectedLocationName)
+}
+
+function focusMappaLocation(nome) {
+  mappaSelectedLocationName = nome || null
+  mappaSingleFocusName = nome || null
+  renderMappa(mappaSelectedLocationName)
+}
+
+function clearMappaSingleFocus() {
+  mappaSingleFocusName = null
   renderMappa(mappaSelectedLocationName)
 }
 
 function preparaNuovaMappaLocation() {
   mappaSelectedLocationName = null
+  mappaSingleFocusName = null
   if (visibleViewName() !== 'mappa') showView('mappa')
   else renderMappa(null)
   setTimeout(() => document.getElementById('map-loc-nome')?.focus(), 80)
@@ -2025,6 +2952,95 @@ async function salvaMappaLocation() {
       ? 'Punto salvato. Coordinate salvate localmente: applica la migrazione mappa per condividerle.'
       : 'Punto salvato in mappa.',
     result.localOnly || result.mapCoordsLocal ? 'msg-info' : 'msg-ok')
+}
+
+function replaceLessonLocationPart(text, sourceName, targetName) {
+  const sourceKey = normalizeText(sourceName)
+  const cleanTarget = String(targetName || '').trim()
+  const cleanText = String(text || '').trim()
+  if (!sourceKey || !cleanTarget || !cleanText) return cleanText
+  const parts = appointmentLocationRouteParts(cleanText)
+  if (parts.length > 1) {
+    let changed = false
+    const replaced = parts.map(part => {
+      if (normalizeText(part) !== sourceKey) return part
+      changed = true
+      return cleanTarget
+    })
+    return changed ? replaced.join(' - ') : cleanText
+  }
+  return normalizeText(cleanText) === sourceKey ? cleanTarget : cleanText
+}
+
+function removeLocalLocationByName(nome) {
+  const key = normalizeText(nome)
+  if (!key) return
+  try {
+    const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]')
+      .filter(location => normalizeText(location.nome) !== key)
+    safeStorage.setItem('locationsLocal', JSON.stringify(local))
+  } catch {}
+  saveLocationMapCoordsLocal(nome, null, null)
+  allLocations = allLocations.filter(location => normalizeText(location.nome) !== key)
+  locationsLoaded = true
+}
+
+async function deleteMergedLocationRecord(record) {
+  if (!record?.id || !canEditLocation(record)) return null
+  const { error } = await sb.from('locations').delete().eq('id', record.id)
+  return error || null
+}
+
+async function mergeMappaLocation(sourceName) {
+  const targetName = document.getElementById('map-merge-target')?.value.trim()
+  if (!sourceName || !targetName) {
+    setMappaStatus('Scegli la location in cui fondere questo punto.', 'msg-err')
+    return
+  }
+  if (normalizeText(sourceName) === normalizeText(targetName)) {
+    setMappaStatus('Scegli una location diversa.', 'msg-err')
+    return
+  }
+  const sourceRecord = locationRecordByName(sourceName) || { nome: sourceName }
+  if (sourceRecord.source === 'allievo-casa' || !canEditLocation(sourceRecord)) {
+    setMappaStatus('Questo punto non puo essere fuso da qui.', 'msg-err')
+    return
+  }
+  const ok = confirm(`Fondere "${sourceName}" in "${targetName}"?\nLe lezioni verranno aggiornate e il punto duplicato verra rimosso dove possibile.`)
+  if (!ok) return
+
+  setMappaStatus('Merge in corso...', 'msg-info')
+  if (!lezioniCache) await loadLezioni(true)
+  const updates = (lezioniCache || [])
+    .map(lezione => {
+      const nextLuogo = replaceLessonLocationPart(lezione.luogo, sourceName, targetName)
+      return nextLuogo !== String(lezione.luogo || '').trim() ? { lezione, nextLuogo } : null
+    })
+    .filter(Boolean)
+
+  try {
+    for (const item of updates) {
+      const { error } = await sb.from('lezioni').update({ luogo: item.nextLuogo }).eq('id', item.lezione.id)
+      if (error) throw error
+    }
+    lezioniCache = (lezioniCache || []).map(lezione => {
+      const found = updates.find(item => String(item.lezione.id) === String(lezione.id))
+      return found ? { ...lezione, luogo: found.nextLuogo } : lezione
+    })
+    const deleteError = await deleteMergedLocationRecord(sourceRecord)
+    removeLocalLocationByName(sourceName)
+    await loadLocations(true)
+    luoghiLezioneCache.clear()
+    logModificaLocale('location', targetName, `Merge location: ${sourceName} -> ${targetName}`)
+    renderDashboard()
+    await renderMappa(targetName)
+    setMappaStatus(deleteError
+      ? `Merge completato su ${updates.length} lezion${updates.length === 1 ? 'e' : 'i'}, ma il punto sorgente non e stato cancellato dal DB: ${deleteError.message || 'permesso negato'}.`
+      : `Merge completato: ${updates.length} lezion${updates.length === 1 ? 'e aggiornata' : 'i aggiornate'}.`,
+      deleteError ? 'msg-info' : 'msg-ok')
+  } catch (error) {
+    setMappaStatus(error?.message || 'Errore durante il merge.', 'msg-err')
+  }
 }
 
 async function salvaLocation(originalName) {
@@ -2199,8 +3215,8 @@ async function renderGlobalSearch() {
   })
   ;(lezioniCache || []).forEach(l => {
     const parsed = lessonParsedNotes(l)
-    const haystack = normalizeText([formatDate(l.data), labelPartecipantiLezione(l), l.luogo, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
-    if (haystack.includes(query)) results.push({ type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatDate(l.data)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})` })
+    const haystack = normalizeText([formatLessonDate(l), labelPartecipantiLezione(l), l.luogo, parsed.ora, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
+    if (haystack.includes(query)) results.push({ type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatLessonDate(l)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})` })
   })
 
   const limited = results.slice(0, 12)
@@ -2325,6 +3341,7 @@ function lessonStatus(lezione) {
 
 const LESSON_CHECK_MARKERS = {
   stato: '[[stato]]',
+  ora: '[[ora]]',
   meteo: '[[meteo]]',
   speciali: '[[note_speciali]]',
   bene: '[[check_bene]]',
@@ -2351,6 +3368,7 @@ function splitLessonNotes(raw = '') {
   }
   return {
     stato: read('stato'),
+    ora: read('ora'),
     meteo: read('meteo'),
     speciali: read('speciali'),
     bene: read('bene'),
@@ -2359,11 +3377,13 @@ function splitLessonNotes(raw = '') {
   }
 }
 
-function composeLessonNotes(note, bene, nonFatto, speciali = '', stato = '', meteo = '') {
-  if (!bene && !nonFatto && !speciali && !stato && !meteo) return note || null
+function composeLessonNotes(note, bene, nonFatto, speciali = '', stato = '', meteo = '', ora = '') {
+  if (!bene && !nonFatto && !speciali && !stato && !meteo && !ora) return note || null
   return [
     LESSON_CHECK_MARKERS.stato,
     stato || '',
+    LESSON_CHECK_MARKERS.ora,
+    normalizeLessonTime(ora) || '',
     LESSON_CHECK_MARKERS.meteo,
     meteo || '',
     LESSON_CHECK_MARKERS.speciali,
@@ -2389,10 +3409,43 @@ function lessonParsedNotes(lezione) {
   const parsed = splitLessonNotes(lezione?.note || '')
   return {
     ...parsed,
+    ora: normalizeLessonTime(lezione?.orario || lezione?.ora || lezione?.time || parsed.ora || ''),
     meteo: lezione?.meteo || parsed.meteo || '',
     bene: lezione?.check_bene || parsed.bene || '',
     nonFatto: lezione?.check_non_fatto || parsed.nonFatto || '',
   }
+}
+
+function normalizeLessonTime(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const match = raw.match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?$/) || raw.match(/^(\d{1,2})(\d{2})$/)
+  if (!match) return ''
+  const h = Number(match[1])
+  const m = Number(match[2])
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return ''
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function lessonTime(lezione = {}) {
+  return lessonParsedNotes(lezione).ora || ''
+}
+
+function formatLessonDate(lezione = {}) {
+  const date = formatDate(lezione.data)
+  const ora = lessonTime(lezione)
+  return ora ? `${date} · ${ora}` : date
+}
+
+function formatLessonDateWithWeekday(lezione = {}) {
+  const date = formatDateWithWeekday(lezione.data)
+  const ora = lessonTime(lezione)
+  return ora ? `${date} · ${ora}` : date
+}
+
+function lessonSortToken(lezione = {}) {
+  const day = String(lezione.data || '').slice(0, 10) || '0000-00-00'
+  return `${day}T${lessonTime(lezione) || '00:00'}`
 }
 
 function lessonSpecialNotes(lezione) {
@@ -2480,7 +3533,7 @@ async function initAppNotes() {
   if (data?.content !== undefined && data?.content !== null) {
     textarea.value = data.content
     safeStorage.setItem(APP_NOTES_KEY, data.content)
-    const updated = data.updated_at ? ` Aggiornate: ${formatDateWithWeekday(data.updated_at)}` : ''
+    const updated = data.updated_at ? ` Ultima modifica: ${formatDateTime(data.updated_at)}` : ''
     setAppNotesStatus(`Note online caricate.${updated}`, 'msg-ok')
   } else if (localValue) {
     setAppNotesStatus('Nessuna nota online: resta pronta la copia locale. Premi Salva note per pubblicarla.', 'msg-info')
@@ -2507,11 +3560,12 @@ async function saveAppNotes() {
   }
 
   setAppNotesStatus('Salvataggio note online...', 'msg-info')
+  const updatedAt = new Date().toISOString()
   const payload = {
     key: APP_NOTES_REMOTE_KEY,
     content,
     updated_by: currentUid || null,
-    updated_at: new Date().toISOString(),
+    updated_at: updatedAt,
   }
   const { error } = await sb
     .from('app_notes')
@@ -2528,7 +3582,7 @@ async function saveAppNotes() {
   }
 
   appNotesRemoteAvailable = true
-  setAppNotesStatus('Note salvate online.', 'msg-ok')
+  setAppNotesStatus(`Note salvate online. Ultima modifica: ${formatDateTime(updatedAt)}`, 'msg-ok')
 }
 
 function scheduleAppNotesSave() {
@@ -2547,11 +3601,14 @@ function setGodScope(scope) {
 function renderAllievi() {
   const el = document.getElementById('allievi-content')
   renderDashboard()
-  const baseLista = allieviVisibiliGod()
+  const listaVisibile = allieviVisibiliGod()
+  const baseLista = filtroVacanza ? listaVisibile.filter(a => allievoInVacanza(a)) : listaVisibile
   if (!baseLista.length) {
     el.innerHTML = mostraArchiviati
       ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>'
-      : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>'
+      : (filtroVacanza
+        ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="toggleFiltroVacanza()" class="chip chip-on">🏖 In vacanza</button></div><div class="empty">Nessun allievo o gruppo in vacanza.</div>'
+        : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>')
     return
   }
 
@@ -2561,16 +3618,17 @@ function renderAllievi() {
   const tuttiGruppiEspansi = mostraToggleGruppi && gruppi.every(g => gruppiEspansi.has(g))
   const chipsHtml = `
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
-      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null ? ' chip-on' : ''}">Tutti</button>
+      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null && !filtroVacanza ? ' chip-on' : ''}">Tutti</button>
       ${gruppi.map(g => `<button type="button" onclick="setFiltroGruppo('${g.replace(/'/g,"\\'")}\')" class="chip${filtroGruppo === g ? ' chip-on' : ''}">${esc(g)}</button>`).join('')}
       ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? 'Raggruppa tutti i gruppi' : 'Espandi tutti i gruppi'}">${tuttiGruppiEspansi ? '▴ Raggruppa' : '▾ Espandi'}</button>` : ''}
+      <button type="button" onclick="toggleFiltroVacanza()" class="chip${filtroVacanza ? ' chip-on' : ''}" title="Mostra solo chi e in vacanza">🏖 In vacanza</button>
       <button type="button" onclick="setArchivio(true)" class="chip${mostraArchiviati ? ' chip-on' : ''}" style="margin-left:auto">Archivio</button>
     </div>`
 
   const lista = ordinaAllieviLista(filtroGruppo ? baseLista.filter(a => a.gruppo === filtroGruppo) : baseLista)
   const allieviColgroup = `
     <colgroup>
-      <col style="width:32px">
+      <col style="width:46px">
       <col style="width:28%">
       <col style="width:19%">
       <col style="width:14%">
@@ -2580,11 +3638,12 @@ function renderAllievi() {
     </colgroup>`
   const renderAllievoRow = (a, extraClass = '') => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
-      <td style="width:28px;text-align:center">${a.vip ? '<span class="vip-star">★</span>' : ''}</td>
+      <td style="width:42px;text-align:center;white-space:nowrap">${a.vip ? '<span class="vip-star">★</span>' : ''}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
         <strong>${esc(a.nome)}</strong>
         ${a.tipo === 'associazione' ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ''}
         ${a.stato === 'archiviato' ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ''}
+        ${allievoInVacanza(a) ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}
       </td>
       <td>${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
       <td style="color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ''}</td>
@@ -2606,10 +3665,11 @@ function renderAllievi() {
       const membri = ordinaAllieviLista(lista.filter(a => a.gruppo === gruppo))
       const expanded = gruppiEspansi.has(gruppo)
       const blocchi = [...new Set(membri.map(a => a.blocco_attuale).filter(Boolean))].join(', ') || '—'
+      const gruppoVacanza = gruppoInVacanza(gruppo)
       return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
-          <td style="width:28px;text-align:center"><span class="group-count">[${membri.length}]</span></td>
-          <td><strong>${esc(gruppo)}</strong></td>
+          <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
+          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -2662,10 +3722,18 @@ function setFiltroGruppo(g) {
   renderAllievi()
 }
 
+function toggleFiltroVacanza() {
+  filtroVacanza = !filtroVacanza
+  mostraArchiviati = false
+  gruppiEspansi.clear()
+  renderAllievi()
+}
+
 async function mostraTuttiAllievi() {
   const serveRicarica = mostraArchiviati
   mostraArchiviati = false
   filtroGruppo = null
+  filtroVacanza = false
   gruppiEspansi.clear()
   if (serveRicarica) await ricaricaAllievi()
   else renderAllievi()
@@ -2688,12 +3756,14 @@ function toggleTuttiGruppi() {
 async function setArchivio(on) {
   if (mostraArchiviati === on) {
     filtroGruppo = null
+    filtroVacanza = false
     gruppiEspansi.clear()
     renderAllievi()
     return
   }
   mostraArchiviati = on
   filtroGruppo = null
+  filtroVacanza = false
   gruppiEspansi.clear()
   await ricaricaAllievi()
 }
@@ -2750,6 +3820,7 @@ function initNuovoAllievo(id) {
   document.getElementById('na-tel').value         = allievo?.telefono        || ''
   document.getElementById('na-note').value        = allievo?.note_generali   || ''
   document.getElementById('na-blocco').value      = allievo?.blocco_attuale  || 'Base'
+  document.getElementById('na-in-vacanza').checked = allievo ? allievoInVacanzaDiretta(allievo) : false
   calcolaEtaForm()
 
   // VIP
@@ -2760,13 +3831,21 @@ function initNuovoAllievo(id) {
   // Profilo logistica
   const indirizzoInput = document.getElementById('na-indirizzo')
   const casaInput = document.getElementById('na-casa')
+  const casaLatInput = document.getElementById('na-casa-latitudine')
+  const casaLngInput = document.getElementById('na-casa-longitudine')
   const indirizzoCondivisoInput = document.getElementById('na-indirizzo-condiviso')
   indirizzoInput.value = addressVisible ? (p.indirizzo || '') : ''
   casaInput.value = addressVisible ? (p.casa || '') : ''
+  casaLatInput.value = addressVisible && parseMapCoordinate(p.casa_latitudine ?? p.casa_lat) !== null ? formatMapCoordinate(p.casa_latitudine ?? p.casa_lat) : ''
+  casaLngInput.value = addressVisible && parseMapCoordinate(p.casa_longitudine ?? p.casa_lng ?? p.casa_lon) !== null ? formatMapCoordinate(p.casa_longitudine ?? p.casa_lng ?? p.casa_lon) : ''
   indirizzoInput.disabled = !addressEditable
   casaInput.disabled = !addressEditable
+  casaLatInput.disabled = !addressEditable
+  casaLngInput.disabled = !addressEditable
   indirizzoInput.placeholder = addressVisible ? 'Es. Milano Nord' : 'Privato del maestro proprietario'
   casaInput.placeholder = addressVisible ? 'Es. via e civico casa' : 'Privato del maestro proprietario'
+  casaLatInput.placeholder = addressVisible ? '45.46420' : 'Privato'
+  casaLngInput.placeholder = addressVisible ? '9.19000' : 'Privato'
   indirizzoCondivisoInput.checked = !!p.indirizzo_condiviso
   indirizzoCondivisoInput.disabled = !addressEditable
   document.getElementById('na-cultura').value      = p.cultura       || ''
@@ -2899,7 +3978,7 @@ function renderLogisticaGruppoAllievo() {
   const gruppo = document.getElementById('na-gruppo')?.value.trim()
   const membri = checked && gruppo ? gruppoMembri(gruppo, { includeArchived: true }) : []
   const profilo = membri.length ? profiloComuneGruppo(membri) : {}
-  const hasLogistica = !!(profilo.appuntamento || profilo.luogo_incontro || profilo.durata_lezione || profilo.compenso || profilo.pagamento_metodo || profilo.pagamento_stato || profilo.pagamento_note)
+  const hasLogistica = !!(profilo.appuntamento || profilo.luogo_incontro || profilo.durata_lezione || profilo.compenso || profilo.pagamento_metodo || profilo.pagamento_stato || profilo.pagamento_note || profilo.in_vacanza)
   if (!checked || !gruppo || !membri.length || !hasLogistica) {
     panel.hidden = true
     panel.innerHTML = ''
@@ -2913,10 +3992,11 @@ function renderLogisticaGruppoAllievo() {
     <div class="group-logistics-grid">
       ${item('Appuntamento', profilo.appuntamento)}
       ${item('Durata', profilo.durata_lezione ? profilo.durata_lezione + ' min' : '')}
-      ${item('Luogo', profilo.luogo_incontro)}
+      ${item('Luogo di incontro', profilo.luogo_incontro)}
       ${item('Compenso', profilo.compenso ? '€ ' + Number(profilo.compenso).toFixed(2) : '')}
       ${item('Pagamento', pagamento)}
       ${item('Note pagamento', profilo.pagamento_note)}
+      ${item('Stato lezioni', profilo.in_vacanza ? 'In vacanza' : '')}
     </div>`
 }
 
@@ -3037,15 +4117,64 @@ function profiloSenzaLogisticaTopLevel(profilo = {}) {
   return clean
 }
 
+function hasOwn(obj = {}, key) {
+  return Object.prototype.hasOwnProperty.call(obj || {}, key)
+}
+
+function normalizeVacationFlag(value) {
+  return value === true || value === 1 || value === '1' || String(value || '').toLowerCase() === 'true'
+}
+
+function hasVacationField(obj = {}) {
+  return ['in_vacanza', 'inVacanza', 'vacanza'].some(key => hasOwn(obj, key))
+}
+
+function vacationValue(obj = {}) {
+  if (hasOwn(obj, 'in_vacanza')) return normalizeVacationFlag(obj.in_vacanza)
+  if (hasOwn(obj, 'inVacanza')) return normalizeVacationFlag(obj.inVacanza)
+  if (hasOwn(obj, 'vacanza')) return normalizeVacationFlag(obj.vacanza)
+  return false
+}
+
+function applyVacationField(base = {}, source = {}) {
+  return hasVacationField(source) ? { ...base, in_vacanza: vacationValue(source) } : base
+}
+
 function logisticaGruppoProfilo(profilo = {}) {
   const dedicata = profilo.logistica_gruppo || {}
-  return logisticaHaValori(dedicata) ? dedicata : estraiLogistica(profilo)
+  if (logisticaHaValori(dedicata) || hasVacationField(dedicata)) return applyVacationField({ ...dedicata }, dedicata)
+  return applyVacationField(estraiLogistica(profilo), profilo)
 }
 
 function logisticaIndividualeProfilo(profilo = {}, inGruppo = false) {
-  if (!inGruppo) return estraiLogistica(profilo)
+  if (!inGruppo) return applyVacationField(estraiLogistica(profilo), profilo)
   const dedicata = profilo.logistica_individuale || {}
-  return logisticaHaValori(dedicata) ? dedicata : {}
+  return logisticaHaValori(dedicata) || hasVacationField(dedicata) ? applyVacationField({ ...dedicata }, dedicata) : {}
+}
+
+function allievoInVacanzaDiretta(allievo = {}) {
+  const profilo = allievo.profilo || {}
+  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, !!allievo.gruppo)
+  return vacationValue(logisticaIndividuale) || vacationValue(profilo)
+}
+
+function gruppoInVacanza(nomeGruppo) {
+  if (!nomeGruppo) return false
+  const profilo = profiloComuneGruppo(gruppoMembri(nomeGruppo, { includeArchived: true }))
+  return !!profilo.in_vacanza
+}
+
+function allievoInVacanza(allievo = {}) {
+  return allievoInVacanzaDiretta(allievo) || (!!allievo.gruppo && gruppoInVacanza(allievo.gruppo))
+}
+
+function vacationIconHtml(active = true) {
+  return active ? '<span class="vacation-icon" title="In vacanza" aria-label="In vacanza">🏖</span>' : ''
+}
+
+function vacationLabel(allievo = {}) {
+  if (!allievoInVacanza(allievo)) return ''
+  return allievo.gruppo && gruppoInVacanza(allievo.gruppo) && !allievoInVacanzaDiretta(allievo) ? 'In vacanza (gruppo)' : 'In vacanza'
 }
 
 async function salvaAllievo() {
@@ -3066,6 +4195,15 @@ async function salvaAllievo() {
   const allievoOriginale = editingAllieviId ? (allAllievi.find(a => a.id === editingAllieviId) || null) : null
   const profiloOriginale = allievoOriginale?.profilo || {}
   const addressEditable = canEditAllievoAddress(allievoOriginale)
+  const casaLatRaw = !isAss ? (document.getElementById('na-casa-latitudine')?.value.trim() || '') : ''
+  const casaLngRaw = !isAss ? (document.getElementById('na-casa-longitudine')?.value.trim() || '') : ''
+  const casaLat = parseMapCoordinate(casaLatRaw)
+  const casaLng = parseMapCoordinate(casaLngRaw)
+  if (!isAss && addressEditable && ((casaLatRaw || casaLngRaw) && (casaLat === null || casaLng === null))) {
+    errEl.textContent = 'Inserisci sia latitudine sia longitudine GPS casa in formato numerico.'
+    errEl.className = 'msg msg-err show'
+    return
+  }
   let profilo
   if (isAss) {
     profilo = {
@@ -3084,16 +4222,20 @@ async function salvaAllievo() {
       }
     }).filter(f => f.nome || f.cognome || f.telefono)
 
+    const inVacanza = !!document.getElementById('na-in-vacanza')?.checked
     const logisticaIndividuale = {
       durata_lezione:   parseInt(document.getElementById('na-durata').value)        || null,
       compenso:         parseFloat(document.getElementById('na-compenso').value)   || null,
       appuntamento:     document.getElementById('na-appuntamento').value.trim()    || null,
       luogo_incontro:   document.getElementById('na-luogo-incontro').value.trim()  || null,
+      in_vacanza:       inVacanza,
     }
     const baseProfilo = {
       ...profiloSenzaLogisticaTopLevel(profiloOriginale),
       indirizzo:        addressEditable ? (document.getElementById('na-indirizzo').value.trim() || null) : (profiloOriginale.indirizzo || null),
       casa:             addressEditable ? (document.getElementById('na-casa').value.trim() || null) : (profiloOriginale.casa || null),
+      casa_latitudine:  addressEditable ? casaLat : (profiloOriginale.casa_latitudine ?? profiloOriginale.casa_lat ?? null),
+      casa_longitudine: addressEditable ? casaLng : (profiloOriginale.casa_longitudine ?? profiloOriginale.casa_lng ?? profiloOriginale.casa_lon ?? null),
       indirizzo_condiviso: addressEditable ? !!document.getElementById('na-indirizzo-condiviso')?.checked : !!profiloOriginale.indirizzo_condiviso,
       cultura:          document.getElementById('na-cultura').value.trim()      || null,
       note_salute:      document.getElementById('na-note-salute').value.trim()  || null,
@@ -3122,10 +4264,11 @@ async function salvaAllievo() {
 
     if (gruppoAttivo) {
       const logisticaGruppo = profiloOriginale.logistica_gruppo || {}
+      delete baseProfilo.in_vacanza
       profilo = {
         ...baseProfilo,
-        ...(logisticaHaValori(logisticaGruppo) ? { logistica_gruppo: logisticaGruppo } : {}),
-        ...(logisticaHaValori(logisticaIndividuale) ? { logistica_individuale: logisticaIndividuale } : {}),
+        ...(logisticaHaValori(logisticaGruppo) || hasVacationField(logisticaGruppo) ? { logistica_gruppo: logisticaGruppo } : {}),
+        ...(logisticaHaValori(logisticaIndividuale) || inVacanza ? { logistica_individuale: logisticaIndividuale } : {}),
       }
     } else {
       profilo = {
@@ -3241,6 +4384,7 @@ function initNuovoGruppo(nomeGruppo = null) {
   document.getElementById('gr-luogo').value = profilo.luogo_incontro || ''
   document.getElementById('gr-durata').value = profilo.durata_lezione || ''
   document.getElementById('gr-compenso').value = profilo.compenso || ''
+  document.getElementById('gr-in-vacanza').checked = !!profilo.in_vacanza
   document.getElementById('gr-pagamento-metodo').value = profilo.pagamento_metodo || ''
   document.getElementById('gr-pagamento-stato').value = profilo.pagamento_stato || ''
   document.getElementById('gr-pagamento-note').value = profilo.pagamento_note || ''
@@ -3504,6 +4648,7 @@ async function salvaGruppo() {
   const luogo = document.getElementById('gr-luogo').value.trim()
   const durata = parseInt(document.getElementById('gr-durata').value) || null
   const compenso = parseFloat(document.getElementById('gr-compenso').value) || null
+  const inVacanza = !!document.getElementById('gr-in-vacanza')?.checked
   const pagamentoMetodo = document.getElementById('gr-pagamento-metodo').value || null
   const pagamentoStato = document.getElementById('gr-pagamento-stato').value || null
   const pagamentoNote = document.getElementById('gr-pagamento-note').value.trim() || null
@@ -3544,6 +4689,7 @@ async function salvaGruppo() {
     pagamento_metodo: pagamentoMetodo,
     pagamento_stato: pagamentoStato,
     pagamento_note: pagamentoNote,
+    in_vacanza: inVacanza,
   }
   const commonProfile = {
     ...commonLogistica,
@@ -3668,6 +4814,7 @@ function gruppoMembri(nomeGruppo, { includeArchived = false } = {}) {
 function profiloComuneGruppo(membri) {
   const profili = membri.map(a => logisticaGruppoProfilo(a.profilo || {}))
   const firstValue = key => profili.find(p => p[key] !== undefined && p[key] !== null && p[key] !== '')?.[key] || ''
+  const firstVacationValue = profili.find(p => hasVacationField(p))
   return {
     appuntamento: firstValue('appuntamento'),
     luogo_incontro: firstValue('luogo_incontro'),
@@ -3676,6 +4823,7 @@ function profiloComuneGruppo(membri) {
     pagamento_metodo: firstValue('pagamento_metodo'),
     pagamento_stato: firstValue('pagamento_stato'),
     pagamento_note: firstValue('pagamento_note'),
+    in_vacanza: firstVacationValue ? vacationValue(firstVacationValue) : false,
   }
 }
 
@@ -3730,8 +4878,8 @@ async function loadGruppo(nomeGruppo) {
   const membriHtml = membri.map(a => `
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
-        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(' '))}${a.nickname ? ` · ${esc(a.nickname)}` : ''}</div>
-        <div class="gruppo-member-meta">Lv ${a.livello_attuale || '—'} · ${esc(a.blocco_attuale || '—')}</div>
+        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(' '))}${a.nickname ? ` · ${esc(a.nickname)}` : ''}${vacationIconHtml(allievoInVacanza(a))}</div>
+        <div class="gruppo-member-meta">Lv ${a.livello_attuale || '—'} · ${esc(a.blocco_attuale || '—')}${allievoInVacanza(a) ? ' · In vacanza' : ''}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
     </div>`).join('')
@@ -3754,8 +4902,8 @@ async function loadGruppo(nomeGruppo) {
     <div class="card">
       <div class="lezione-read-head">
         <div>
-          <div class="lezione-read-title">${esc(nomeGruppo)}</div>
-          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} attiv${membri.length === 1 ? 'o' : 'i'}</div>
+          <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
+          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} attiv${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
         </div>
         <div class="lezione-read-when">
           ${profilo.appuntamento ? `<div class="lezione-read-date">${esc(profilo.appuntamento)}</div>` : '<span>Orario non indicato</span>'}
@@ -3775,10 +4923,11 @@ async function loadGruppo(nomeGruppo) {
           <div class="info-grid">
             ${info('Appuntamento', profilo.appuntamento)}
             ${info('Durata lezione', profilo.durata_lezione ? profilo.durata_lezione + ' min' : null)}
-            ${info('Luogo', profilo.luogo_incontro)}
+            ${info('Luogo di incontro', profilo.luogo_incontro)}
             ${info('Compenso', compenso)}
             ${info('Pagamento', [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(' · '))}
             ${info('Note pagamento', profilo.pagamento_note)}
+            ${info('Stato lezioni', profilo.in_vacanza ? 'In vacanza' : '')}
           </div>
         </div>
       </div>
@@ -3913,6 +5062,7 @@ async function loadScheda(id) {
   const compenso  = logisticaScheda.compenso ? '€ ' + Number(logisticaScheda.compenso).toFixed(2) : null
   const hasPagamento = !!(compenso || logisticaScheda.pagamento_metodo || logisticaScheda.pagamento_stato || logisticaScheda.pagamento_note)
   const isAss     = allievo.tipo === 'associazione'
+  const statoVacanza = vacationLabel(allievo)
 
   const headerExtra = isAss
     ? `<div class="scheda-meta" style="margin-top:.3rem">
@@ -3929,7 +5079,7 @@ async function loadScheda(id) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
           <div class="scheda-nome">
-            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' <span class="vip-star">★</span>' : ''}
+            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' <span class="vip-star">★</span>' : ''}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
        </div>
@@ -3967,9 +5117,11 @@ async function loadScheda(id) {
           ${infoRow('Iscritto il', allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
           ${infoRow('Indirizzo', addressScheda.indirizzo)}
           ${infoRow('Casa', addressScheda.casa)}
+          ${parseMapCoordinate(addressScheda.casa_latitudine) !== null && parseMapCoordinate(addressScheda.casa_longitudine) !== null ? infoRow('GPS casa', `${formatMapCoordinate(addressScheda.casa_latitudine)}, ${formatMapCoordinate(addressScheda.casa_longitudine)}`) : ''}
           ${p.indirizzo_condiviso ? infoRow('Privacy indirizzo', 'Condiviso con altri maestri') : ''}
           ${infoRow('Cultura / lingua', p.cultura)}
           ${infoRow('Gruppo', allievo.gruppo)}
+          ${infoRow('Stato lezioni', statoVacanza)}
         </div>
       </div>
 
@@ -3983,7 +5135,7 @@ async function loadScheda(id) {
         <div class="info-grid">
           ${infoRow('Appuntamento', logisticaScheda.appuntamento)}
           ${infoRow('Durata lezione', logisticaScheda.durata_lezione ? logisticaScheda.durata_lezione + ' min' : null)}
-          ${infoRow('Luogo', logisticaScheda.luogo_incontro)}
+          ${infoRow('Luogo di incontro', logisticaScheda.luogo_incontro)}
           ${infoRow('Compenso lezione', compenso)}
           ${infoRow('Metodo pagamento', logisticaScheda.pagamento_metodo)}
           ${infoRow('Stato pagamento', logisticaScheda.pagamento_stato)}
@@ -5546,7 +6698,7 @@ ${p.note_salute ? `<div class="box"><div class="sec-title">Salute e attenzioni</
 
 <div class="box">
   <div class="sec-title">Logistica</div>
-  <table>${row('Appuntamento', p.appuntamento)}${row('Durata lezione', p.durata_lezione ? p.durata_lezione + ' min' : null)}${row('Luogo', p.luogo_incontro)}${row('Compenso', p.compenso ? '€ ' + Number(p.compenso).toFixed(2) : null)}</table>
+  <table>${row('Appuntamento', p.appuntamento)}${row('Durata lezione', p.durata_lezione ? p.durata_lezione + ' min' : null)}${row('Luogo di incontro', p.luogo_incontro)}${row('Compenso', p.compenso ? '€ ' + Number(p.compenso).toFixed(2) : null)}</table>
 </div>
 
 <div class="box">
@@ -5719,7 +6871,7 @@ async function loadLezioni(force = false) {
     return
   }
 
-  lezioniCache = data || []
+  lezioniCache = (data || []).sort((a, b) => lessonSortToken(b).localeCompare(lessonSortToken(a)) || String(b.id || '').localeCompare(String(a.id || '')))
   renderLezioni({ animate: true })
   renderDashboard()
 }
@@ -5854,7 +7006,9 @@ function renderRowsLezioni(lezioni, { showYearGroups = true, variant = 'lista', 
   const passate = new Map()
   const rows = []
 
-  lezioni.forEach(l => {
+  ;[...(lezioni || [])]
+    .sort((a, b) => lessonSortToken(b).localeCompare(lessonSortToken(a)) || String(b.id || '').localeCompare(String(a.id || '')))
+    .forEach(l => {
     const anno = Number(String(l.data || '').slice(0, 4)) || annoCorrente
     if (showYearGroups && anno < annoCorrente) {
       if (!passate.has(anno)) passate.set(anno, [])
@@ -5906,7 +7060,7 @@ function renderLezioneListaRow(l, { variant = 'lista', schedaId = null, gruppoNo
   const nomi = labelPartecipantiLezione(l)
   const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : ''
   const status = lessonStatus(l) === 'aperta' ? '<span class="lesson-status-badge">Aperta</span>' : ''
-  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || '').slice(0, 10))}')">${formatDate(l.data)}</span>`
+  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || '').slice(0, 10))}')">${formatLessonDate(l)}</span>`
   const luogoLink = l.luogo ? `<span class="linkish" onclick="event.stopPropagation(); openLocation(${jsArg(l.luogo)})">${esc(l.luogo)}</span>` : '—'
   const noteSpeciali = lessonSpecialNotes(l)
   if (variant === 'scheda') {
@@ -5942,7 +7096,9 @@ function openLessonParticipantTarget(lezioneId) {
 
 function openDayLessonsWidget(date) {
   const day = String(date || '').slice(0, 10)
-  const lessons = (lezioniCache || []).filter(l => String(l.data || '').slice(0, 10) === day)
+  const lessons = (lezioniCache || [])
+    .filter(l => String(l.data || '').slice(0, 10) === day)
+    .sort((a, b) => lessonSortToken(a).localeCompare(lessonSortToken(b)))
   const existing = document.getElementById('modal-day-lessons')
   if (existing) existing.remove()
   const overlay = document.createElement('div')
@@ -5955,7 +7111,7 @@ function openDayLessonsWidget(date) {
       <div style="display:grid;gap:.45rem">
         ${lessons.length ? lessons.map(l => `
           <button type="button" class="btn btn-outline" style="justify-content:space-between;text-align:left" onclick="var modal=document.getElementById('modal-day-lessons'); if(modal) modal.remove(); openLezione(${jsArg(l.id)})">
-            <span>${esc(labelPartecipantiLezione(l))}</span>
+            <span>${esc(lessonTime(l) ? `${lessonTime(l)} · ${labelPartecipantiLezione(l)}` : labelPartecipantiLezione(l))}</span>
             <span style="color:var(--muted)">${l.luogo ? esc(l.luogo) : '—'}</span>
           </button>`).join('') : '<div class="empty">Nessuna lezione in questo giorno.</div>'}
       </div>
@@ -6243,7 +7399,7 @@ async function loadLezione(id) {
     const label = isPrev ? 'Lezione precedente' : 'Lezione successiva'
     const arrow = isPrev ? '‹' : '›'
     if (!target) return `<button type="button" class="lezione-nav-arrow" disabled aria-label="${label}">${arrow}</button>`
-    return `<button type="button" class="lezione-nav-arrow" onclick="openLezione(${jsArg(target.id)},${jsArg(navStessoAllievo.allievoId)},${jsArg(navStessoAllievo.gruppoNome)})" title="${label}: ${esc(formatDateWithWeekday(target.data))}" aria-label="${label}">${arrow}</button>`
+    return `<button type="button" class="lezione-nav-arrow" onclick="openLezione(${jsArg(target.id)},${jsArg(navStessoAllievo.allievoId)},${jsArg(navStessoAllievo.gruppoNome)})" title="${label}: ${esc(formatLessonDateWithWeekday(target))}" aria-label="${label}">${arrow}</button>`
   }
   const partecipantiHtml = partecipanti.length
     ? partecipanti.map(a => {
@@ -6334,7 +7490,7 @@ async function loadLezione(id) {
           <div class="lezione-when-nav">
             ${navArrow(navStessoAllievo.prev, 'prev')}
             <div class="lezione-when-main">
-              <div class="lezione-read-date">${formatDateWithWeekday(lezione.data)}</div>
+              <div class="lezione-read-date">${formatLessonDateWithWeekday(lezione)}</div>
               ${dettagliQuando || '<span>Orario e luogo non indicati</span>'}
             </div>
             ${navArrow(navStessoAllievo.next, 'next')}
@@ -6387,7 +7543,7 @@ function lezioneFormTitle(isEdit = false) {
 
 function lezioneFormSaveLabel(isEdit = false) {
   if (isEdit) return 'Salva modifiche'
-  if (lezioneFormMode === 'prep') return 'Salva aperta'
+  if (lezioneFormMode === 'prep') return 'Preparazione'
   if (lezioneFormMode === 'postuma') return 'Salva lezione fatta'
   return 'Salva lezione'
 }
@@ -6400,6 +7556,9 @@ function syncLezioneFormLabels(isEdit = !!editingLezioneId) {
   document.getElementById('lz-check-title').hidden = prep
   document.getElementById('lz-check-grid').hidden = prep
   document.getElementById('lz-note-field').hidden = prep
+  ;[document.getElementById('btn-salva-lz'), document.getElementById('btn-salva-lz-top')]
+    .filter(Boolean)
+    .forEach(btn => { btn.hidden = prep })
 }
 
 async function initNuovaLezione(presetAllievoId = null) {
@@ -6430,6 +7589,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   }
   // Data di default = oggi
   document.getElementById('lz-data').value    = localDateIso()
+  document.getElementById('lz-ora').value     = ''
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
   document.getElementById('lz-meteo').value   = ''
@@ -6518,6 +7678,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     })
 
     document.getElementById('lz-data').value = lezione.data || ''
+    document.getElementById('lz-ora').value = lessonTime(lezione)
     document.getElementById('lz-durata').value = lezione.durata_min || ''
     document.getElementById('lz-luogo').value = lezione.luogo || ''
     setLessonStatus(lessonStatus(lezione))
@@ -6584,9 +7745,10 @@ function renderLezionePartecipanti() {
     const ids = allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo).map(a => a.id)
     setLezioneAllievi(ids)
     renderGroupLessonPanel(gruppo)
-    renderGroupSkillWorkspace()
+    if (lezioneFormMode !== 'prep') renderGroupSkillWorkspace()
   }
   lezionePresetAllievoId = null
+  applyDefaultLessonLocationFromTarget()
   renderSpecialGuestPanel()
   renderPrepBoard()
   refreshSuggerimentiLuogoSeAperti()
@@ -6594,6 +7756,29 @@ function renderLezionePartecipanti() {
 
 function currentLessonTargetIsGroup() {
   return document.getElementById('lz-tipo')?.value?.startsWith('gruppo:')
+}
+
+function defaultLessonLocationForTarget(targetValue = '') {
+  if (targetValue.startsWith('gruppo:')) {
+    const gruppo = targetValue.slice('gruppo:'.length)
+    return profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro || ''
+  }
+  if (targetValue.startsWith('allievo:')) {
+    const allievo = allievoById(targetValue.slice('allievo:'.length))
+    if (!allievo) return ''
+    const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
+    return logistica.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : '') || ''
+  }
+  return ''
+}
+
+function applyDefaultLessonLocationFromTarget() {
+  if (editingLezioneId) return
+  const input = document.getElementById('lz-luogo')
+  const target = document.getElementById('lz-tipo')?.value || ''
+  if (!input || input.value.trim()) return
+  const luogo = defaultLessonLocationForTarget(target)
+  if (luogo) input.value = luogo
 }
 
 function allievoById(id) {
@@ -6776,6 +7961,24 @@ async function luoghiFrequentatiAllievi(ids) {
     const k = normalizeText(luogo)
     const prev = stats.get(k) || { luogo, count: 0, latest: '' }
     prev.count += loc.tipologia === 'Casa allievo' ? 2 : 1
+    stats.set(k, prev)
+  })
+  cleanIds.map(id => allievoById(id)).filter(Boolean).forEach(allievo => {
+    const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
+    const luogo = String(logistica.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : '') || '').trim()
+    if (!luogo) return
+    const k = normalizeText(luogo)
+    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
+    prev.count += 4
+    stats.set(k, prev)
+  })
+  const gruppi = [...new Set(cleanIds.map(id => allievoById(id)?.gruppo).filter(Boolean))]
+  gruppi.forEach(gruppo => {
+    const luogo = String(profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro || '').trim()
+    if (!luogo) return
+    const k = normalizeText(luogo)
+    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
+    prev.count += 5
     stats.set(k, prev)
   })
   const luoghi = [...stats.values()]
@@ -7020,6 +8223,7 @@ function collectLezioneDraft() {
   })
   return {
     data: document.getElementById('lz-data')?.value || '',
+    ora: document.getElementById('lz-ora')?.value || '',
     durata: document.getElementById('lz-durata')?.value || '',
     stato: document.getElementById('lz-stato')?.value || 'aperta',
     luogo: document.getElementById('lz-luogo')?.value || '',
@@ -7053,6 +8257,7 @@ function loadLezioneDraft() {
 function restoreLezioneDraft(draft) {
   if (draft.formMode) lezioneFormMode = draft.formMode
   document.getElementById('lz-data').value = draft.data || localDateIso()
+  document.getElementById('lz-ora').value = normalizeLessonTime(draft.ora || '')
   document.getElementById('lz-durata').value = draft.durata || ''
   setLessonStatus(draft.stato || 'aperta')
   document.getElementById('lz-luogo').value = draft.luogo || ''
@@ -7071,10 +8276,14 @@ function restoreLezioneDraft(draft) {
 
 function toggleAllievo(cb, nomeCompleto) {
   const container = document.getElementById('lz-skills-container')
+  if (lezioneFormMode === 'prep') {
+    document.getElementById(`block-${cb.value}`)?.remove()
+    return
+  }
   if (cb.checked) {
     const allievo = allieviSelezionabiliLezione().find(x => x.id === cb.value) || allAllievi.find(x => x.id === cb.value)
     const div = document.createElement('div')
-    div.className = lezioneFormMode === 'prep' ? 'allievo-block prep-skill-storage' : 'allievo-block'
+    div.className = 'allievo-block'
     div.id = `block-${cb.value}`
     div.innerHTML = `
       <h4>${esc(nomeCompleto)}</h4>
@@ -7139,7 +8348,7 @@ async function renderPrepInsightForAllievo(allievoId) {
   const parsed = lessonParsedNotes(lezione)
   panel.innerHTML = `
     <div class="lesson-prep-title">Ultima lezione</div>
-    <div class="lesson-prep-meta">${formatDateWithWeekday(lezione.data)}${lezione.luogo ? ` · ${esc(lezione.luogo)}` : ''}${lezione.note_speciali ? `<br>${esc(lezione.note_speciali)}` : ''}</div>
+    <div class="lesson-prep-meta">${formatLessonDateWithWeekday(lezione)}${lezione.luogo ? ` · ${esc(lezione.luogo)}` : ''}${lezione.note_speciali ? `<br>${esc(lezione.note_speciali)}` : ''}</div>
     ${rows.length ? `<div class="lesson-prep-skills">${rows.map(row => `<span class="st st${row.stadio_raggiunto || 1}">${esc(row.skills.nome)} · ${esc(lessonStadioLabel(row.stadio_raggiunto || 1))}</span>`).join('')}</div>` : '<div class="ripasso-empty">Nessuna skill registrata nell ultima lezione.</div>'}
     ${parsed.nonFatto ? `<div class="lesson-prep-meta"><strong>Da riprendere:</strong> ${esc(parsed.nonFatto)}</div>` : ''}
   `
@@ -7176,7 +8385,7 @@ function buildPrepPlanDraft(allievo, lastLesson, lastItems, groups) {
   const lines = []
   lines.push('Piano operativo')
   lines.push(`Allievo: ${allievoDisplayName(allievo.id)}`)
-  if (lastLesson?.data) lines.push(`Ultima lezione: ${formatDateWithWeekday(lastLesson.data)}`)
+  if (lastLesson?.data) lines.push(`Ultima lezione: ${formatLessonDateWithWeekday(lastLesson)}`)
   if (lastItems.length) lines.push(`Ripasso iniziale: ${lastItems.map(item => item.skill?.nome).filter(Boolean).join(', ')}`)
   if (groups.work.length) lines.push(`Focus da lavorare: ${groups.work.slice(0, 3).map(item => item.skill.nome).join(', ')}`)
   if (groups.done.length) lines.push(`Richiamo breve: ${groups.done.slice(0, 2).map(item => item.skill.nome).join(', ')}`)
@@ -7192,16 +8401,7 @@ function buildPrepPlanDraft(allievo, lastLesson, lastItems, groups) {
 function renderPrepSelectedSkills(ownerId = prepOwnerId()) {
   const target = document.getElementById('prep-selected-skills')
   if (!target || !ownerId) return
-  const rows = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)]
-    .map(row => {
-      const select = row.querySelector('.skill-select')
-      if (!select?.value) return ''
-      const name = select.selectedOptions?.[0]?.dataset?.name || select.selectedOptions?.[0]?.textContent || ''
-      const stadio = Number(row.querySelector('.stadio-toggle')?.dataset.stadio || 1)
-      return `<span class="st st${stadio}">${esc(name)} · ${esc(lessonStadioLabel(stadio))}</span>`
-    })
-    .filter(Boolean)
-  target.innerHTML = rows.length ? rows.join('') : '<span class="prep-empty">Nessuna skill nel piano. Clicca una proposta nella scaletta.</span>'
+  target.innerHTML = '<span class="prep-empty">Nessuna skill viene inserita nella lezione. Le proposte aggiungono solo righe al piano.</span>'
 }
 
 function syncPrepPlanToNote() {
@@ -7229,10 +8429,7 @@ function setPrepIntent(intent, detail) {
 function addPrepSkill(ownerId, skillId, stage = 'Focus', stadio = 1, dimensioni = {}, fakie = false) {
   const skill = allSkills.find(s => String(s.id) === String(skillId))
   if (!skill) return
-  const alreadyPlanned = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)]
-    .some(row => String(row.querySelector('.skill-select')?.value || '') === String(skill.id))
-  if (!alreadyPlanned) aggiungiSkillRow(ownerId, skill.id, stadio || 1, dimensioni || {}, !!fakie, [], { ripassoOnly: true, collapseExisting: false })
-  appendPrepPlanLine(`${stage}: ${skill.nome}`)
+  appendPrepPlanLine(`${stage}: ${skill.nome}${stadio ? ` (${lessonStadioLabel(stadio)})` : ''}`)
   renderPrepSelectedSkills(ownerId)
 }
 
@@ -7273,12 +8470,6 @@ async function renderPrepBoard() {
     .filter(item => item.skillId && item.skill)
   const groups = workedSkillGroupsForOwner(ownerId)
   const note = document.getElementById('lz-note')
-  if (note && !note.value.trim()) note.value = buildPrepPlanDraft(allievo, lastLesson, lastItems, groups)
-
-  const rowsContainer = document.getElementById(`skill-rows-${ownerId}`)
-  if (!editingLezioneId && rowsContainer && !rowsContainer.querySelector('.skill-row') && lastItems.length) {
-    lastItems.forEach(item => aggiungiSkillRow(ownerId, item.skillId, item.stadio || 1, item.dimensioni || {}, item.fakie, [], { ripassoOnly: true, collapseExisting: false }))
-  }
 
   const parsed = lessonParsedNotes(lastLesson || {})
   const workItems = groups.work.map(item => ({ ...item, stadio: item.stadio || 1 }))
@@ -7291,12 +8482,12 @@ async function renderPrepBoard() {
           <div>
             <div class="prep-kicker">Prepara senza fretta</div>
             <div class="prep-headline">${esc(allievoDisplayName(ownerId))}</div>
-            <div class="prep-subline">Questa non e una registrazione: e una scaletta aperta. La chiuderai dopo, quando saprai cosa e successo davvero.</div>
+            <div class="prep-subline">Questa e solo una scaletta: non crea una lezione aperta e non inserisce skill. La registrazione si fara dopo, quando la lezione sara svolta.</div>
           </div>
-          <div class="prep-save-tag">salva come aperta</div>
+          <div class="prep-save-tag">non salva lezioni</div>
         </div>
         <div class="prep-radar">
-          <div class="prep-radar-card"><strong>${lastLesson?.data ? formatDate(lastLesson.data) : '—'}</strong><span>ultima lezione</span><div class="prep-empty">${lastLesson?.luogo ? esc(lastLesson.luogo) : 'nessun luogo'}</div></div>
+          <div class="prep-radar-card"><strong>${lastLesson?.data ? formatLessonDate(lastLesson) : '—'}</strong><span>ultima lezione</span><div class="prep-empty">${lastLesson?.luogo ? esc(lastLesson.luogo) : 'nessun luogo'}</div></div>
           <div class="prep-radar-card"><strong>${workItems.length}</strong><span>richiedono lavoro</span><div class="prep-empty">${workItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'nessuna urgenza'}</div></div>
           <div class="prep-radar-card"><strong>${doneItems.length}</strong><span>gia completate</span><div class="prep-empty">${doneItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'ancora niente'}</div></div>
           <div class="prep-radar-card"><strong>${parsed.nonFatto ? 'si' : 'no'}</strong><span>da riprendere</span><div class="prep-empty">${parsed.nonFatto ? esc(parsed.nonFatto).slice(0, 80) : 'nessuna nota'}</div></div>
@@ -7335,12 +8526,11 @@ async function renderPrepBoard() {
       <div class="card prep-plan-grid">
         <div class="field prep-plan-note" style="margin:0">
           <label>Piano operativo</label>
-          <textarea id="prep-plan-text" oninput="syncPrepPlanToNote()">${esc(note?.value || '')}</textarea>
+          <textarea id="prep-plan-text" placeholder="Scrivi qui la scaletta. Le proposte qui sopra aggiungono solo testo, non skill nella lezione." oninput="syncPrepPlanToNote()">${esc(note?.value || '')}</textarea>
         </div>
         <div>
-          <div class="lesson-prep-title" style="margin-bottom:.45rem">Dentro la lezione aperta</div>
+          <div class="lesson-prep-title" style="margin-bottom:.45rem">Spunti non salvati</div>
           <div class="prep-selected-list" id="prep-selected-skills"></div>
-          <button type="button" class="btn btn-outline btn-sm prep-raw-toggle" style="margin-top:.65rem" onclick="togglePrepRawEditor(${jsArg(ownerId)})">Editor dettagli</button>
         </div>
       </div>
     </div>`
@@ -8192,7 +9382,16 @@ async function ripristinaRelazioniLezione(lezioneId, snapshot) {
 }
 
 async function salvaLezione() {
+  if (lezioneFormMode === 'prep' && !editingLezioneId) {
+    const errEl = document.getElementById('lz-err')
+    if (errEl) {
+      errEl.textContent = 'La preparazione non crea lezioni ne skill. Registra la lezione dopo averla svolta.'
+      errEl.classList.add('show')
+    }
+    return
+  }
   const data   = document.getElementById('lz-data').value
+  const ora = normalizeLessonTime(document.getElementById('lz-ora')?.value || '')
   const durata = parseInt(document.getElementById('lz-durata').value) || null
   const stato = document.getElementById('lz-stato')?.value === 'chiusa' ? 'chiusa' : 'aperta'
   const target = document.getElementById('lz-tipo').value
@@ -8202,7 +9401,7 @@ async function salvaLezione() {
   const noteSpeciali = document.getElementById('lz-note-speciali').value.trim() || null
   const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
   const checkNonFatto = document.getElementById('lz-check-non-fatto')?.value.trim() || ''
-  const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato, meteo || '')
+  const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato, meteo || '', ora)
   const errEl  = document.getElementById('lz-err')
   errEl.classList.remove('show')
 
