@@ -176,8 +176,10 @@ async function getCurrentAuthSession() {
 async function getCurrentAuthUser() {
   if (!sb?.auth) return null
   if (typeof sb.auth.getUser === 'function') {
-    const { data: { user } } = await sb.auth.getUser()
-    return user || null
+    try {
+      const { data: { user }, error } = await sb.auth.getUser()
+      if (user && !error) return user
+    } catch (_e) {}
   }
   if (typeof sb.auth.user === 'function') return sb.auth.user()
   const session = await getCurrentAuthSession()
@@ -193,7 +195,11 @@ async function refreshCurrentAuthIdentity() {
 }
 
 async function requireCurrentUidForWrite(errEl = null) {
-  const uid = currentUid || await refreshCurrentAuthIdentity()
+  let uid = null
+  try {
+    uid = await refreshCurrentAuthIdentity()
+  } catch (_e) {}
+  uid = uid || currentUid
   if (uid) return uid
   const message = 'Sessione maestro non pronta: esci, rientra e riprova a salvare.'
   if (errEl) {
@@ -201,6 +207,24 @@ async function requireCurrentUidForWrite(errEl = null) {
     errEl.classList.add('show')
   }
   throw new Error(message)
+}
+
+function supabaseErrorText(error) {
+  if (!error) return ''
+  return [error.message, error.details, error.hint, error.code].filter(Boolean).join(' · ')
+}
+
+function saveBlockedByPolicy(error) {
+  const text = supabaseErrorText(error)
+  return /row-level security|violates.*policy|permission denied|42501/i.test(text)
+}
+
+function saveErrorMessage(error, fallback = 'Errore di rete. Riprova.') {
+  const detail = supabaseErrorText(error)
+  if (saveBlockedByPolicy(error)) {
+    return `Salvataggio bloccato dal database: la sessione non ha permesso di scrittura. Dettaglio: ${detail || 'policy RLS'}`
+  }
+  return detail || error?.message || fallback
 }
 
 async function signInWithPasswordCompat(email, password) {
@@ -5857,7 +5881,6 @@ async function salvaAllievo() {
   const payload = {
     nome, cognome, tipo,
     nickname:        isAss ? (document.getElementById('ass-nick').value.trim() || null) : (document.getElementById('na-nickname').value.trim() || null),
-    tier:            isAss ? 'C' : normalizeAllievoTier(document.getElementById('na-tier')?.value || 'C'),
     vip:             isAss ? false : normalizeAllievoTier(document.getElementById('na-tier')?.value || 'C') === 'VIP',
     blocco_attuale:  isAss ? 'Base' : document.getElementById('na-blocco').value,
     gruppo:          isAss ? (document.getElementById('ass-gruppo').value.trim() || null) : (gruppoAttivo ? (document.getElementById('na-gruppo').value.trim() || null) : null),
@@ -5878,13 +5901,13 @@ async function salvaAllievo() {
     if (savedId) {
       ;({ data, error } = await sb.from('allievi').update(payload).eq('id', savedId).select().single())
       if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || '')) {
-        const { aggiornato_il, tier, ...compatPayload } = payload
+        const { aggiornato_il, ...compatPayload } = payload
         ;({ data, error } = await sb.from('allievi').update(compatPayload).eq('id', savedId).select().single())
       }
     } else {
       ;({ data, error } = await sb.from('allievi').insert(payload).select().single())
       if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || '')) {
-        const { aggiornato_il, tier, ...compatPayload } = payload
+        const { aggiornato_il, ...compatPayload } = payload
         ;({ data, error } = await sb.from('allievi').insert(compatPayload).select().single())
       }
     }
@@ -5928,9 +5951,7 @@ async function salvaAllievo() {
       showView('allievi')
     }
   } catch (e) {
-    errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
-      ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
-      : (e.message || 'Errore di rete. Riprova.')
+    errEl.textContent = saveErrorMessage(e)
     errEl.classList.add('show')
     btn.disabled = false;    btn.textContent    = labelOrig
     btnTop.disabled = false; btnTop.textContent = labelOrig
@@ -6326,9 +6347,7 @@ async function salvaGruppo() {
       await ricaricaAllievi()
       await goToReturnTarget(destination, { name: 'gruppo', id: nextGroup })
     } catch (e) {
-      errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
-        ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
-        : (e.message || 'Errore di rete. Riprova.')
+      errEl.textContent = saveErrorMessage(e)
       errEl.classList.add('show')
     } finally {
       btn.disabled = false; btn.textContent = 'Salva gruppo'
@@ -6377,9 +6396,7 @@ async function salvaGruppo() {
     await ricaricaAllievi()
     showView('gruppo', nomeGruppo)
   } catch (e) {
-    errEl.textContent = /row-level security|violates.*policy|allievi/i.test(e.message || '')
-      ? 'Salvataggio bloccato dalla sessione maestro: esci, rientra e riprova. Se continua, controlla che l account sia confermato.'
-      : (e.message || 'Errore di rete. Riprova.')
+    errEl.textContent = saveErrorMessage(e)
     errEl.classList.add('show')
   } finally {
     btn.disabled = false; btn.textContent = 'Salva gruppo'
