@@ -2,8 +2,9 @@ const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
 let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
-let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
-let mappaTipoFiltro = 'all', mappaSelectedLocationName = null, mappaSingleFocusName = null
+let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard', pendingLessonLocation = null
+let mappaTipoFiltro = 'all', mappaSelectedLocationName = null, mappaSingleFocusName = null, mappaPuntiEspansi = false, mappaPuntiEspansiLoaded = false
+let calendarioSuggestTimer = null
 const lezioniColumnState = { data: false, luogo: false, note: false }
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
 const GROUP_SKILL_ROWS_KEY = '__group__'
@@ -15,6 +16,14 @@ const MILANO_MAP_BOUNDS = Object.freeze({ north: 45.5433822361299, south: 45.381
 const MILANO_MAP_VIEWBOX = Object.freeze({ width: 1114, height: 993 })
 const MILANO_MAP_IMAGE = './mappa-milano-quartieri-dark@2x.png'
 const LOCATION_CATEGORIES = ['Location', 'Parco', 'Ciclabile', 'Piazza', 'Pista di pattinaggio', 'Skatepark', 'Strada', 'Campi da basket', 'Palestra', 'Casa allievo', 'Altro']
+const LOCATION_NORMALIZATION_GROUPS = [
+  { nome: "Sant'Agostino", tipo: 'street', tipologia: 'Piazza', aliases: ["S.Agostino", "S. Agostino", "Piazza Sant'Agostino", "Piazza Sant'Agostino, 20123 Milano MI, Italia", "Sant'Agostino - casa"] },
+  { nome: 'Tolstoj / Skatepark Tolstoj', tipo: 'skatepark', tipologia: 'Skatepark', aliases: ['Giardini di via Tolstoj Savona', 'Giardini di via Tolstoj Savona, 20144 Milano MI, Italia', 'Casa - skatepark Tolstoj'] },
+  { nome: "Barrio's / Parco Barona", tipo: 'spot', tipologia: 'Parco', aliases: ["Casa - Barrio's", "Barrio's - parco Barona"] },
+  { nome: 'Naviglio Pavese', tipo: 'street', tipologia: 'Ciclabile', aliases: ['Casa - naviglio Pavese', 'Ciclabile naviglio pavese'] },
+  { nome: 'Castelletto / Robecco', tipo: 'spot', tipologia: 'Location', aliases: ['parco castelletto', 'cimitero castelletto'] },
+  { nome: 'Casa', tipo: 'privato', tipologia: 'Casa allievo', private: true, aliases: ['Casa'] },
+]
 const MILANO_COORD_HINTS = [
   { match: ['centro'], x: 675, y: 478, label: 'Centro' },
   { match: ['arco della pace', 'arena', 'pagano'], x: 599, y: 431, label: 'Arco della Pace / Arena' },
@@ -55,6 +64,9 @@ const MILANO_COORD_HINTS = [
 ]
 const MAESTRO_AVAILABILITY_METADATA_KEY = 'disponibilita_maestro_slots'
 const MAESTRO_AVAILABILITY_STORAGE_PREFIX = 'bladingManagerMaestroAvailability'
+const CALENDARIO_METADATA_KEY = 'calendario_settimanale_items'
+const CALENDARIO_STORAGE_PREFIX = 'bladingManagerCalendarioSettimanale'
+const MAP_POINTS_EXPANDED_STORAGE_KEY = 'bladingManagerMappaPuntiEspansi'
 const AVAILABILITY_DAYS = [
   { value: 1, label: 'Lunedi', short: 'Lun' },
   { value: 2, label: 'Martedi', short: 'Mar' },
@@ -67,7 +79,7 @@ const AVAILABILITY_DAYS = [
 const AVAILABILITY_START_MIN = 7 * 60
 const AVAILABILITY_END_MIN = 23 * 60
 const AVAILABILITY_STEP_MIN = 15
-const AVAILABILITY_HOUR_PX = 44
+const AVAILABILITY_HOUR_PX = 30
 const APPOINTMENT_BUFFER_MIN = 15
 const APPOINTMENT_MIN_LESSON_MIN = 60
 const APPOINTMENT_DEFAULT_WEEKLY_COUNT = 1
@@ -75,8 +87,14 @@ const APPOINTMENT_MAX_WEEKLY_COUNT = 7
 const APPOINTMENT_GROUP_TARGET_PREFIX = 'gruppo:'
 const APPOINTMENT_HEAT_START_MIN = 13 * 60
 const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30
-let maestroAvailabilitySlots = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
+const APPOINTMENT_CONSECUTIVE_PREFER = 'prefer'
+const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
+let maestroAvailabilitySlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
+const availabilityUndoStacks = new Map()
+const availabilityEditUnlocked = new Set()
+let lastAppointmentScheduleVariants = []
+const importedAppointmentVariantIds = new Set()
 let godMode = false, godScope = 'all', shareContext = null
 let appNotesTimer = null, appNotesRemoteAvailable = null
 let appNotesReturnView = null
@@ -368,7 +386,7 @@ function initialRouteFromHash(hashValue = window.location.hash) {
   } catch {
     return { name: 'allievi', id: null }
   }
-  const allowed = ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  const allowed = ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
   if (!allowed.includes(name)) return { name: 'allievi', id: null }
   if (routeNeedsId(name) && !id) return { name: 'allievi', id: null }
   return { name, id }
@@ -386,6 +404,7 @@ async function initApp() {
   currentEmail = (user?.email || '').toLowerCase()
   currentUserMetadata = user?.user_metadata || {}
   maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata)
+  calendarioItems = loadCalendarioItems(currentUserMetadata)
 
   const [{ data: a }, { data: s }, { data: p }, { data: pr }] = await Promise.all([
     sb.from('allievi').select('*').eq('stato', 'attivo').order('nome'),
@@ -445,6 +464,81 @@ function locationCategoryOptions(selected = 'Location') {
   const value = selected && LOCATION_CATEGORIES.includes(selected) ? selected : (selected || 'Location')
   const options = LOCATION_CATEGORIES.includes(value) ? LOCATION_CATEGORIES : [...LOCATION_CATEGORIES, value]
   return options.map(t => `<option value="${esc(t)}" ${t === value ? 'selected' : ''}>${esc(t)}</option>`).join('')
+}
+
+function locationAliasKey(value) {
+  return normalizeText(value || '').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function normalizedLocationGroupForName(nome = '') {
+  const key = locationAliasKey(nome)
+  if (!key) return null
+  return LOCATION_NORMALIZATION_GROUPS.find(group =>
+    locationAliasKey(group.nome) === key || (group.aliases || []).some(alias => locationAliasKey(alias) === key)
+  ) || null
+}
+
+function normalizedLocationName(nome = '') {
+  return normalizedLocationGroupForName(nome)?.nome || String(nome || '').trim()
+}
+
+function locationDbId(record = {}) {
+  return record?.id || record?.location_id || null
+}
+
+function locationRecordMatchesName(record = {}, nome = '') {
+  if (!record || !nome) return false
+  const direct = normalizeText(record.nome || '') === normalizeText(nome || '')
+  if (direct) return true
+  return normalizeText(normalizedLocationName(record.nome || '')) === normalizeText(normalizedLocationName(nome || ''))
+}
+
+function locationRecordById(id) {
+  if (!id) return null
+  return allLocations.find(location => String(location.id || '') === String(id)) || null
+}
+
+function locationType(record = {}) {
+  const group = normalizedLocationGroupForName(record.nome || '')
+  return record.tipo || group?.tipo || record.tipologia || 'Location'
+}
+
+function locationTipologia(record = {}) {
+  const group = normalizedLocationGroupForName(record.nome || '')
+  return record.tipologia || group?.tipologia || record.tipo || 'Location'
+}
+
+function isPrivateLocation(record = {}) {
+  const typeText = normalizeText([record.tipo, record.tipologia, record.nome, record.note, ...(record.tags || [])].filter(Boolean).join(' '))
+  return normalizedLocationGroupForName(record.nome || '')?.private || /\b(casa|home|abitazione|privato)\b/.test(typeText)
+}
+
+function locationGoogleMapsUrl(record = {}) {
+  if (record.google_maps_url) return record.google_maps_url
+  if (isPrivateLocation(record) && !record.maps_confermato) return ''
+  const coords = locationCoordinatesFromRecord(record)
+  if (coords) return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`
+  const query = String(record.indirizzo || record.nome || '').trim()
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : ''
+}
+
+function openLocationMaps(nomeOrId) {
+  const record = locationRecordById(nomeOrId) || locationRecordByName(nomeOrId) || { nome: nomeOrId }
+  const url = locationGoogleMapsUrl(record)
+  if (!url) return
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function useLocationForLesson(nomeOrId) {
+  const record = locationRecordById(nomeOrId) || locationRecordByName(nomeOrId) || { nome: nomeOrId }
+  pendingLessonLocation = { id: record.id || '', nome: record.nome || '' }
+  showView('nuova-lezione')
+  setTimeout(() => {
+    const select = document.getElementById('lz-location-id')
+    const input = document.getElementById('lz-luogo')
+    if (select && record.id) select.value = record.id
+    if (input) input.value = record.nome || ''
+  }, 120)
 }
 
 function canEditLocation(record = null) {
@@ -674,7 +768,12 @@ async function loadLocations(force = false) {
 
 function locationRecordByName(nome) {
   const key = normalizeText(nome || '')
-  const matches = allLocations.filter(l => normalizeText(l.nome || '') === key)
+  const normalizedKey = normalizeText(normalizedLocationName(nome || ''))
+  const matches = allLocations.filter(l =>
+    normalizeText(l.nome || '') === key ||
+    normalizeText(normalizedLocationName(l.nome || '')) === normalizedKey ||
+    normalizeText(l.nome_normalizzato || '') === normalizedKey
+  )
   return matches.find(l => String(l.maestro_id || '') === String(currentUid || ''))
     || matches.find(l => !!l.condivisa)
     || matches[0]
@@ -688,7 +787,7 @@ function lessonParticipantsFromLesson(lezione = {}) {
 }
 
 function addLocationNameCandidate(map, nome) {
-  const clean = String(nome || '').trim()
+  const clean = normalizedLocationName(nome)
   if (!clean) return
   const key = normalizeText(clean)
   if (key && !map.has(key)) map.set(key, clean)
@@ -736,9 +835,16 @@ function locationNamesFromLessons() {
 function lessonLocationUsesName(lezione = {}, nome = '') {
   const target = normalizeText(nome)
   if (!target) return false
+  if (lezione.location_id) {
+    const rec = locationRecordById(lezione.location_id)
+    if (rec && locationRecordMatchesName(rec, nome)) return true
+  }
   const candidates = new Map()
   addLessonLocationCandidates(candidates, lezione)
-  return [...candidates.values()].some(candidate => normalizeText(candidate) === target)
+  return [...candidates.values()].some(candidate =>
+    normalizeText(candidate) === target ||
+    normalizeText(normalizedLocationName(candidate)) === normalizeText(normalizedLocationName(nome))
+  )
 }
 
 function renderDashboard() {
@@ -835,7 +941,7 @@ window.addEventListener('popstate', event => {
 })
 
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  return ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
@@ -844,7 +950,8 @@ function syncNavActive(name) {
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name) || (name === 'location' && !locationFromMap))
   document.getElementById('nav-percorsi').classList.toggle('active', name === 'percorsi')
-  document.getElementById('nav-calendar').classList.toggle('active', name === 'appuntamenti')
+  document.getElementById('nav-calendar').classList.toggle('active', name === 'calendario')
+  document.getElementById('nav-auto-orari').classList.toggle('active', name === 'appuntamenti')
   document.getElementById('nav-mappa').classList.toggle('active', name === 'mappa' || locationFromMap)
   document.getElementById('nav-skills').classList.toggle('active', name === 'skills')
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
@@ -854,7 +961,7 @@ function syncNavActive(name) {
 function isValidLocationBackTarget(target) {
   if (!target || target.name === 'location') return false
   if (target.name === 'scheda' || target.name === 'gruppo' || target.name === 'lezione') return !!target.id
-  return ['allievi','lezioni','percorsi','appuntamenti','mappa','skills','tuning','app-notes'].includes(target.name)
+  return ['allievi','lezioni','percorsi','calendario','appuntamenti','mappa','skills','tuning','app-notes'].includes(target.name)
 }
 
 function readLocationBackTarget() {
@@ -875,9 +982,10 @@ function setLocationBackTarget(target) {
 function locationBackLabel(target = locationBackTarget) {
   const labels = {
     allievi: 'Allievi',
-    lezioni: 'Lezioni',
-    percorsi: 'Percorsi',
-    appuntamenti: 'Appuntamenti',
+	    lezioni: 'Lezioni',
+	    percorsi: 'Percorsi',
+	    calendario: 'Calendario',
+	    appuntamenti: 'Appuntamenti',
     mappa: 'Mappa',
     skills: 'Skills',
     tuning: 'Tuning',
@@ -906,7 +1014,7 @@ function currentReturnTarget() {
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
   if (view === 'location') return locationBackTarget || readLocationBackTarget() || { name: 'lezioni', id: null }
-  if (view === 'allievi' || view === 'lezioni' || view === 'percorsi' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
+  if (view === 'allievi' || view === 'lezioni' || view === 'percorsi' || view === 'calendario' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
   return null
 }
 
@@ -942,7 +1050,7 @@ function showView(name, id) {
     const returnTarget = previousReturnTarget
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','percorsi','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
+  ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   syncNavActive(name)
@@ -950,6 +1058,7 @@ function showView(name, id) {
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
   if (name === 'percorsi')      ensureRouteBuilderMounted()
+  if (name === 'calendario')    renderCalendario()
   if (name === 'appuntamenti')  renderAppuntamenti()
   if (name === 'mappa')         renderMappa(id || null)
   if (name === 'location' && id) loadLocation(id)
@@ -1018,7 +1127,323 @@ function closeAppNotes() {
 }
 
 function showCalendarFromHeader() {
-  showView('appuntamenti')
+  showView('calendario')
+}
+
+// ── Calendario settimanale ──────────────────────────────────────────────
+
+function calendarioStorageKey() {
+  return `${CALENDARIO_STORAGE_PREFIX}:${currentUid || currentEmail || 'local'}`
+}
+
+function newCalendarItemId() {
+  return `cal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+function normalizeCalendarioItems(items = []) {
+  if (!Array.isArray(items)) return []
+  return items
+    .map(item => {
+      const day = Number(item.day ?? item.giorno ?? item.weekday)
+      const start = String(item.start || item.inizio || '').slice(0, 5)
+      const end = String(item.end || item.fine || '').slice(0, 5)
+      const startMin = timeToMinutes(start)
+      const endMin = timeToMinutes(end)
+      if (!AVAILABILITY_DAYS.some(d => d.value === day) || startMin === null || endMin === null || endMin <= startMin) return null
+      return {
+        id: String(item.id || newCalendarItemId()),
+        day,
+        start,
+        end,
+        title: String(item.title || item.titolo || item.targetName || 'Lezione').trim() || 'Lezione',
+        location: String(item.location || item.luogo || '').trim(),
+        note: String(item.note || '').trim(),
+        source: String(item.source || 'manuale'),
+        targetId: item.targetId || null,
+        variantId: item.variantId || null,
+        created_at: item.created_at || new Date().toISOString(),
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start) || String(a.title).localeCompare(String(b.title), 'it', { sensitivity: 'base' }))
+}
+
+function loadCalendarioItems(metadata = {}) {
+  let local = []
+  try { local = JSON.parse(safeStorage.getItem(calendarioStorageKey()) || '[]') || [] } catch { local = [] }
+  const remote = normalizeCalendarioItems(metadata?.[CALENDARIO_METADATA_KEY] || metadata?.calendario_settimanale?.items || [])
+  const items = remote.length ? remote : normalizeCalendarioItems(local)
+  safeStorage.setItem(calendarioStorageKey(), JSON.stringify(items))
+  return items
+}
+
+async function saveCalendarioItems(items) {
+  calendarioItems = normalizeCalendarioItems(items)
+  safeStorage.setItem(calendarioStorageKey(), JSON.stringify(calendarioItems))
+  if (!sb?.auth) return { remote: false }
+  const payload = {
+    ...currentUserMetadata,
+    [CALENDARIO_METADATA_KEY]: calendarioItems,
+    calendario_settimanale_updated_at: new Date().toISOString(),
+  }
+  const { user, error } = await updateCurrentUserMetadata(payload)
+  if (error) return { remote: false, error }
+  currentUserMetadata = user?.user_metadata || payload
+  return { remote: true }
+}
+
+function calendarioDayOptions(selected = 1) {
+  return AVAILABILITY_DAYS.map(day => `<option value="${day.value}" ${Number(selected) === Number(day.value) ? 'selected' : ''}>${esc(day.label)}</option>`).join('')
+}
+
+function calendarioSetStatus(text, cls = '') {
+  const el = document.getElementById('calendario-status')
+  if (!el) return
+  el.className = `calendar-status ${cls}`.trim()
+  el.textContent = text || ''
+}
+
+function calendarioItemHtml(item) {
+  const meta = [item.location, item.note].filter(Boolean).join(' · ')
+  const source = item.source === 'appuntamenti' ? 'auto' : 'manuale'
+  return `
+    <details class="calendar-event">
+      <summary>
+        <span class="calendar-event-main">
+          <span class="calendar-event-time">${esc(item.start)}-${esc(item.end)} · ${esc(source)}</span>
+          <span class="calendar-event-title">${esc(item.title)}</span>
+          ${meta ? `<span class="calendar-event-meta">${esc(meta)}</span>` : ''}
+        </span>
+        <button type="button" class="calendar-event-delete" onclick="event.preventDefault(); event.stopPropagation(); deleteCalendarioItem(${jsArg(item.id)})" title="Elimina voce" aria-label="Elimina voce">×</button>
+      </summary>
+      <div class="calendar-event-edit">
+        <div class="calendar-edit-grid">
+          <input type="time" value="${esc(item.start)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'start', this.value)" aria-label="Ora inizio">
+          <input type="time" value="${esc(item.end)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'end', this.value)" aria-label="Ora fine">
+        </div>
+        <input type="text" value="${esc(item.title)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'title', this.value)" aria-label="Titolo">
+        <select onchange="updateCalendarioItem(${jsArg(item.id)}, 'day', this.value)" aria-label="Giorno">${calendarioDayOptions(item.day)}</select>
+        <input type="text" value="${esc(item.location)}" placeholder="Luogo" onchange="updateCalendarioItem(${jsArg(item.id)}, 'location', this.value)" aria-label="Luogo">
+        <input type="text" value="${esc(item.note)}" placeholder="Note" onchange="updateCalendarioItem(${jsArg(item.id)}, 'note', this.value)" aria-label="Note">
+        <div class="calendar-edit-actions">
+          <button type="button" class="btn btn-outline btn-sm" onclick="deleteCalendarioItem(${jsArg(item.id)})">Elimina</button>
+        </div>
+      </div>
+    </details>`
+}
+
+function calendarioBoardHtml() {
+  const normalized = normalizeCalendarioItems(calendarioItems)
+  return `<div class="calendar-board-wrap"><div class="calendar-board">${AVAILABILITY_DAYS.map(day => {
+    const items = normalized.filter(item => Number(item.day) === Number(day.value))
+    return `
+      <div class="calendar-day">
+        <div class="calendar-day-head"><strong>${esc(day.label)}</strong><span>${items.length} voc${items.length === 1 ? 'e' : 'i'}</span></div>
+        <div class="calendar-day-body">
+          ${items.length ? items.map(calendarioItemHtml).join('') : '<div class="calendar-day-empty">Vuoto</div>'}
+        </div>
+      </div>`
+  }).join('')}</div></div>`
+}
+
+function renderCalendario() {
+  const el = document.getElementById('calendario-content')
+  if (!el) return
+  el.innerHTML = `
+    <div class="card calendar-shell">
+      <div class="calendar-shell-head">
+        <div class="calendar-quick-title">Nuova voce</div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="clearCalendario()" ${calendarioItems.length ? '' : 'disabled'}>Cancella tutto</button>
+      </div>
+      <div class="calendar-form">
+        <div class="field">
+          <label>Giorno</label>
+          <select id="cal-new-day">${calendarioDayOptions(1)}</select>
+        </div>
+        <div class="field place-suggest-wrap">
+          <label>Titolo</label>
+          <input type="text" id="cal-new-title" placeholder="Es. Lezione Marco" autocomplete="off" oninput="mostraSuggerimentiCalendarioTitolo()" onfocus="mostraSuggerimentiCalendarioTitolo()" onblur="nascondiSuggerimentiCalendarioSoon('cal-title-suggest')">
+          <div id="cal-title-suggest" class="place-suggest-panel" hidden></div>
+        </div>
+        <div class="field">
+          <label>Inizio</label>
+          <input type="time" id="cal-new-start" value="09:00">
+        </div>
+        <div class="field">
+          <label>Fine</label>
+          <input type="time" id="cal-new-end" value="10:00">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="addCalendarioManualItem()">Aggiungi</button>
+      </div>
+      <div class="calendar-extra-row">
+        <div class="field place-suggest-wrap">
+          <label>Luogo</label>
+          <input type="text" id="cal-new-location" placeholder="Location" autocomplete="off" oninput="mostraSuggerimentiCalendarioLuogo()" onfocus="mostraSuggerimentiCalendarioLuogo()" onblur="nascondiSuggerimentiCalendarioSoon('cal-location-suggest')">
+          <div id="cal-location-suggest" class="place-suggest-panel" hidden></div>
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <input type="text" id="cal-new-note" placeholder="Promemoria">
+        </div>
+      </div>
+      <div id="calendario-status" class="calendar-status"></div>
+    </div>
+    ${calendarioBoardHtml()}`
+}
+
+function calendarioTitleSuggestions(queryText = '') {
+  const query = normalizeText(queryText)
+  const rows = []
+  ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato')).forEach(allievo => {
+    const name = allievoDisplayName(allievo.id)
+    const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
+    const location = logistica.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : '') || ''
+    const haystack = normalizeText([name, allievo.nome, allievo.cognome, allievo.nickname, allievo.gruppo, location].filter(Boolean).join(' '))
+    if (!query || haystack.includes(query)) rows.push({ type: 'Allievo', title: name, location, detail: allievo.gruppo || location || '' })
+  })
+  gruppiEsistenti().forEach(gruppo => {
+    const profilo = profiloComuneGruppo(gruppoMembri(gruppo))
+    const location = profilo.luogo_incontro || ''
+    const haystack = normalizeText([gruppo, location].filter(Boolean).join(' '))
+    if (!query || haystack.includes(query)) rows.push({ type: 'Gruppo', title: gruppo, location, detail: `${gruppoMembri(gruppo).length} allievi${location ? ' · ' + location : ''}` })
+  })
+  return rows.slice(0, 10)
+}
+
+function mostraSuggerimentiCalendarioTitolo() {
+  const input = document.getElementById('cal-new-title')
+  const panel = document.getElementById('cal-title-suggest')
+  if (!input || !panel) return
+  const rows = calendarioTitleSuggestions(input.value)
+  panel.innerHTML = rows.length
+    ? rows.map(row => `<button type="button" class="place-suggest-btn" onmousedown="scegliSuggerimentoCalendarioTitolo(${jsArg(row.title)},${jsArg(row.location)})"><strong>${esc(row.title)}</strong><br><span style="color:var(--muted);font-size:.74rem">${esc(row.type)}${row.detail ? ` · ${esc(row.detail)}` : ''}</span></button>`).join('')
+    : '<div class="place-suggest-empty">Nessun allievo o gruppo trovato.</div>'
+  panel.hidden = false
+}
+
+function scegliSuggerimentoCalendarioTitolo(title, location = '') {
+  const titleInput = document.getElementById('cal-new-title')
+  const locationInput = document.getElementById('cal-new-location')
+  if (titleInput) titleInput.value = title || ''
+  if (locationInput && location && !locationInput.value.trim()) locationInput.value = location
+  const panel = document.getElementById('cal-title-suggest')
+  if (panel) panel.hidden = true
+}
+
+async function mostraSuggerimentiCalendarioLuogo() {
+  const input = document.getElementById('cal-new-location')
+  const panel = document.getElementById('cal-location-suggest')
+  if (!input || !panel) return
+  if (!locationsLoaded) await loadLocations()
+  const query = normalizeText(input.value || '')
+  const names = locationNamesFromLessons()
+    .filter(nome => !query || normalizeText(nome).includes(query))
+    .slice(0, 10)
+  panel.innerHTML = names.length
+    ? names.map(nome => `<button type="button" class="place-suggest-btn" onmousedown="scegliSuggerimentoCalendarioLuogo(${jsArg(nome)})">${esc(nome)}</button>`).join('')
+    : '<div class="place-suggest-empty">Nessuna location trovata.</div>'
+  panel.hidden = false
+}
+
+function scegliSuggerimentoCalendarioLuogo(location) {
+  const input = document.getElementById('cal-new-location')
+  if (input) input.value = location || ''
+  const panel = document.getElementById('cal-location-suggest')
+  if (panel) panel.hidden = true
+}
+
+function nascondiSuggerimentiCalendarioSoon(panelId) {
+  clearTimeout(calendarioSuggestTimer)
+  calendarioSuggestTimer = setTimeout(() => {
+    const panel = document.getElementById(panelId)
+    if (panel) panel.hidden = true
+  }, 160)
+}
+
+async function addCalendarioManualItem() {
+  const item = {
+    id: newCalendarItemId(),
+    day: Number(document.getElementById('cal-new-day')?.value || 1),
+    title: document.getElementById('cal-new-title')?.value || 'Impegno',
+    start: document.getElementById('cal-new-start')?.value || '',
+    end: document.getElementById('cal-new-end')?.value || '',
+    location: document.getElementById('cal-new-location')?.value || '',
+    note: document.getElementById('cal-new-note')?.value || '',
+    source: 'manuale',
+  }
+  const normalized = normalizeCalendarioItems([item])[0]
+  if (!normalized) {
+    calendarioSetStatus('Controlla giorno e orari: la fine deve essere dopo l inizio.', 'err')
+    return
+  }
+  const saved = await saveCalendarioItems([...calendarioItems, normalized])
+  renderCalendario()
+  calendarioSetStatus(saved.remote ? 'Voce aggiunta al calendario.' : 'Voce aggiunta localmente.', saved.remote ? 'ok' : '')
+}
+
+async function updateCalendarioItem(id, field, value) {
+  const allowed = ['day', 'start', 'end', 'title', 'location', 'note']
+  if (!allowed.includes(field)) return
+  const next = calendarioItems.map(item => String(item.id) === String(id) ? { ...item, [field]: field === 'day' ? Number(value) : value } : item)
+  const normalized = normalizeCalendarioItems(next)
+  if (normalized.length !== next.length) {
+    calendarioSetStatus('Modifica non valida: controlla giorno e orari.', 'err')
+    renderCalendario()
+    return
+  }
+  const saved = await saveCalendarioItems(normalized)
+  renderCalendario()
+  calendarioSetStatus(saved.remote ? 'Calendario aggiornato.' : 'Calendario aggiornato localmente.', saved.remote ? 'ok' : '')
+}
+
+async function deleteCalendarioItem(id) {
+  const saved = await saveCalendarioItems(calendarioItems.filter(item => String(item.id) !== String(id)))
+  renderCalendario()
+  calendarioSetStatus(saved.remote ? 'Voce eliminata.' : 'Voce eliminata localmente.', saved.remote ? 'ok' : '')
+}
+
+async function clearCalendario() {
+  if (!calendarioItems.length) {
+    calendarioSetStatus('Calendario gia vuoto.')
+    return
+  }
+  if (!confirm('Cancellare tutte le voci del calendario?')) return
+  const saved = await saveCalendarioItems([])
+  renderCalendario()
+  calendarioSetStatus(saved.remote ? 'Calendario svuotato.' : 'Calendario svuotato localmente.', saved.remote ? 'ok' : '')
+}
+
+async function addAppointmentVariantToCalendar(variantId) {
+  const variant = lastAppointmentScheduleVariants.find(item => item.id === variantId)
+  if (!variant || !variant.scheduled?.length) {
+    setAppointmentCalendarStatus('Nessuna lezione piazzata da importare.', 'err')
+    return
+  }
+  const imported = variant.scheduled.map(item => ({
+    id: newCalendarItemId(),
+    day: item.day,
+    start: item.start,
+    end: item.lessonEnd,
+    title: item.targetName,
+    location: item.location || '',
+    note: [variant.title, item.heatOverlap ? 'fascia calda' : '', item.routeIsItinerary ? `${item.routeStartLabel || ''} -> ${item.routeEndLabel || ''}` : ''].filter(Boolean).join(' · '),
+    source: 'appuntamenti',
+    targetId: item.targetId,
+    variantId,
+  }))
+  const saved = await saveCalendarioItems([...calendarioItems, ...imported])
+  importedAppointmentVariantIds.add(String(variantId))
+  document.querySelectorAll('.appointment-schedule-variant[data-appointment-variant-id]').forEach(card => {
+    if (card.dataset.appointmentVariantId === String(variantId)) card.classList.add('is-in-calendar')
+  })
+  setAppointmentCalendarStatus(`${imported.length} lezion${imported.length === 1 ? 'e aggiunta' : 'i aggiunte'} al calendario${saved.remote ? '.' : ' localmente.'}`, saved.remote ? 'ok' : '')
+}
+
+function setAppointmentCalendarStatus(text, cls = '') {
+  const el = document.getElementById('appointments-calendar-status')
+  if (!el) return
+  el.className = `appointments-status ${cls}`.trim()
+  el.textContent = text || ''
 }
 
 // ── Appuntamenti / disponibilita ─────────────────────────────────────
@@ -1222,10 +1647,25 @@ function availabilitySlotsForAllievo(allievo) {
   return normalizeAvailabilitySlots(allievo?.profilo?.disponibilita_slots || allievo?.profilo?.availability_slots || [])
 }
 
+function availabilitySlotsSignature(slots = []) {
+  return JSON.stringify(normalizeAvailabilitySlots(slots).map(slot => ({
+    day: Number(slot.day),
+    start: slot.start,
+    end: slot.end,
+    note: slot.note || '',
+  })))
+}
+
+function availabilityGroupDedicatedSlotsForMember(member) {
+  return normalizeAvailabilitySlots(member?.profilo?.disponibilita_gruppo_slots || member?.profilo?.group_availability_slots || [])
+}
+
 function availabilitySlotsForGroup(gruppo) {
   const members = appointmentGroupMembers(gruppo)
-  const source = members.find(member => availabilitySlotsForAllievo(member).length)
-  return source ? availabilitySlotsForAllievo(source) : []
+  const source = members.find(member => availabilityGroupDedicatedSlotsForMember(member).length)
+  if (source) return availabilityGroupDedicatedSlotsForMember(source)
+  const legacySource = members.find(member => availabilitySlotsForAllievo(member).length)
+  return legacySource ? availabilitySlotsForAllievo(legacySource) : []
 }
 
 function availabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
@@ -1236,7 +1676,10 @@ function availabilitySlotsForAppointmentTarget(target = selectedAppointmentTarge
 
 function availabilityNoteForAppointmentTarget(target = selectedAppointmentTarget()) {
   if (!target) return ''
-  if (target.type === 'gruppo') return mergeAvailabilityNotes(...target.members.map(member => member.profilo?.disponibilita))
+  if (target.type === 'gruppo') {
+    const dedicatedNotes = mergeAvailabilityNotes(...target.members.map(member => member.profilo?.disponibilita_gruppo))
+    return dedicatedNotes || mergeAvailabilityNotes(...target.members.map(member => member.profilo?.disponibilita))
+  }
   return target.allievo?.profilo?.disponibilita || ''
 }
 
@@ -1259,17 +1702,61 @@ function appointmentWeeklyCountForTarget(target = selectedAppointmentTarget()) {
   return appointmentWeeklyCountForAllievo(target.allievo)
 }
 
+function appointmentIndividualLessonsActiveForAllievo(allievo) {
+  if (!allievo?.gruppo) return true
+  const profilo = allievo.profilo || {}
+  if (profilo.appuntamenti_individuali_attivi === false) return false
+  if (profilo.appuntamenti_individuali_attivi || profilo.disponibilita_individuale_attiva) return true
+  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, true)
+  if (logisticaHaValori(logisticaIndividuale)) return true
+  const personalSlots = availabilitySlotsForAllievo(allievo)
+  const groupSlots = appointmentGroupMembers(allievo.gruppo)
+    .map(member => availabilityGroupDedicatedSlotsForMember(member))
+    .find(slots => slots.length) || []
+  return !!(personalSlots.length && groupSlots.length && availabilitySlotsSignature(personalSlots) !== availabilitySlotsSignature(groupSlots))
+}
+
+function normalizeAppointmentConsecutiveMode(value, legacyAvoid = undefined) {
+  const raw = String(value || '').toLowerCase()
+  if (['prefer', 'preferibilmente', 'soft', 'preference'].includes(raw)) return APPOINTMENT_CONSECUTIVE_PREFER
+  if (['strict', 'assolutamente', 'hard', 'absolute', 'assoluto'].includes(raw)) return APPOINTMENT_CONSECUTIVE_STRICT
+  if (legacyAvoid === false) return APPOINTMENT_CONSECUTIVE_PREFER
+  return APPOINTMENT_CONSECUTIVE_STRICT
+}
+
 function appointmentAvoidConsecutiveForAllievo(allievo) {
-  return allievo?.profilo?.appuntamenti_evita_giorni_consecutivi !== false
+  return true
+}
+
+function appointmentConsecutiveModeForAllievo(allievo) {
+  const profilo = allievo?.profilo || {}
+  return normalizeAppointmentConsecutiveMode(profilo.appuntamenti_giorni_consecutivi, profilo.appuntamenti_evita_giorni_consecutivi)
 }
 
 function appointmentAvoidConsecutiveForTarget(target = selectedAppointmentTarget()) {
-  if (!target) return true
+  return true
+}
+
+function appointmentConsecutiveModeForTarget(target = selectedAppointmentTarget()) {
+  if (!target) return APPOINTMENT_CONSECUTIVE_STRICT
   if (target.type === 'gruppo') {
-    const source = target.members.find(member => member.profilo && Object.prototype.hasOwnProperty.call(member.profilo, 'appuntamenti_evita_giorni_consecutivi'))
-    return appointmentAvoidConsecutiveForAllievo(source || target.members[0])
+    const source = target.members.find(member => member.profilo && (
+      Object.prototype.hasOwnProperty.call(member.profilo, 'appuntamenti_giorni_consecutivi') ||
+      Object.prototype.hasOwnProperty.call(member.profilo, 'appuntamenti_evita_giorni_consecutivi')
+    ))
+    return appointmentConsecutiveModeForAllievo(source || target.members[0])
   }
-  return appointmentAvoidConsecutiveForAllievo(target.allievo)
+  return appointmentConsecutiveModeForAllievo(target.allievo)
+}
+
+function appointmentConsecutiveModeLabel(mode) {
+  return normalizeAppointmentConsecutiveMode(mode) === APPOINTMENT_CONSECUTIVE_STRICT
+    ? 'Assolutamente non giorni consecutivi'
+    : 'Preferibilmente non giorni consecutivi'
+}
+
+function appointmentConsecutiveModeIsStrict(mode) {
+  return normalizeAppointmentConsecutiveMode(mode) === APPOINTMENT_CONSECUTIVE_STRICT
 }
 
 function normalizeAppointmentLessonDuration(value, fallback = APPOINTMENT_MIN_LESSON_MIN) {
@@ -1293,6 +1780,72 @@ function appointmentLessonDurationForTarget(target = selectedAppointmentTarget()
 function availabilitySlotsForOwner(owner) {
   if (owner === 'maestro') return normalizeAvailabilitySlots(maestroAvailabilitySlots)
   return availabilitySlotsForAppointmentTarget()
+}
+
+function availabilityTargetUndoKey(target = selectedAppointmentTarget()) {
+  if (!target) return 'allievo:none'
+  if (target.type === 'gruppo') return `gruppo:${target.gruppo}`
+  return `allievo:${target.allievo?.id || 'none'}`
+}
+
+function availabilityOwnerKey(owner, target = selectedAppointmentTarget()) {
+  return owner === 'maestro' ? 'maestro' : availabilityTargetUndoKey(target)
+}
+
+function availabilityCanUndo(owner, target = selectedAppointmentTarget()) {
+  return (availabilityUndoStacks.get(availabilityOwnerKey(owner, target)) || []).length > 0
+}
+
+function availabilityPlannerIsEditable(owner, target = selectedAppointmentTarget()) {
+  return availabilityEditUnlocked.has(availabilityOwnerKey(owner, target))
+}
+
+function availabilityUndoSnapshot(slots = []) {
+  return normalizeAvailabilitySlots(slots).map(slot => ({ ...slot }))
+}
+
+function pushAvailabilityUndo(owner, previousSlots, target = selectedAppointmentTarget()) {
+  const key = availabilityOwnerKey(owner, target)
+  const stack = availabilityUndoStacks.get(key) || []
+  stack.push(availabilityUndoSnapshot(previousSlots))
+  if (stack.length > 20) stack.shift()
+  availabilityUndoStacks.set(key, stack)
+}
+
+function setAvailabilityPlannerEditing(owner, enabled) {
+  const key = availabilityOwnerKey(owner)
+  if (enabled) availabilityEditUnlocked.add(key)
+  else availabilityEditUnlocked.delete(key)
+  renderAppuntamenti()
+  setAvailabilityStatus(owner, enabled ? 'Modifica disponibilita attiva.' : 'Modifica disponibilita bloccata.', enabled ? 'ok' : '')
+}
+
+function unlockAvailabilityPlanner(owner) {
+  setAvailabilityPlannerEditing(owner, true)
+}
+
+function lockAvailabilityPlanner(owner) {
+  setAvailabilityPlannerEditing(owner, false)
+}
+
+async function undoAvailability(owner) {
+  const target = owner === 'maestro' ? null : selectedAppointmentTarget()
+  if (owner !== 'maestro' && !target) return
+  const key = availabilityOwnerKey(owner, target)
+  const stack = availabilityUndoStacks.get(key) || []
+  const previousSlots = stack.pop()
+  if (!previousSlots) {
+    setAvailabilityStatus(owner, 'Nessuna modifica da annullare.')
+    return
+  }
+  availabilityUndoStacks.set(key, stack)
+  try {
+    await saveAvailabilitySlotsForOwner(owner, previousSlots, 'Ultima modifica annullata.', { skipUndo: true })
+  } catch (e) {
+    stack.push(previousSlots)
+    availabilityUndoStacks.set(key, stack)
+    setAvailabilityStatus(owner, e.message || 'Errore annullamento disponibilita.', 'err')
+  }
 }
 
 function availabilityGridHeight() {
@@ -1339,7 +1892,7 @@ function availabilitySlotBlockHtml(owner, slot, preview = false) {
     : `onpointerdown="startAvailabilityMove(event,'${owner}',${jsArg(slot.id)})" ondblclick="editAvailabilitySlotNote('${owner}',${jsArg(slot.id)})"`
   return `
     <div class="${cls}" style="${availabilitySlotStyle(slot)}" title="${esc(title)}" ${handlers}>
-      <span class="availability-slot-time">${esc(slot.start)}-${esc(slot.end)}</span>
+      <span class="availability-slot-time"><span>${esc(slot.start)}</span><span>${esc(slot.end)}</span></span>
       ${slot.note ? `<span class="availability-slot-note">${esc(slot.note)}</span>` : ''}
       ${preview ? '' : `<button type="button" class="availability-slot-delete" onclick="event.stopPropagation(); removeAvailabilitySlot('${owner}',${jsArg(slot.id)})" title="Elimina fascia">×</button><div class="availability-slot-resize" onpointerdown="startAvailabilityResize(event,'${owner}',${jsArg(slot.id)})"></div>`}
     </div>`
@@ -1350,10 +1903,16 @@ function availabilityPlannerHtml(owner, slots) {
   const byDay = new Map(AVAILABILITY_DAYS.map(day => [day.value, []]))
   normalized.forEach(slot => byDay.get(Number(slot.day))?.push(slot))
   const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`
+  const editable = availabilityPlannerIsEditable(owner)
   return `
-    <div class="availability-planner" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
+    <div class="availability-planner ${editable ? 'is-editing' : 'is-locked'}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
       <div class="availability-planner-help">Trascina in verticale per scegliere l orario e in orizzontale per coprire piu giorni. Trascina un blocco per spostarlo, usa il bordo basso per allungarlo o accorciarlo, doppio click per aggiungere una nota.</div>
       <div class="availability-grid-wrap">
+        ${editable ? '' : `
+          <button type="button" class="availability-edit-cover" onclick="unlockAvailabilityPlanner('${owner}')">
+            <strong>Modifica disponibilita</strong>
+            <span>Tocca qui prima di cambiare la tabella.</span>
+          </button>`}
         <div class="availability-week-head">
           <div></div>
           ${AVAILABILITY_DAYS.map(day => `<div>${esc(day.short)}</div>`).join('')}
@@ -1382,7 +1941,11 @@ function renderAppuntamenti() {
   const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget)
   const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget)
   const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget)
-  const selectedAvoidConsecutive = appointmentAvoidConsecutiveForTarget(selectedTarget)
+  const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget)
+  const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo
+  const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
+  const maestroEditable = availabilityPlannerIsEditable('maestro')
+  const allievoEditable = availabilityPlannerIsEditable('allievo')
   const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
 
@@ -1393,6 +1956,10 @@ function renderAppuntamenti() {
           <div class="appointments-card-title">
             <h3>Disponibilita maestro</h3>
             <span>Fasce settimanali ricorrenti. Salvate localmente e, se possibile, nei dati utente.</span>
+          </div>
+          <div class="availability-card-actions">
+            <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('maestro')" ${availabilityCanUndo('maestro') ? '' : 'disabled'}>Undo</button>
+            ${maestroEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'maestro\')">Blocca</button>' : ''}
           </div>
         </div>
         ${availabilityPlannerHtml('maestro', maestroAvailabilitySlots)}
@@ -1405,6 +1972,11 @@ function renderAppuntamenti() {
             <h3>Disponibilita ${selectedTarget?.type === 'gruppo' ? 'gruppo' : 'allievo'}</h3>
             <span>${selectedTarget?.type === 'gruppo' ? 'Le fasce vengono salvate su tutti i membri attivi del gruppo selezionato.' : 'Le fasce vengono salvate nel profilo dell allievo selezionato.'}</span>
           </div>
+          ${selectedTarget ? `
+            <div class="availability-card-actions">
+              <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('allievo')" ${availabilityCanUndo('allievo') ? '' : 'disabled'}>Undo</button>
+              ${allievoEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'allievo\')">Blocca</button>' : ''}
+            </div>` : ''}
         </div>
         <div class="field">
           <label>Allievo o gruppo</label>
@@ -1418,10 +1990,21 @@ function renderAppuntamenti() {
               <label>Appuntamenti a settimana</label>
               <input type="number" id="appointments-weekly-count" min="${APPOINTMENT_DEFAULT_WEEKLY_COUNT}" max="${APPOINTMENT_MAX_WEEKLY_COUNT}" step="1" value="${selectedWeeklyCount}" onchange="saveSelectedAppointmentPreferences()">
             </div>
-            <label class="appointments-check">
-              <input type="checkbox" id="appointments-avoid-consecutive" ${selectedAvoidConsecutive ? 'checked' : ''} onchange="saveSelectedAppointmentPreferences()">
-              <span>Evita giorni consecutivi</span>
-            </label>
+            ${selectedIndividualToggle ? `
+              <label class="appointments-check">
+                <input type="checkbox" id="appointments-individual-active" ${selectedIndividualActive ? 'checked' : ''} onchange="saveSelectedAppointmentPreferences()">
+                <span>Includi anche lezioni individuali</span>
+              </label>` : ''}
+            <div class="appointments-consecutive-mode" role="radiogroup" aria-label="Giorni consecutivi">
+              <label class="appointments-check">
+                <input type="radio" name="appointments-consecutive-mode" value="${APPOINTMENT_CONSECUTIVE_PREFER}" ${selectedConsecutiveMode === APPOINTMENT_CONSECUTIVE_PREFER ? 'checked' : ''} onchange="saveSelectedAppointmentPreferences()">
+                <span>Preferibilmente non giorni consecutivi</span>
+              </label>
+              <label class="appointments-check">
+                <input type="radio" name="appointments-consecutive-mode" value="${APPOINTMENT_CONSECUTIVE_STRICT}" ${selectedConsecutiveMode === APPOINTMENT_CONSECUTIVE_STRICT ? 'checked' : ''} onchange="saveSelectedAppointmentPreferences()">
+                <span>Assolutamente non giorni consecutivi</span>
+              </label>
+            </div>
           </div>
           ${availabilityPlannerHtml('allievo', selectedSlots)}
           <div class="field" style="margin-top:.75rem">
@@ -1495,14 +2078,18 @@ function filteredAppointmentAllievi() {
   })
 }
 
-async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibilita salvata.') {
+async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibilita salvata.', options = {}) {
+  const target = owner === 'maestro' ? null : selectedAppointmentTarget()
+  const previousSlots = owner === 'maestro' ? availabilityUndoSnapshot(maestroAvailabilitySlots) : availabilityUndoSnapshot(availabilitySlotsForAppointmentTarget(target))
+  if (!options.skipUndo && availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
+    pushAvailabilityUndo(owner, previousSlots, target)
+  }
   if (owner === 'maestro') {
     const saved = await saveMaestroAvailabilitySlots(slots)
     renderAppuntamenti()
     setAvailabilityStatus('maestro', saved.remote ? message : 'Salvata localmente. Sync online non disponibile.', saved.remote ? 'ok' : '')
     return
   }
-  const target = selectedAppointmentTarget()
   if (!target) return
   if (target.type === 'gruppo') {
     await saveGroupAvailability(target.gruppo, slots)
@@ -1510,7 +2097,7 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
     setAvailabilityStatus('allievo', `${message} Salvata su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
     return
   }
-  await saveAllievoAvailability(target.allievo.id, slots)
+  await saveAllievoAvailability(target.allievo.id, slots, undefined, { individualTarget: true })
   renderAppuntamenti()
   setAvailabilityStatus('allievo', message, 'ok')
 }
@@ -1549,6 +2136,7 @@ function bindAvailabilityDragEnd() {
 }
 
 function startAvailabilityCreate(event, owner, day) {
+  if (!availabilityPlannerIsEditable(owner)) return
   if (event.button !== undefined && event.button !== 0) return
   if (event.target.closest('.availability-slot-block')) return
   const col = event.currentTarget
@@ -1567,6 +2155,7 @@ function startAvailabilityCreate(event, owner, day) {
 }
 
 function startAvailabilityMove(event, owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) return
   if (event.button !== undefined && event.button !== 0) return
   if (event.target.closest('.availability-slot-delete, .availability-slot-resize')) return
   const slot = availabilitySlotsForOwner(owner).find(item => String(item.id) === String(slotId))
@@ -1586,6 +2175,7 @@ function startAvailabilityMove(event, owner, slotId) {
 }
 
 function startAvailabilityResize(event, owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) return
   if (event.button !== undefined && event.button !== 0) return
   const slot = availabilitySlotsForOwner(owner).find(item => String(item.id) === String(slotId))
   if (!slot) return
@@ -1673,6 +2263,10 @@ function availabilityCurrentDragSlotsFromState(state) {
 }
 
 async function editAvailabilitySlotNote(owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) {
+    setAvailabilityStatus(owner, 'Premi Modifica disponibilita prima di cambiare la tabella.')
+    return
+  }
   const slots = availabilitySlotsForOwner(owner)
   const slot = slots.find(item => String(item.id) === String(slotId))
   if (!slot) return
@@ -1687,25 +2281,19 @@ async function editAvailabilitySlotNote(owner, slotId) {
 }
 
 async function removeAvailabilitySlot(owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) {
+    setAvailabilityStatus(owner, 'Premi Modifica disponibilita prima di cambiare la tabella.')
+    return
+  }
   try {
     if (owner === 'maestro') {
-      const saved = await saveMaestroAvailabilitySlots(maestroAvailabilitySlots.filter(slot => String(slot.id) !== String(slotId)))
-      renderAppuntamenti()
-      setAvailabilityStatus('maestro', saved.remote ? 'Fascia rimossa.' : 'Fascia rimossa localmente.', saved.remote ? 'ok' : '')
+      await saveAvailabilitySlotsForOwner(owner, maestroAvailabilitySlots.filter(slot => String(slot.id) !== String(slotId)), 'Fascia rimossa.')
       return
     }
     const target = selectedAppointmentTarget()
     if (!target) return
     const next = availabilitySlotsForAppointmentTarget(target).filter(slot => String(slot.id) !== String(slotId))
-    if (target.type === 'gruppo') {
-      await saveGroupAvailability(target.gruppo, next)
-      renderAppuntamenti()
-      setAvailabilityStatus('allievo', `Fascia rimossa dal gruppo ${target.gruppo}.`, 'ok')
-      return
-    }
-    await saveAllievoAvailability(target.allievo.id, next)
-    renderAppuntamenti()
-    setAvailabilityStatus('allievo', 'Fascia rimossa.', 'ok')
+    await saveAvailabilitySlotsForOwner(owner, next, 'Fascia rimossa.')
   } catch (e) {
     setAvailabilityStatus(owner, e.message || 'Errore rimozione fascia.', 'err')
   }
@@ -1726,15 +2314,27 @@ async function saveMaestroAvailabilitySlots(slots) {
   return { remote: true }
 }
 
-async function saveAllievoAvailability(allievoId, slots, noteValue = undefined) {
+async function saveAllievoAvailability(allievoId, slots, noteValue = undefined, options = {}) {
   const allievo = allievoById(allievoId)
   if (!allievo) throw new Error('Allievo non trovato.')
+  const normalizedSlots = normalizeAvailabilitySlots(slots)
   const profilo = {
     ...(allievo.profilo || {}),
-    disponibilita_slots: normalizeAvailabilitySlots(slots),
     disponibilita_updated_at: new Date().toISOString(),
   }
-  if (noteValue !== undefined) profilo.disponibilita = noteValue.trim() || null
+  if (options.groupTarget) {
+    profilo.disponibilita_gruppo_slots = normalizedSlots
+    profilo.disponibilita_gruppo_updated_at = new Date().toISOString()
+    if (noteValue !== undefined) profilo.disponibilita_gruppo = noteValue.trim() || null
+    if (!appointmentIndividualLessonsActiveForAllievo(allievo)) {
+      profilo.disponibilita_slots = normalizedSlots
+      if (noteValue !== undefined) profilo.disponibilita = noteValue.trim() || null
+    }
+  } else {
+    profilo.disponibilita_slots = normalizedSlots
+    if (allievo.gruppo && options.individualTarget) profilo.disponibilita_individuale_attiva = true
+    if (noteValue !== undefined) profilo.disponibilita = noteValue.trim() || null
+  }
   let payload = { profilo, aggiornato_il: new Date().toISOString() }
   let { data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single()
   if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
@@ -1749,11 +2349,16 @@ async function saveAllievoAvailability(allievoId, slots, noteValue = undefined) 
 async function saveAllievoAppointmentPreferences(allievoId, preferences) {
   const allievo = allievoById(allievoId)
   if (!allievo) throw new Error('Allievo non trovato.')
+  const consecutiveMode = normalizeAppointmentConsecutiveMode(preferences.consecutiveMode, preferences.avoidConsecutive)
   const profilo = {
     ...(allievo.profilo || {}),
     appuntamenti_settimanali: normalizeAppointmentWeeklyCount(preferences.weeklyCount),
-    appuntamenti_evita_giorni_consecutivi: preferences.avoidConsecutive !== false,
+    appuntamenti_giorni_consecutivi: consecutiveMode,
+    appuntamenti_evita_giorni_consecutivi: true,
     appuntamenti_preferenze_updated_at: new Date().toISOString(),
+  }
+  if (allievo.gruppo && Object.prototype.hasOwnProperty.call(preferences, 'individualActive')) {
+    profilo.appuntamenti_individuali_attivi = !!preferences.individualActive
   }
   let payload = { profilo, aggiornato_il: new Date().toISOString() }
   let { data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single()
@@ -1770,7 +2375,7 @@ async function saveGroupAvailability(gruppo, slots, noteValue = undefined) {
   const members = appointmentGroupMembers(gruppo)
   if (!members.length) throw new Error('Gruppo non trovato.')
   for (const member of members) {
-    await saveAllievoAvailability(member.id, slots, noteValue)
+    await saveAllievoAvailability(member.id, slots, noteValue, { groupTarget: true })
   }
 }
 
@@ -1786,16 +2391,18 @@ async function saveSelectedAppointmentPreferences() {
   const target = selectedAppointmentTarget()
   if (!target) return
   const weeklyCount = normalizeAppointmentWeeklyCount(document.getElementById('appointments-weekly-count')?.value)
-  const avoidConsecutive = document.getElementById('appointments-avoid-consecutive')?.checked !== false
+  const consecutiveMode = normalizeAppointmentConsecutiveMode(document.querySelector('input[name="appointments-consecutive-mode"]:checked')?.value)
+  const individualCheckbox = document.getElementById('appointments-individual-active')
+  const individualActive = individualCheckbox ? individualCheckbox.checked : undefined
   try {
     if (target.type === 'gruppo') {
-      await saveGroupAppointmentPreferences(target.gruppo, { weeklyCount, avoidConsecutive })
+      await saveGroupAppointmentPreferences(target.gruppo, { weeklyCount, consecutiveMode })
       document.getElementById('appointments-weekly-count').value = String(weeklyCount)
       setAvailabilityStatus('allievo', `Preferenze salvate su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
       renderAppointmentIntersections()
       return
     }
-    await saveAllievoAppointmentPreferences(target.allievo.id, { weeklyCount, avoidConsecutive })
+    await saveAllievoAppointmentPreferences(target.allievo.id, { weeklyCount, consecutiveMode, individualActive })
     document.getElementById('appointments-weekly-count').value = String(weeklyCount)
     setAvailabilityStatus('allievo', 'Preferenze appuntamenti salvate.', 'ok')
     renderAppointmentIntersections()
@@ -1815,7 +2422,7 @@ async function saveSelectedAllievoAvailabilityNote() {
       setAvailabilityStatus('allievo', `Note disponibilita salvate su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
       return
     }
-    await saveAllievoAvailability(target.allievo.id, availabilitySlotsForAppointmentTarget(target), note)
+    await saveAllievoAvailability(target.allievo.id, availabilitySlotsForAppointmentTarget(target), note, { individualTarget: true })
     renderAppuntamenti()
     setAvailabilityStatus('allievo', 'Note disponibilita salvate.', 'ok')
   } catch (e) {
@@ -1829,16 +2436,13 @@ function slotsForDay(slots, day) {
     .map(slot => ({ ...slot, startMin: timeToMinutes(slot.start), endMin: timeToMinutes(slot.end) }))
 }
 
-function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
-  const ids = (allievoIds || []).filter(Boolean)
-  if (!ids.length) return []
+function computeAvailabilityIntersectionsFromSources(appointmentSourcesInput, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  const appointmentSources = (appointmentSourcesInput || []).filter(Boolean)
+  if (!appointmentSources.length) return []
   const requiredDuration = minDuration + bufferMin
   const sources = [
     { id: 'maestro', label: 'Maestro', slots: maestroAvailabilitySlots },
-    ...ids.map(id => {
-      const allievo = allievoById(id)
-      return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: availabilitySlotsForAllievo(allievo) }
-    })
+    ...appointmentSources,
   ]
   if (sources.some(source => !normalizeAvailabilitySlots(source.slots).length)) return []
   const results = []
@@ -1885,6 +2489,31 @@ function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_
     .sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || a.endMin - b.endMin)
 }
 
+function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  const ids = (allievoIds || []).filter(Boolean)
+  return computeAvailabilityIntersectionsFromSources(ids.map(id => {
+    const allievo = allievoById(id)
+    return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: availabilitySlotsForAllievo(allievo) }
+  }), minDuration, bufferMin)
+}
+
+function computeAvailabilityIntersectionsForTarget(target, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  if (!target) return []
+  if (target.type === 'gruppo') {
+    return computeAvailabilityIntersectionsFromSources([{
+      id: target.id,
+      label: target.label,
+      slots: availabilitySlotsForGroup(target.gruppo),
+    }], minDuration, bufferMin)
+  }
+  return computeAvailabilityIntersections(target.memberIds, minDuration, bufferMin)
+}
+
+function availabilitySlotsForAppointmentScheduleTarget(target) {
+  if (!target) return []
+  return target.type === 'gruppo' ? availabilitySlotsForGroup(target.gruppo) : availabilitySlotsForAllievo(target.allievo)
+}
+
 function appointmentDayCombinations(days, count) {
   const results = []
   function visit(start, combo) {
@@ -1924,7 +2553,15 @@ function appointmentDaySpreadScore(days) {
   return score
 }
 
-function chooseAppointmentWeeklyPlan(windows, weeklyCount, avoidConsecutive = true) {
+function appointmentMaxNonConsecutiveDayCount(days = []) {
+  const orderedDays = [...new Set(days)].sort((a, b) => availabilityDayOrder(a) - availabilityDayOrder(b))
+  for (let size = orderedDays.length; size >= 1; size -= 1) {
+    if (appointmentDayCombinations(orderedDays, size).some(combo => appointmentConsecutiveDayPairs(combo) === 0)) return size
+  }
+  return 0
+}
+
+function chooseAppointmentWeeklyPlan(windows, weeklyCount, consecutiveMode = APPOINTMENT_CONSECUTIVE_STRICT) {
   const needed = normalizeAppointmentWeeklyCount(weeklyCount)
   const byDay = new Map()
   normalizeAvailabilitySlots(windows).forEach(window => {
@@ -1935,14 +2572,24 @@ function chooseAppointmentWeeklyPlan(windows, weeklyCount, avoidConsecutive = tr
   const days = [...byDay.keys()].sort((a, b) => availabilityDayOrder(a) - availabilityDayOrder(b))
   const planSize = Math.min(needed, days.length)
   if (!planSize) return []
-  const combinations = appointmentDayCombinations(days, planSize)
+  const strictMode = appointmentConsecutiveModeIsStrict(consecutiveMode)
+  let combinations = appointmentDayCombinations(days, planSize)
+  if (strictMode) {
+    for (let size = planSize; size >= 1; size -= 1) {
+      const strictCombinations = appointmentDayCombinations(days, size).filter(combo => appointmentConsecutiveDayPairs(combo) === 0)
+      if (strictCombinations.length) {
+        combinations = strictCombinations
+        break
+      }
+    }
+  }
   const ranked = combinations.map(combo => ({
     days: combo,
     consecutivePairs: appointmentConsecutiveDayPairs(combo),
     spreadScore: appointmentDaySpreadScore(combo),
     startSum: combo.reduce((sum, day) => sum + timeToMinutes(byDay.get(day)[0].start), 0),
   })).sort((a, b) => {
-    if (avoidConsecutive && a.consecutivePairs !== b.consecutivePairs) return a.consecutivePairs - b.consecutivePairs
+    if (!strictMode && a.consecutivePairs !== b.consecutivePairs) return a.consecutivePairs - b.consecutivePairs
     if (a.spreadScore !== b.spreadScore) return b.spreadScore - a.spreadScore
     return a.startSum - b.startSum
   })
@@ -2018,64 +2665,60 @@ function appointmentLocationInfoForTarget(target) {
   }
 }
 
+function hydrateAppointmentTarget(target, fallbackDuration) {
+  target.weeklyCount = appointmentWeeklyCountForTarget(target)
+  target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
+  target.consecutiveMode = appointmentConsecutiveModeForTarget(target)
+  target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration)
+  target.locationInfo = appointmentLocationInfoForTarget(target)
+  target.location = target.locationInfo.label
+  target.locationKey = target.locationInfo.key
+  target.locationPoint = target.locationInfo.point
+  target.routeStartLabel = target.locationInfo.startLabel
+  target.routeStartKey = target.locationInfo.startKey
+  target.routeStartPoint = target.locationInfo.startPoint
+  target.routeEndLabel = target.locationInfo.endLabel
+  target.routeEndKey = target.locationInfo.endKey
+  target.routeEndPoint = target.locationInfo.endPoint
+  target.routeIsItinerary = target.locationInfo.isRoute
+  return target
+}
+
+function appointmentTargetForAllievo(allievo, fallbackDuration) {
+  return hydrateAppointmentTarget({
+    type: 'allievo',
+    id: `allievo:${allievo.id}`,
+    label: allievo.gruppo ? `${lezioneTargetLabelAllievo(allievo)} · individuale` : lezioneTargetLabelAllievo(allievo),
+    allievo,
+    members: [allievo],
+    memberIds: [allievo.id],
+  }, fallbackDuration)
+}
+
 function appointmentSchedulableTargets(filteredAllievi = []) {
   const fallbackDuration = appointmentCurrentFallbackDuration()
   const targets = []
   const grouped = new Set()
   filteredAllievi.forEach(allievo => {
     if (allievo.gruppo) {
-      if (grouped.has(allievo.gruppo)) return
-      grouped.add(allievo.gruppo)
-      const members = appointmentGroupMembers(allievo.gruppo)
-      if (!members.length) return
-      const target = {
-        type: 'gruppo',
-        id: appointmentGroupTargetValue(allievo.gruppo),
-        label: allievo.gruppo,
-        gruppo: allievo.gruppo,
-        members,
-        memberIds: members.map(member => member.id),
+      if (!grouped.has(allievo.gruppo)) {
+        grouped.add(allievo.gruppo)
+        const members = appointmentGroupMembers(allievo.gruppo)
+        if (members.length) {
+          targets.push(hydrateAppointmentTarget({
+            type: 'gruppo',
+            id: appointmentGroupTargetValue(allievo.gruppo),
+            label: allievo.gruppo,
+            gruppo: allievo.gruppo,
+            members,
+            memberIds: members.map(member => member.id),
+          }, fallbackDuration))
+        }
       }
-      target.weeklyCount = appointmentWeeklyCountForTarget(target)
-      target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
-      target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration)
-      target.locationInfo = appointmentLocationInfoForTarget(target)
-      target.location = target.locationInfo.label
-      target.locationKey = target.locationInfo.key
-      target.locationPoint = target.locationInfo.point
-      target.routeStartLabel = target.locationInfo.startLabel
-      target.routeStartKey = target.locationInfo.startKey
-      target.routeStartPoint = target.locationInfo.startPoint
-      target.routeEndLabel = target.locationInfo.endLabel
-      target.routeEndKey = target.locationInfo.endKey
-      target.routeEndPoint = target.locationInfo.endPoint
-      target.routeIsItinerary = target.locationInfo.isRoute
-      targets.push(target)
-      return
     }
-    const target = {
-      type: 'allievo',
-      id: `allievo:${allievo.id}`,
-      label: lezioneTargetLabelAllievo(allievo),
-      allievo,
-      members: [allievo],
-      memberIds: [allievo.id],
+    if (!allievo.gruppo || appointmentIndividualLessonsActiveForAllievo(allievo)) {
+      targets.push(appointmentTargetForAllievo(allievo, fallbackDuration))
     }
-    target.weeklyCount = appointmentWeeklyCountForTarget(target)
-    target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
-    target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration)
-    target.locationInfo = appointmentLocationInfoForTarget(target)
-    target.location = target.locationInfo.label
-    target.locationKey = target.locationInfo.key
-    target.locationPoint = target.locationInfo.point
-    target.routeStartLabel = target.locationInfo.startLabel
-    target.routeStartKey = target.locationInfo.startKey
-    target.routeStartPoint = target.locationInfo.startPoint
-    target.routeEndLabel = target.locationInfo.endLabel
-    target.routeEndKey = target.locationInfo.endKey
-    target.routeEndPoint = target.locationInfo.endPoint
-    target.routeIsItinerary = target.locationInfo.isRoute
-    targets.push(target)
   })
   return targets.sort((a, b) => String(a.label).localeCompare(String(b.label), 'it', { sensitivity: 'base' }))
 }
@@ -2091,6 +2734,7 @@ function appointmentTargetFromResult(result) {
     type: result.targetType,
     weeklyCount: result.weeklyCount,
     avoidConsecutive: result.avoidConsecutive,
+    consecutiveMode: result.consecutiveMode,
     lessonDuration: result.lessonDuration,
     location: result.location,
     locationKey: result.locationKey,
@@ -2122,6 +2766,7 @@ function buildAppointmentScheduleCandidates(results, bufferMin) {
           targetType: target.type,
           weeklyCount: target.weeklyCount,
           avoidConsecutive: target.avoidConsecutive,
+          consecutiveMode: target.consecutiveMode,
           lessonDuration,
           location: target.location,
           locationKey: target.locationKey,
@@ -2166,6 +2811,10 @@ function appointmentSameTargetSameDay(candidate, scheduled) {
 function appointmentHasConsecutiveDay(candidate, scheduled) {
   const days = scheduled.filter(item => item.targetId === candidate.targetId).map(item => item.day)
   return days.some(day => appointmentConsecutiveDayPairs([day, candidate.day]) > 0)
+}
+
+function appointmentViolatesStrictConsecutive(candidate, scheduled) {
+  return appointmentConsecutiveModeIsStrict(candidate.consecutiveMode) && appointmentHasConsecutiveDay(candidate, scheduled)
 }
 
 function appointmentTransitionEndpoints(a, b) {
@@ -2217,7 +2866,7 @@ function scoreAppointmentCandidate(candidate, scheduled, variant) {
   const dayLoad = sameDay.length
   const scarcity = candidate.targetCandidateCount || 999
   let score = scarcity * 2 + availabilityDayOrder(candidate.day) * 6 + candidate.startMin / 60
-  if (appointmentHasConsecutiveDay(candidate, scheduled)) score += candidate.avoidConsecutive ? 90 : 25
+  if (appointmentHasConsecutiveDay(candidate, scheduled)) score += appointmentConsecutiveModeIsStrict(candidate.consecutiveMode) ? 10000 : 90
   if (variant.id === 'balanced') score += dayLoad * 16
   if (variant.id === 'max') score += dayLoad * 4
   if (variant.id === 'compact') {
@@ -2250,6 +2899,7 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin) {
     const viable = candidates
       .filter(candidate => (remaining.get(candidate.targetId) || 0) > 0)
       .filter(candidate => !appointmentSameTargetSameDay(candidate, scheduled))
+      .filter(candidate => !appointmentViolatesStrictConsecutive(candidate, scheduled))
       .filter(candidate => !appointmentCandidateConflicts(candidate, scheduled))
     if (!viable.length) break
     viable.sort((a, b) => scoreAppointmentCandidate(a, scheduled, variant) - scoreAppointmentCandidate(b, scheduled, variant))
@@ -2263,9 +2913,11 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin) {
       const missing = remaining.get(result.targetId) || 0
       if (!missing) return null
       const availableDays = [...new Set(result.windows.map(window => window.day))].length
+      const maxNonConsecutiveDays = appointmentMaxNonConsecutiveDayCount(result.windows.map(window => window.day))
       const scheduledForTarget = scheduled.filter(item => item.targetId === result.targetId).length
       let reason = 'finestre compatibili occupate da altri appuntamenti'
       if (!result.windows.length) reason = 'nessuna sovrapposizione utile con la disponibilita maestro'
+      else if (appointmentConsecutiveModeIsStrict(result.consecutiveMode) && maxNonConsecutiveDays < result.weeklyCount) reason = `vincolo assoluto: al massimo ${maxNonConsecutiveDays} giorn${maxNonConsecutiveDays === 1 ? 'o non consecutivo' : 'i non consecutivi'}`
       else if (availableDays < result.weeklyCount) reason = `solo ${availableDays} giorn${availableDays === 1 ? 'o' : 'i'} disponibile${availableDays === 1 ? '' : 'i'} per ${result.weeklyCount} richiesti`
       else if (scheduledForTarget > 0) reason = 'non resta spazio senza sovrapporre lezioni gia piazzate'
       return {
@@ -2309,7 +2961,7 @@ function appointmentScheduleByDayHtml(items) {
           ${dayItems.map(item => `
             <div class="appointment-agenda-item">
               <strong>${esc(item.start)}-${esc(item.lessonEnd)}</strong>
-              <span>${esc(item.targetName)} · ${item.lessonDuration} min${item.routeIsItinerary ? ` · ${esc(item.routeStartLabel || '')} → ${esc(item.routeEndLabel || '')}` : (item.location ? ` · ${esc(item.location)}` : '')}</span>
+              <span>${esc(item.targetName)} · ${item.lessonDuration} min · ${esc(appointmentConsecutiveModeIsStrict(item.consecutiveMode) ? 'no consecutivi assoluto' : 'no consecutivi preferibile')}${item.routeIsItinerary ? ` · ${esc(item.routeStartLabel || '')} → ${esc(item.routeEndLabel || '')}` : (item.location ? ` · ${esc(item.location)}` : '')}</span>
               ${item.heatOverlap ? '<small>fascia calda</small>' : ''}
             </div>`).join('')}
         </div>
@@ -2394,14 +3046,18 @@ function appointmentDayRouteMapHtml(items) {
 function appointmentScheduleVariantHtml(variant) {
   const heatCount = variant.scheduled.filter(item => item.heatOverlap).length
   const score = `${variant.placed}/${variant.totalDemand} lezioni`
+  const importedClass = importedAppointmentVariantIds.has(String(variant.id)) ? ' is-in-calendar' : ''
   return `
-    <div class="appointment-schedule-variant">
+    <div class="appointment-schedule-variant${importedClass}" data-appointment-variant-id="${esc(variant.id)}">
       <div class="appointment-schedule-head">
         <div>
           <h4>${esc(variant.title)}</h4>
           <span>${esc(variant.note)}</span>
         </div>
-        <strong>${esc(score)}</strong>
+        <div class="appointment-schedule-actions">
+          <strong>${esc(score)}</strong>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addAppointmentVariantToCalendar(${jsArg(variant.id)})" ${variant.scheduled.length ? '' : 'disabled'}>Metti in calendario</button>
+        </div>
       </div>
       <div class="appointment-schedule-meta">
         ${variant.missing ? `<span class="warn">${variant.missing} non piazzat${variant.missing === 1 ? 'a' : 'e'}</span>` : '<span class="ok">Tutte piazzate</span>'}
@@ -2429,20 +3085,21 @@ function renderAppointmentIntersections() {
   const filtered = filteredAppointmentAllievi()
   const missing = []
   if (!normalizeAvailabilitySlots(maestroAvailabilitySlots).length) missing.push('Maestro')
-  const withoutSlots = filtered.filter(a => !availabilitySlotsForAllievo(a).length)
-  if (withoutSlots.length) {
-    const preview = withoutSlots.slice(0, 4).map(a => lezioneTargetLabelAllievo(a)).join(', ')
-    missing.push(`${withoutSlots.length} alliev${withoutSlots.length === 1 ? 'o' : 'i'} senza fasce${preview ? ` (${preview}${withoutSlots.length > 4 ? ', ...' : ''})` : ''}`)
-  }
   const targets = appointmentSchedulableTargets(filtered)
+  const withoutSlots = targets.filter(target => !availabilitySlotsForAppointmentScheduleTarget(target).length)
+  if (withoutSlots.length) {
+    const preview = withoutSlots.slice(0, 4).map(target => target.label).join(', ')
+    missing.push(`${withoutSlots.length} element${withoutSlots.length === 1 ? 'o' : 'i'} senza fasce${preview ? ` (${preview}${withoutSlots.length > 4 ? ', ...' : ''})` : ''}`)
+  }
   const targetResults = targets.map(target => {
-    const windows = computeAvailabilityIntersections(target.memberIds, target.lessonDuration, APPOINTMENT_BUFFER_MIN)
+    const windows = computeAvailabilityIntersectionsForTarget(target, target.lessonDuration, APPOINTMENT_BUFFER_MIN)
     return {
       targetId: target.id,
       targetName: target.label,
       targetType: target.type,
       weeklyCount: target.weeklyCount,
       avoidConsecutive: target.avoidConsecutive,
+      consecutiveMode: target.consecutiveMode,
       lessonDuration: target.lessonDuration,
       location: target.location,
       locationKey: target.locationKey,
@@ -2455,10 +3112,11 @@ function renderAppointmentIntersections() {
       routeEndPoint: target.routeEndPoint,
       routeIsItinerary: target.routeIsItinerary,
       windows,
-      plan: chooseAppointmentWeeklyPlan(windows, target.weeklyCount, target.avoidConsecutive),
+      plan: chooseAppointmentWeeklyPlan(windows, target.weeklyCount, target.consecutiveMode),
     }
   })
   const scheduleVariants = buildAppointmentScheduleVariants(targetResults, APPOINTMENT_BUFFER_MIN)
+  lastAppointmentScheduleVariants = scheduleVariants
   el.innerHTML = `
     ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(', '))}.</div>` : ''}
     <div class="appointments-explainer">
@@ -2470,6 +3128,7 @@ function renderAppointmentIntersections() {
         <h3>Agende automatiche</h3>
         <span>${targets.length} element${targets.length === 1 ? 'o' : 'i'} da pianificare · ${scheduleVariants[0]?.totalDemand || 0} lezion${(scheduleVariants[0]?.totalDemand || 0) === 1 ? 'e' : 'i'} richieste</span>
       </div>
+      <div id="appointments-calendar-status" class="appointments-status"></div>
       <div class="appointment-schedule-grid">
         ${scheduleVariants.map(appointmentScheduleVariantHtml).join('')}
       </div>
@@ -2516,11 +3175,34 @@ async function loadLocation(luogo) {
       <button class="back-btn" onclick="showView('allievi')">← Dashboard</button>
       <div class="section-header"><h2>Location</h2><button class="btn btn-primary btn-sm" onclick="openLocation('Nuova location')">+ Nuova location</button></div>
       <div class="card">
+        <div class="map-list" style="max-height:none">
         ${names.length ? names.map(name => {
           const rec = locationRecordByName(name)
-          const count = (lezioniCache || []).filter(l => lessonLocationUsesName(l, name)).length
-          return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> · ${esc(rec?.tipologia || 'Location')} · ${count} lezion${count === 1 ? 'e' : 'i'}</span>${rec?.indirizzo ? `<span> · ${esc(rec.indirizzo)}</span>` : ''}${rec?.condivisa ? '<span> · condivisa</span>' : ''}</div>`
+          const record = {
+            ...(rec || { nome: name }),
+            nome: rec?.nome || name,
+            tipologia: locationTipologia(rec || { nome: name }),
+            tipo: locationType(rec || { nome: name }),
+          }
+          const linkedLessons = locationLessonsForRecord(record)
+          record.lessonCount = linkedLessons.length
+          record.ultimoUso = linkedLessons.map(l => String(l.data || '').slice(0, 10)).filter(Boolean).sort().pop() || ''
+          record.coords = locationMapCoords(record)
+          const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)
+          const countText = `${record.lessonCount || 0} lezion${Number(record.lessonCount || 0) === 1 ? 'e' : 'i'}`
+          const lastText = record.ultimoUso ? `ultimo uso: ${formatDate(record.ultimoUso)}` : 'ultimo uso: -'
+          return `<div class="map-location-row${selectedRow ? ' is-selected' : ''}" role="button" tabindex="0" onclick="openLocation(${jsArg(record.nome)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); openLocation(${jsArg(record.nome)})}">
+            <div class="map-location-row-main">
+              <strong>${esc(record.nome)}</strong>
+              <span>${esc(record.indirizzo || 'Indirizzo da verificare')}</span>
+              <span>${esc(countText)} · ${esc(lastText)}</span>
+              ${renderLocationBadges(record)}
+              ${renderLocationCardActions(record)}
+            </div>
+            <div class="map-location-row-preview">${renderMappaMiniPreview(record)}</div>
+          </div>`
         }).join('') : '<div class="empty">Nessuna location registrata.</div>'}
+        </div>
       </div>`
     return
   }
@@ -2628,13 +3310,17 @@ function mappaLocationRecords() {
   const locationRecords = locationNamesFromLessons().map(nome => {
     const rec = locationRecordByName(nome) || { nome }
     const displayName = rec.nome || nome
-    const lessonCount = (lezioniCache || []).filter(l => lessonLocationUsesName(l, nome)).length
+    const linkedLessons = locationLessonsForRecord({ ...rec, nome: displayName })
+    const lessonCount = linkedLessons.length
+    const ultimoUso = linkedLessons.map(l => String(l.data || '').slice(0, 10)).filter(Boolean).sort().pop() || ''
     const coords = locationMapCoords({ ...rec, nome: displayName })
     return {
       ...rec,
       nome: displayName,
-      tipologia: rec.tipologia || 'Location',
+      tipologia: locationTipologia(rec),
+      tipo: locationType(rec),
       lessonCount,
+      ultimoUso,
       coords,
     }
   })
@@ -2647,6 +3333,14 @@ function mappaLocationRecords() {
     if (!!b.coords !== !!a.coords) return b.coords ? 1 : -1
     if ((a.coords?.source === 'stimato') !== (b.coords?.source === 'stimato')) return a.coords?.source === 'stimato' ? 1 : -1
     return String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' })
+  })
+}
+
+function locationLessonsForRecord(record = {}) {
+  const id = locationDbId(record)
+  return (lezioniCache || []).filter(lezione => {
+    if (id && lezione.location_id && String(lezione.location_id) === String(id)) return true
+    return lessonLocationUsesName(lezione, record.nome)
   })
 }
 
@@ -2699,12 +3393,17 @@ function clampMapPreview(value, min, max) {
 }
 
 function renderMappaMiniPreview(record = {}) {
+  if (record.preview_url) {
+    return `<button type="button" class="map-mini-preview" title="Preview luogo" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})"><img src="${esc(record.preview_url)}" alt=""></button>`
+  }
   if (!record.coords || record.coords.source === 'stimato') {
-    const coordLabel = record.coords?.source === 'stimato' ? 'Stimato' : 'Da posizionare'
-    return `<span class="map-row-status map-missing">${esc(coordLabel)}</span>`
+    const coordLabel = record.coords?.source === 'stimato' ? 'GPS da verificare' : 'Preview non disponibile'
+    return `<button type="button" class="map-mini-preview map-mini-placeholder" title="${esc(coordLabel)}" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})">
+      <span class="map-placeholder-pin">pin</span><span>${esc(coordLabel)}</span>
+    </button>`
   }
   const point = mappaProjectCoord(record.coords)
-  if (!point) return '<span class="map-row-status map-missing">Da posizionare</span>'
+  if (!point) return `<button type="button" class="map-mini-preview map-mini-placeholder" title="GPS da verificare" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})"><span class="map-placeholder-pin">pin</span><span>GPS da verificare</span></button>`
   const viewW = 190
   const viewH = 142
   const viewX = clampMapPreview(point.x - viewW / 2, 0, MILANO_MAP_VIEWBOX.width - viewW)
@@ -2712,7 +3411,7 @@ function renderMappaMiniPreview(record = {}) {
   const selected = normalizeText(record.nome) === normalizeText(mappaSingleFocusName)
   return `
     <button type="button" class="map-mini-preview${selected ? ' is-selected' : ''}" title="Mostra solo questo punto sulla mappa"
-      onclick="event.stopPropagation(); focusMappaLocation(${jsArg(record.nome)})">
+      onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})">
       <svg viewBox="${viewX.toFixed(1)} ${viewY.toFixed(1)} ${viewW} ${viewH}" aria-hidden="true" focusable="false">
         <image href="${MILANO_MAP_IMAGE}" x="0" y="0" width="${MILANO_MAP_VIEWBOX.width}" height="${MILANO_MAP_VIEWBOX.height}" preserveAspectRatio="xMidYMid meet"></image>
         <circle class="map-mini-halo" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="18"></circle>
@@ -2721,10 +3420,44 @@ function renderMappaMiniPreview(record = {}) {
     </button>`
 }
 
+function previewMappaLocation(nome) {
+  if (visibleViewName() === 'mappa') focusMappaLocation(nome)
+  else showView('mappa', nome)
+}
+
+function locationBadgeLabels(record = {}) {
+  const labels = []
+  const tipo = normalizeText(locationType(record))
+  const tipologia = normalizeText(locationTipologia(record))
+  if (isPrivateLocation(record)) labels.push('privato')
+  else if (/skate/.test(tipo + ' ' + tipologia)) labels.push('skatepark')
+  else if (/strada|ciclabile|street/.test(tipo + ' ' + tipologia)) labels.push('street')
+  else labels.push('spot')
+  ;(record.tags || []).forEach(tag => {
+    const clean = String(tag || '').trim()
+    if (clean && !labels.some(label => normalizeText(label) === normalizeText(clean))) labels.push(clean)
+  })
+  if (!locationCoordinatesFromRecord(record)) labels.push('GPS da verificare')
+  return labels.slice(0, 4)
+}
+
+function renderLocationBadges(record = {}) {
+  return `<div class="map-location-badges">${locationBadgeLabels(record).map(label => `<span class="chip map-location-badge">${esc(label)}</span>`).join('')}</div>`
+}
+
+function renderLocationCardActions(record = {}) {
+  const mapsUrl = locationGoogleMapsUrl(record)
+  return `<div class="map-location-actions">
+    ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ''}
+    <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); useLocationForLesson(${jsArg(record.id || record.nome)})">Usa</button>
+    <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); showView('location',${jsArg(record.nome)})">Modifica</button>
+  </div>`
+}
+
 function renderMilanoMapSvg(records, selectedName) {
   const nearbyLabelCounts = new Map()
   const projectedRecords = records
-    .filter(record => record.coords)
+    .filter(record => record.coords && record.coords.source !== 'stimato')
     .map(record => ({ record, point: mappaProjectCoord(record.coords) }))
     .filter(item => item.point)
   const points = projectedRecords
@@ -2758,13 +3491,32 @@ function renderMilanoMapSvg(records, selectedName) {
         </g>`
     }).join('')
 
+  const selectedRecord = projectedRecords.find(({ record }) => normalizeText(record.nome) === normalizeText(selectedName))
+  const popup = selectedRecord ? renderMappaPopup(selectedRecord.record, selectedRecord.point) : ''
+
   return `
     <div class="map-image-stage">
       <img class="map-base-image" src="${MILANO_MAP_IMAGE}" alt="Mappa di Milano divisa per quartieri">
       <svg id="milano-map-svg" class="map-overlay-svg" viewBox="0 0 ${MILANO_MAP_VIEWBOX.width} ${MILANO_MAP_VIEWBOX.height}" role="img" aria-label="Mappa di Milano con punti location" onclick="handleMappaClick(event)">
         ${points || '<text class="map-location-label" x="557" y="520" text-anchor="middle" style="opacity:1">Nessun punto posizionato</text>'}
       </svg>
+      ${popup}
     </div>`
+}
+
+function renderMappaPopup(record = {}, point = null) {
+  if (!record || !point) return ''
+  const left = (point.x / MILANO_MAP_VIEWBOX.width) * 100
+  const top = (point.y / MILANO_MAP_VIEWBOX.height) * 100
+  const mapsUrl = locationGoogleMapsUrl(record)
+  return `<div class="map-marker-popup" style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%" onclick="event.stopPropagation()">
+    <strong>${esc(record.nome || 'Location')}</strong>
+    <span>${Number(record.lessonCount || 0)} lezion${Number(record.lessonCount || 0) === 1 ? 'e' : 'i'}</span>
+    <div class="map-marker-popup-actions">
+      ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ''}
+      <button type="button" class="btn btn-outline btn-xs" onclick="useLocationForLesson(${jsArg(record.id || record.nome)})">Nuova lezione</button>
+    </div>
+  </div>`
 }
 
 function mappaVisibleRecords(records) {
@@ -2777,6 +3529,10 @@ async function renderMappa(selectedName) {
   const el = document.getElementById('mappa-content')
   if (!el) return
   if (arguments.length) mappaSelectedLocationName = selectedName || null
+  if (!mappaPuntiEspansiLoaded) {
+    mappaPuntiEspansi = safeStorage.getItem(MAP_POINTS_EXPANDED_STORAGE_KEY) === '1'
+    mappaPuntiEspansiLoaded = true
+  }
   el.innerHTML = '<div class="loading">Caricamento…</div>'
   if (!lezioniCache) await loadLezioni(true)
   await loadLocations()
@@ -2789,7 +3545,7 @@ async function renderMappa(selectedName) {
   const focusedRecord = mappaSingleFocusName ? records.find(record => normalizeText(record.nome) === normalizeText(mappaSingleFocusName)) : null
   const mapRecords = focusedRecord ? [focusedRecord] : visibleRecords
   const selectedCoords = selected?.coords || null
-  const placedCount = records.filter(record => record.coords).length
+  const placedCount = records.filter(record => record.coords && record.coords.source !== 'stimato').length
   const inferredCount = records.filter(record => record.coords?.source === 'stimato').length
   const pendingCount = Math.max(0, records.length - placedCount)
   const formTipologia = selected?.tipologia || 'Location'
@@ -2863,17 +3619,27 @@ async function renderMappa(selectedName) {
           ` : ''}
         </div>
 
-        <div class="map-panel">
-          <h3>Punti</h3>
+        <div class="map-panel map-points-panel${mappaPuntiEspansi ? ' is-expanded' : ''}">
+          <div class="map-panel-title-row">
+            <h3>Punti</h3>
+            <button type="button" class="btn btn-outline btn-xs" onclick="toggleMappaPuntiEspansi()">${mappaPuntiEspansi ? 'Compatta' : 'Espandi'}</button>
+          </div>
           <div class="map-list">
             ${visibleRecords.length ? visibleRecords.map(record => {
               const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)
-              const meta = [record.tipologia || 'Location', record.indirizzo || '', record.condivisa ? 'condivisa' : '', record.lessonCount ? `${record.lessonCount} lezion${record.lessonCount === 1 ? 'e' : 'i'}` : ''].filter(Boolean).join(' · ')
+              const countText = `${record.lessonCount || 0} lezion${Number(record.lessonCount || 0) === 1 ? 'e' : 'i'}`
+              const lastText = record.ultimoUso ? `ultimo uso: ${formatDate(record.ultimoUso)}` : 'ultimo uso: -'
               return `<div class="map-location-row${selectedRow ? ' is-selected' : ''}" role="button" tabindex="0"
                 onclick="selectMappaLocation(${jsArg(record.nome)})"
                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); selectMappaLocation(${jsArg(record.nome)})}">
-                <span class="map-location-row-main"><strong>${esc(record.nome)}</strong><br><span>${esc(meta || 'Nessun dettaglio')}</span></span>
-                ${renderMappaMiniPreview(record)}
+                <div class="map-location-row-main">
+                  <strong>${esc(record.nome)}</strong>
+                  <span>${esc(record.indirizzo || 'Indirizzo da verificare')}</span>
+                  <span>${esc(countText)} · ${esc(lastText)}</span>
+                  ${renderLocationBadges(record)}
+                  ${renderLocationCardActions(record)}
+                </div>
+                <div class="map-location-row-preview">${renderMappaMiniPreview(record)}</div>
               </div>`
             }).join('') : '<div class="map-empty-inline">Nessuna location per questo filtro.</div>'}
           </div>
@@ -2881,6 +3647,14 @@ async function renderMappa(selectedName) {
       </div>
     </div>`
 }
+
+function toggleMappaPuntiEspansi() {
+  mappaPuntiEspansi = !mappaPuntiEspansi
+  mappaPuntiEspansiLoaded = true
+  safeStorage.setItem(MAP_POINTS_EXPANDED_STORAGE_KEY, mappaPuntiEspansi ? '1' : '0')
+  renderMappa(mappaSelectedLocationName)
+}
+window.toggleMappaPuntiEspansi = toggleMappaPuntiEspansi
 
 function setMappaStatus(message, className = 'msg-info') {
   const status = document.getElementById('map-status')
@@ -4108,12 +4882,7 @@ function calcolaEtaForm() {
   const dn = dateInputToIso(document.getElementById('na-nascita').value)
   const el = document.getElementById('na-eta')
   if (!dn) { el.value = ''; return }
-  const [y, m, d] = dn.split('-').map(Number)
-  const oggi = new Date(), nascita = new Date(y, m - 1, d)
-  let anni = oggi.getFullYear() - nascita.getFullYear()
-  if (oggi.getMonth() < nascita.getMonth() || (oggi.getMonth() === nascita.getMonth() && oggi.getDate() < nascita.getDate())) anni--
-  const mesi = Math.round((oggi - nascita) / (1000*60*60*24*30.44))
-  el.value = anni >= 2 ? anni + ' anni' : mesi + ' mesi'
+  el.value = allievoEtaLabel(dn)
 }
 
 function formatDateField(input) {
@@ -5090,9 +5859,10 @@ async function loadScheda(id) {
         </div>`).join('')
     : '<div class="empty">Nessuna skill registrata ancora.</div>'
 
-  const p = allievo.profilo || {}
-  const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo)
-  const addressScheda = visibleAllievoAddress(allievo)
+	  const p = allievo.profilo || {}
+	  const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo)
+	  const addressScheda = visibleAllievoAddress(allievo)
+	  const etaScheda = allievoEtaLabel(allievo.data_nascita)
 
   function dotsRo(val) {
     return [1,2,3].map(i => `<span class="dot-ro${i <= val ? ' filled' : ''}"></span>`).join('')
@@ -5118,10 +5888,10 @@ async function loadScheda(id) {
          <span style="background:var(--blu-chiaro);color:var(--blu);font-size:.75rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase">Associazione</span>
          ${p.categoria_accompagnatori ? `<span style="margin-left:.5rem;color:var(--muted);font-size:.87rem">${esc(p.categoria_accompagnatori)}</span>` : ''}
        </div>`
-    : `<div class="scheda-meta">
-         Livello ${allievo.livello_attuale} · ${esc(allievo.blocco_attuale)}
-         ${allievo.data_nascita ? ` · Nato il ${formatDate(allievo.data_nascita)}` : ''}
-       </div>`
+	    : `<div class="scheda-meta">
+	         Livello ${allievo.livello_attuale} · ${esc(allievo.blocco_attuale)}
+	         ${allievo.data_nascita ? ` · Nato il ${formatDate(allievo.data_nascita)}${etaScheda ? ` · ${esc(etaScheda)}` : ''}` : ''}
+	       </div>`
 
   document.getElementById('scheda-content').innerHTML = `
     <div class="card">
@@ -5162,9 +5932,10 @@ async function loadScheda(id) {
         ${(p.familiari||[]).length ? `<div style="margin-bottom:.75rem"><div class="info-label" style="margin-bottom:.3rem">Familiari / Tutori</div>${famHtml}</div>` : ''}
         <div class="info-grid">
           ${infoRow('Email', allievo.email ? `<a href="mailto:${esc(allievo.email)}" style="color:var(--blu)">${esc(allievo.email)}</a>` : null, true)}
-          ${infoRow('Telefono', allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
-          ${infoRow('Iscritto il', allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
-          ${infoRow('Indirizzo', addressScheda.indirizzo)}
+	          ${infoRow('Telefono', allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
+	          ${infoRow('Iscritto il', allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
+	          ${infoRow('Età', etaScheda)}
+	          ${infoRow('Indirizzo', addressScheda.indirizzo)}
           ${infoRow('Casa', addressScheda.casa)}
           ${parseMapCoordinate(addressScheda.casa_latitudine) !== null && parseMapCoordinate(addressScheda.casa_longitudine) !== null ? infoRow('GPS casa', `${formatMapCoordinate(addressScheda.casa_latitudine)}, ${formatMapCoordinate(addressScheda.casa_longitudine)}`) : ''}
           ${p.indirizzo_condiviso ? infoRow('Privacy indirizzo', 'Condiviso con altri maestri') : ''}
@@ -6872,6 +7643,10 @@ function isMissingLessonMeteoError(error) {
   return !!error && /\b(meteo|weather)\b/i.test(error.message || error.details || error.hint || '')
 }
 
+function isMissingLessonLocationIdError(error) {
+  return !!error && /\blocation_id\b/i.test(error.message || error.details || error.hint || '')
+}
+
 function hasLessonSkillMetadata(payload = {}) {
   return !!payload?.dimensioni && Object.keys(payload.dimensioni).length > 0
 }
@@ -6892,8 +7667,13 @@ async function loadLezioni(force = false) {
   const el = document.getElementById('lezioni-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
   let { data, error } = await sb.from('lezioni')
-    .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+    .select('id, data, tipo, durata_min, luogo, location_id, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
     .order('data', { ascending: false })
+  if (isMissingLessonLocationIdError(error)) {
+    ;({ data, error } = await sb.from('lezioni')
+      .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
+      .order('data', { ascending: false }))
+  }
   if (isMissingLessonMeteoError(error)) {
     ;({ data, error } = await sb.from('lezioni')
       .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))')
@@ -7648,6 +8428,8 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-ora').value     = ''
   document.getElementById('lz-durata').value  = ''
   document.getElementById('lz-luogo').value   = ''
+  const locationSelect = document.getElementById('lz-location-id')
+  if (locationSelect) locationSelect.innerHTML = '<option value="">Luogo manuale / nessuna location</option>'
   document.getElementById('lz-meteo').value   = ''
   setLessonStatus(lezioneFormMode === 'postuma' ? 'chiusa' : 'aperta')
   document.getElementById('lz-luogo-suggest').hidden = true
@@ -7672,9 +8454,15 @@ async function initNuovaLezione(presetAllievoId = null) {
 
   if (editId) {
     let { data: lezione, error } = await sb.from('lezioni')
-      .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+      .select('id, data, tipo, durata_min, luogo, location_id, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
       .eq('id', editId)
       .single()
+    if (isMissingLessonLocationIdError(error)) {
+      ;({ data: lezione, error } = await sb.from('lezioni')
+        .select('id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
+        .eq('id', editId)
+        .single())
+    }
     if (isMissingLessonMeteoError(error)) {
       ;({ data: lezione, error } = await sb.from('lezioni')
         .select('id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)')
@@ -7737,6 +8525,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     document.getElementById('lz-ora').value = lessonTime(lezione)
     document.getElementById('lz-durata').value = lezione.durata_min || ''
     document.getElementById('lz-luogo').value = lezione.luogo || ''
+    renderLezioneLocationSelect(lezione.location_id || '', lezione.luogo || '')
     setLessonStatus(lessonStatus(lezione))
     const parsedNotes = lessonParsedNotes(lezione)
     document.getElementById('lz-meteo').value = parsedNotes.meteo || ''
@@ -7757,6 +8546,13 @@ async function initNuovaLezione(presetAllievoId = null) {
   const draftSelectedIds = draft ? restoreLezioneDraft(draft) : []
   if (draft?.formMode) lezioneFormMode = draft.formMode
   syncLezioneFormLabels(!!editId)
+  if (!editId) renderLezioneLocationSelect('', document.getElementById('lz-luogo')?.value || '')
+  if (!editId && pendingLessonLocation) {
+    const pending = pendingLessonLocation
+    pendingLessonLocation = null
+    document.getElementById('lz-luogo').value = pending.nome || ''
+    renderLezioneLocationSelect(pending.id || '', pending.nome || '')
+  }
   renderLezionePartecipanti()
   if (editId) {
     editingLezioneAllieviIds
@@ -7805,6 +8601,7 @@ function renderLezionePartecipanti() {
   }
   lezionePresetAllievoId = null
   applyDefaultLessonLocationFromTarget()
+  renderLezioneLocationSelect(document.getElementById('lz-location-id')?.value || '', document.getElementById('lz-luogo')?.value || '')
   renderSpecialGuestPanel()
   renderPrepBoard()
   refreshSuggerimentiLuogoSeAperti()
@@ -7812,6 +8609,32 @@ function renderLezionePartecipanti() {
 
 function currentLessonTargetIsGroup() {
   return document.getElementById('lz-tipo')?.value?.startsWith('gruppo:')
+}
+
+async function renderLezioneLocationSelect(selectedId = '', selectedLuogo = '') {
+  const select = document.getElementById('lz-location-id')
+  if (!select) return
+  await loadLocations()
+  const names = locationNamesFromLessons()
+  const records = names.map(nome => locationRecordByName(nome) || { nome })
+  const selectedRecord = selectedId
+    ? locationRecordById(selectedId)
+    : (selectedLuogo ? locationRecordByName(selectedLuogo) : null)
+  const value = selectedId || selectedRecord?.id || ''
+  const options = records
+    .filter(record => record.id)
+    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' }))
+    .map(record => `<option value="${esc(record.id)}" ${String(record.id) === String(value) ? 'selected' : ''}>${esc(record.nome || '')}</option>`)
+    .join('')
+  select.innerHTML = `<option value="">Luogo manuale / nessuna location</option>${options}`
+  select.value = value
+}
+
+function scegliLocationLezione(locationId) {
+  const record = locationRecordById(locationId)
+  if (!record) return
+  const input = document.getElementById('lz-luogo')
+  if (input) input.value = record.nome || ''
 }
 
 function defaultLessonLocationForTarget(targetValue = '') {
@@ -7834,7 +8657,10 @@ function applyDefaultLessonLocationFromTarget() {
   const target = document.getElementById('lz-tipo')?.value || ''
   if (!input || input.value.trim()) return
   const luogo = defaultLessonLocationForTarget(target)
-  if (luogo) input.value = luogo
+  if (luogo) {
+    input.value = luogo
+    renderLezioneLocationSelect('', luogo)
+  }
 }
 
 function allievoById(id) {
@@ -8077,20 +8903,38 @@ async function mostraSuggerimentiLuogo() {
     .filter(luogo => !query || normalizeText(luogo).includes(query))
     .slice(0, 8)
 
+  const manualValue = input.value.trim()
+  const canCreate = manualValue && !locationRecordByName(manualValue)
+
   if (!luoghi.length) {
-    panel.innerHTML = '<div class="place-suggest-empty">Nessun luogo già registrato per i presenti.</div>'
+    panel.innerHTML = `<div class="place-suggest-empty">Nessun luogo già registrato per i presenti.</div>${canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>Crea nuova location</strong><span>${esc(manualValue)}</span></button>` : ''}`
     panel.hidden = false
     return
   }
 
   panel.innerHTML = luoghi.map(luogo => `
     <button type="button" class="place-suggest-btn" onmousedown="scegliLuogoSuggerito(${jsArg(luogo)})">${esc(luogo)}</button>
-  `).join('')
+  `).join('') + (canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>Crea nuova location</strong><span>${esc(manualValue)}</span></button>` : '')
   panel.hidden = false
 }
 
 function scegliLuogoSuggerito(luogo) {
   document.getElementById('lz-luogo').value = luogo
+  renderLezioneLocationSelect('', luogo)
+  const panel = document.getElementById('lz-luogo-suggest')
+  if (panel) panel.hidden = true
+}
+
+async function creaLocationDaLuogoLezione() {
+  const input = document.getElementById('lz-luogo')
+  const nome = input?.value.trim()
+  if (!nome) return
+  const ids = selectedLezioneAllieviIds()
+  await ensureLocationDaLezione(nome, ids)
+  await renderLezioneLocationSelect('', nome)
+  const record = locationRecordByName(nome)
+  const select = document.getElementById('lz-location-id')
+  if (select && record?.id) select.value = record.id
   const panel = document.getElementById('lz-luogo-suggest')
   if (panel) panel.hidden = true
 }
@@ -8282,6 +9126,7 @@ function collectLezioneDraft() {
     ora: document.getElementById('lz-ora')?.value || '',
     durata: document.getElementById('lz-durata')?.value || '',
     stato: document.getElementById('lz-stato')?.value || 'aperta',
+    locationId: document.getElementById('lz-location-id')?.value || '',
     luogo: document.getElementById('lz-luogo')?.value || '',
     meteo: document.getElementById('lz-meteo')?.value || '',
     noteSpeciali: document.getElementById('lz-note-speciali')?.value || '',
@@ -8317,6 +9162,7 @@ function restoreLezioneDraft(draft) {
   document.getElementById('lz-durata').value = draft.durata || ''
   setLessonStatus(draft.stato || 'aperta')
   document.getElementById('lz-luogo').value = draft.luogo || ''
+  renderLezioneLocationSelect(draft.locationId || '', draft.luogo || '')
   document.getElementById('lz-meteo').value = draft.meteo || ''
   document.getElementById('lz-note-speciali').value = draft.noteSpeciali || ''
   document.getElementById('lz-check-bene').value = draft.checkBene || ''
@@ -9452,7 +10298,10 @@ async function salvaLezione() {
   const stato = document.getElementById('lz-stato')?.value === 'chiusa' ? 'chiusa' : 'aperta'
   const target = document.getElementById('lz-tipo').value
   const tipo   = target.startsWith('gruppo:') ? 'gruppo' : target.startsWith('allievo:') ? 'individuale' : 'campo_libero'
-  const luogo  = document.getElementById('lz-luogo').value.trim() || null
+  const selectedLocationId = document.getElementById('lz-location-id')?.value || null
+  const selectedLocation = selectedLocationId ? locationRecordById(selectedLocationId) : null
+  if (selectedLocation?.nome && !document.getElementById('lz-luogo').value.trim()) document.getElementById('lz-luogo').value = selectedLocation.nome
+  const luogo  = document.getElementById('lz-luogo').value.trim() || selectedLocation?.nome || null
   const meteo  = document.getElementById('lz-meteo')?.value.trim() || null
   const noteSpeciali = document.getElementById('lz-note-speciali').value.trim() || null
   const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
@@ -9483,13 +10332,18 @@ async function salvaLezione() {
 
     // 1 — crea o aggiorna lezione
     let e1
-    const payloadLezione = { data, durata_min: durata, tipo, luogo, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
+    const payloadLezione = { data, durata_min: durata, tipo, luogo, location_id: selectedLocationId || null, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
     const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
     const payloadLezioneNuova = { ...payloadLezione, maestro_id: currentUid || null }
     const payloadLezioneNuovaCompat = { ...payloadLezioneCompat, maestro_id: currentUid || null }
     if (lezioneInModifica) {
       let payloadCorrente = payloadLezione
       ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
+      if (isMissingLessonLocationIdError(e1)) {
+        const { location_id: _locationId, ...withoutLocationId } = payloadCorrente
+        payloadCorrente = withoutLocationId
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').update(payloadCorrente).eq('id', lezioneInModifica).select().single())
+      }
       if (isMissingLessonMeteoError(e1)) {
         const { meteo: _meteo, ...withoutMeteo } = payloadCorrente
         payloadCorrente = withoutMeteo
@@ -9516,6 +10370,11 @@ async function salvaLezione() {
     } else {
       let payloadCorrente = payloadLezioneNuova
       ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
+      if (isMissingLessonLocationIdError(e1)) {
+        const { location_id: _locationId, ...withoutLocationId } = payloadCorrente
+        payloadCorrente = withoutLocationId
+        ;({ data: lz, error: e1 } = await sb.from('lezioni').insert(payloadCorrente).select().single())
+      }
       if (isMissingLessonMeteoError(e1)) {
         const { meteo: _meteo, ...withoutMeteo } = payloadCorrente
         payloadCorrente = withoutMeteo
@@ -10300,6 +11159,22 @@ function dateInputToIso(d) {
   }
   match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   return match ? raw : ''
+}
+
+function allievoEtaLabel(dataNascita) {
+  const iso = dateInputToIso(dataNascita) || String(dataNascita || '').slice(0, 10)
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return ''
+  const [y, m, d] = match.slice(1).map(Number)
+  const nascita = new Date(y, m - 1, d)
+  if (Number.isNaN(nascita.getTime()) || nascita.getFullYear() !== y || nascita.getMonth() !== m - 1 || nascita.getDate() !== d) return ''
+  const oggi = new Date()
+  if (nascita > oggi) return ''
+  let anni = oggi.getFullYear() - y
+  if (oggi.getMonth() < m - 1 || (oggi.getMonth() === m - 1 && oggi.getDate() < d)) anni--
+  if (anni >= 2) return `${anni} anni`
+  const mesi = Math.max(0, Math.floor((oggi - nascita) / (1000 * 60 * 60 * 24 * 30.44)))
+  return `${mesi} mes${mesi === 1 ? 'e' : 'i'}`
 }
 
 function stadioLabel(s) {

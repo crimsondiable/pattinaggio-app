@@ -249,28 +249,37 @@
     .appointments-card-title { display: grid; gap: .15rem; }
     .appointments-card-title h3 { font-size: 1rem; }
     .appointments-card-title span { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+    .availability-card-actions { display: inline-flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
+    .availability-card-actions .btn:disabled { opacity: .42; cursor: not-allowed; }
     .appointments-preferences { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; align-items: end; margin-bottom: .75rem; }
     .appointments-preferences .field { margin-bottom: 0; }
     .appointments-check { min-height: 38px; display: inline-flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .8rem; font-weight: 750; cursor: pointer; }
     .appointments-check input { accent-color: var(--blu); }
-    .availability-planner { display: grid; gap: .55rem; }
-    .availability-planner-help { color: var(--muted); font-size: .8rem; line-height: 1.35; }
-    .availability-grid-wrap { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); overflow-x: auto; background: rgba(255,255,255,.014); }
-    .availability-week-head { min-width: 620px; display: grid; grid-template-columns: 46px repeat(7, minmax(72px,1fr)); border-bottom: 1px solid rgba(148,163,184,.18); background: rgba(255,255,255,.025); }
-    .availability-week-head div { padding: .42rem .35rem; color: var(--muted); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .045em; text-align: center; }
-    .availability-week-body { min-width: 620px; display: grid; grid-template-columns: 46px repeat(7, minmax(72px,1fr)); height: 560px; overflow-y: auto; position: relative; }
+    .appointments-consecutive-mode { display: grid; gap: .16rem; align-self: end; }
+    .appointments-consecutive-mode .appointments-check { min-height: 30px; justify-content: flex-start; }
+    .availability-planner { display: grid; gap: .42rem; }
+    .availability-planner-help { color: var(--muted); font-size: .72rem; line-height: 1.28; }
+    .availability-grid-wrap { position: relative; border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); overflow-x: auto; background: rgba(255,255,255,.014); }
+    .availability-edit-cover { position: absolute; inset: 0; z-index: 12; border: 0; border-radius: calc(var(--r) - 1px); background: rgba(3,11,17,.58); color: var(--testo); display: grid; place-content: center; gap: .12rem; text-align: center; cursor: pointer; backdrop-filter: blur(1px); }
+    .availability-edit-cover strong { font-size: .86rem; }
+    .availability-edit-cover span { color: var(--muted); font-size: .72rem; font-weight: 750; }
+    .availability-planner.is-locked .availability-week-body { pointer-events: none; opacity: .78; }
+    .availability-planner.is-locked .availability-slot-delete, .availability-planner.is-locked .availability-slot-resize { display: none; }
+    .availability-week-head { min-width: 500px; display: grid; grid-template-columns: 38px repeat(7, minmax(56px,1fr)); border-bottom: 1px solid rgba(148,163,184,.18); background: rgba(255,255,255,.025); }
+    .availability-week-head div { padding: .28rem .24rem; color: var(--muted); font-size: .66rem; font-weight: 850; text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+    .availability-week-body { min-width: 500px; display: grid; grid-template-columns: 38px repeat(7, minmax(56px,1fr)); height: 410px; overflow-y: auto; position: relative; }
     .availability-time-axis { position: relative; height: var(--availability-grid-height); border-right: 1px solid rgba(148,163,184,.16); background: rgba(255,255,255,.012); }
-    .availability-time-label { position: absolute; right: .26rem; transform: translateY(-50%); color: var(--muted); font-size: .64rem; font-weight: 800; }
+    .availability-time-label { position: absolute; right: .2rem; transform: translateY(-50%); color: var(--muted); font-size: .58rem; font-weight: 800; }
     .availability-day-col { position: relative; height: var(--availability-grid-height); border-left: 1px solid rgba(148,163,184,.11); cursor: crosshair; touch-action: none; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.11) 0, rgba(148,163,184,.11) 1px, transparent 1px, transparent var(--availability-hour-px)); }
     .availability-day-col:hover { background-color: rgba(110,231,249,.025); }
-    .availability-slot-block, .availability-drag-preview { position: absolute; left: .2rem; right: .2rem; border: 1px solid rgba(110,231,249,.46); border-radius: 6px; background: linear-gradient(135deg, rgba(34,184,207,.9), rgba(110,231,249,.86)); color: #041015; box-shadow: 0 10px 18px rgba(0,0,0,.24); padding: .32rem .34rem .48rem; overflow: hidden; cursor: grab; font-size: .7rem; line-height: 1.16; z-index: 3; }
+    .availability-slot-block, .availability-drag-preview { position: absolute; left: .12rem; right: .12rem; border: 1px solid rgba(110,231,249,.46); border-radius: 5px; background: linear-gradient(135deg, rgba(34,184,207,.9), rgba(110,231,249,.86)); color: #041015; box-shadow: 0 8px 14px rgba(0,0,0,.2); padding: .22rem .24rem .36rem; overflow: hidden; cursor: grab; font-size: .66rem; line-height: 1.08; z-index: 3; }
     .availability-slot-block:active { cursor: grabbing; }
     .availability-drag-preview { pointer-events: none; opacity: .72; z-index: 5; }
-    .availability-slot-time { display: block; font-weight: 900; white-space: nowrap; }
+    .availability-slot-time { display: flex; flex-wrap: wrap; gap: .04rem .18rem; font-weight: 900; white-space: normal; overflow: hidden; }
     .availability-slot-note { display: block; margin-top: .08rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .78; }
-    .availability-slot-delete { position: absolute; top: .16rem; right: .16rem; width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(4,16,21,.18); color: #041015; cursor: pointer; font-weight: 900; line-height: 1; }
+    .availability-slot-delete { position: absolute; top: .1rem; right: .1rem; width: 16px; height: 16px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(4,16,21,.18); color: #041015; cursor: pointer; font-weight: 900; line-height: 1; }
     .availability-slot-delete:hover { background: rgba(4,16,21,.32); }
-    .availability-slot-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; cursor: ns-resize; background: rgba(4,16,21,.16); }
+    .availability-slot-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; background: rgba(4,16,21,.16); }
     .availability-empty { color: var(--muted); font-size: .84rem; line-height: 1.4; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); padding: .75rem; background: rgba(255,255,255,.012); }
     .appointments-toolbar { display: grid; grid-template-columns: minmax(0,1fr) minmax(150px,.45fr) auto; gap: .5rem; align-items: end; margin-bottom: .75rem; }
     .appointments-toolbar .field { margin-bottom: 0; }
@@ -287,6 +296,7 @@
     .appointment-plan-warning { color: #facc15; font-size: .78rem; line-height: 1.35; }
     .appointment-schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .75rem; align-items: start; }
     .appointment-schedule-variant { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .75rem; display: grid; gap: .65rem; }
+    .appointment-schedule-variant.is-in-calendar { border-color: rgba(110,231,249,.95); background: rgba(110,231,249,.055); box-shadow: 0 0 0 1px rgba(110,231,249,.34), 0 0 24px rgba(110,231,249,.1); }
     .appointment-schedule-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .75rem; align-items: start; }
     .appointment-schedule-head h4 { margin: 0; font-size: .94rem; line-height: 1.2; }
     .appointment-schedule-head span { display: block; color: var(--muted); font-size: .75rem; line-height: 1.35; margin-top: .16rem; }
@@ -317,9 +327,44 @@
     .appointment-agenda-item small { color: #facc15; font-size: .68rem; font-weight: 800; white-space: nowrap; }
     .appointments-warning { color: #facc15; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.24); border-radius: var(--r); padding: .6rem .7rem; font-size: .84rem; line-height: 1.38; margin-top: .75rem; }
     .appointments-status { color: var(--muted); font-size: .8rem; min-height: 1.15rem; margin-top: .55rem; }
+    .appointment-schedule-actions { display: grid; justify-items: end; gap: .35rem; }
+    .calendar-shell { padding: .7rem; }
+    .calendar-shell-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
+    .calendar-quick-title { color: var(--muted); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .45rem; }
+    .calendar-shell-head .calendar-quick-title { margin-bottom: 0; }
+    .calendar-form { display: grid; grid-template-columns: 1.1fr 2fr .8fr .8fr auto; gap: .45rem; align-items: end; }
+    .calendar-form .field { margin-bottom: 0; }
+    .calendar-form .field label { font-size: .68rem; margin-bottom: .18rem; color: var(--muted); }
+    .calendar-form input, .calendar-form select, .calendar-event-edit input, .calendar-event-edit select { width: 100%; border: 1px solid rgba(148,163,184,.22); border-radius: 6px; background: rgba(7,17,22,.42); color: var(--testo); padding: .36rem .45rem; font: inherit; font-size: .78rem; }
+    .calendar-form input:focus, .calendar-form select:focus, .calendar-event-edit input:focus, .calendar-event-edit select:focus { outline: none; border-color: var(--blu); box-shadow: 0 0 0 2px rgba(110,231,249,.1); }
+    .calendar-extra-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: .45rem; margin-top: .45rem; }
+    .calendar-board-wrap { overflow-x: auto; padding-bottom: .15rem; }
+    .calendar-board { min-width: 980px; display: grid; grid-template-columns: repeat(7, minmax(136px, 1fr)); gap: .55rem; margin-top: .85rem; }
+    .calendar-day { min-height: 250px; border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); overflow: hidden; }
+    .calendar-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .45rem .5rem; border-bottom: 1px solid rgba(148,163,184,.14); background: rgba(255,255,255,.025); }
+    .calendar-day-head strong { font-size: .8rem; }
+    .calendar-day-head span { color: var(--muted); font-size: .68rem; font-weight: 800; }
+    .calendar-day-body { display: grid; gap: .35rem; padding: .45rem; }
+    .calendar-day-empty { color: var(--muted); font-size: .72rem; padding: .45rem; border: 1px dashed rgba(148,163,184,.18); border-radius: 6px; }
+    .calendar-event { border: 1px solid rgba(110,231,249,.18); border-radius: 7px; background: rgba(110,231,249,.055); overflow: hidden; }
+    .calendar-event summary { list-style: none; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .34rem; align-items: start; padding: .42rem .46rem; cursor: pointer; }
+    .calendar-event summary::-webkit-details-marker { display: none; }
+    .calendar-event-main { display: grid; gap: .16rem; min-width: 0; }
+    .calendar-event-time { color: var(--blu); font-size: .72rem; font-weight: 900; }
+    .calendar-event-title { color: var(--testo); font-size: .8rem; font-weight: 850; line-height: 1.18; }
+    .calendar-event-meta { color: var(--muted); font-size: .69rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .calendar-event-delete { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid rgba(251,113,133,.24); border-radius: 999px; background: rgba(251,113,133,.1); color: var(--danger); font-size: .86rem; font-weight: 900; line-height: 1; cursor: pointer; }
+    .calendar-event-delete:hover { background: rgba(251,113,133,.2); border-color: rgba(251,113,133,.45); }
+    .calendar-event-edit { border-top: 1px solid rgba(148,163,184,.14); padding: .45rem; display: grid; gap: .35rem; background: rgba(7,17,22,.34); }
+    .calendar-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+    .calendar-edit-actions { display: flex; justify-content: flex-end; }
+    .calendar-status { color: var(--muted); font-size: .8rem; margin-top: .6rem; min-height: 1rem; }
+    .calendar-status.ok { color: var(--success); }
+    .calendar-status.err { color: var(--danger); }
     body.availability-dragging { user-select: none; }
     @media (max-width: 980px) {
-      .appointments-grid, .appointments-toolbar, .appointments-preferences, .appointment-plan-head, .appointment-schedule-grid, .appointment-schedule-head, .appointment-agenda-item { grid-template-columns: 1fr; }
+      .appointments-grid, .appointments-toolbar, .appointments-preferences, .appointment-plan-head, .appointment-schedule-grid, .appointment-schedule-head, .appointment-agenda-item, .calendar-form, .calendar-extra-row { grid-template-columns: 1fr; }
+      .calendar-board { min-width: 760px; grid-template-columns: repeat(7, minmax(108px, 1fr)); }
       .appointment-route-meta { grid-template-columns: 1fr; }
       .appointment-agenda-item span { white-space: normal; }
     }
@@ -378,12 +423,15 @@
     .map-side { display: grid; gap: .7rem; }
     .map-panel { padding: .75rem; }
     .map-panel h3 { font-size: .9rem; margin-bottom: .55rem; }
+    .map-panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: .55rem; margin-bottom: .55rem; }
+    .map-panel-title-row h3 { margin-bottom: 0; }
     .map-panel-meta { color: var(--muted); font-size: .78rem; line-height: 1.35; margin-bottom: .65rem; }
     .map-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
     .map-form-grid .field { margin-bottom: 0; }
     .map-form-full { grid-column: 1 / -1; }
     .map-form-actions { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .7rem; }
     .map-list { display: grid; gap: .35rem; max-height: 360px; overflow: auto; padding-right: .12rem; }
+    .map-points-panel.is-expanded .map-list { max-height: none; overflow: visible; padding-right: 0; }
     .map-location-row {
       width: 100%; border: 1px solid rgba(148,163,184,.16); border-radius: var(--r);
       background: rgba(255,255,255,.018); color: var(--testo); padding: .5rem .55rem;
@@ -396,14 +444,33 @@
     .map-location-row-main { min-width: 0; }
     .map-location-row strong { font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .map-location-row span { color: var(--muted); font-size: .72rem; line-height: 1.25; }
+    .map-location-row-main { display: grid; gap: .22rem; }
+    .map-location-row-preview { align-self: stretch; display: grid; place-items: center; }
+    .map-location-badges,
+    .map-location-actions,
+    .map-marker-popup-actions { display: flex; flex-wrap: wrap; gap: .28rem; align-items: center; }
+    .map-location-badge { font-size: .66rem; padding: .16rem .42rem; }
+    .btn-xs { padding: .2rem .48rem; font-size: .7rem; border-radius: calc(var(--r) - 3px); }
     .map-row-status { white-space: nowrap; font-weight: 850; }
     .map-location-row .map-missing { color: #facc15; font-weight: 850; }
     .map-mini-preview { width: 58px; height: 42px; border: 1px solid rgba(110,231,249,.34); border-radius: 5px; padding: 0; overflow: hidden; background: #03090d; cursor: zoom-in; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
     .map-mini-preview:hover,
     .map-mini-preview.is-selected { border-color: #facc15; box-shadow: 0 0 0 2px rgba(250,204,21,.16), 0 8px 18px rgba(0,0,0,.22); }
-    .map-mini-preview svg { display: block; width: 100%; height: 100%; }
+    .map-mini-preview img,
+    .map-mini-preview svg { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .map-mini-placeholder { display: grid; place-items: center; gap: .05rem; color: var(--muted); font-size: .58rem; line-height: 1.05; text-align: center; padding: .2rem; cursor: pointer; }
+    .map-placeholder-pin { color: #facc15; font-size: .62rem; font-weight: 900; text-transform: uppercase; }
     .map-mini-halo { fill: rgba(250,204,21,.18); stroke: rgba(250,204,21,.74); stroke-width: 4; }
     .map-mini-core { fill: #facc15; stroke: #041015; stroke-width: 3; }
+    .map-marker-popup {
+      position: absolute; z-index: 4; min-width: 160px; max-width: min(230px, 72%);
+      transform: translate(-50%, calc(-100% - 18px)); padding: .5rem .55rem;
+      border: 1px solid rgba(190,242,255,.26); border-radius: var(--r);
+      background: rgba(7,17,22,.88); box-shadow: 0 14px 28px rgba(0,0,0,.32);
+      backdrop-filter: blur(14px); display: grid; gap: .26rem;
+    }
+    .map-marker-popup strong { font-size: .8rem; }
+    .map-marker-popup span { color: var(--muted); font-size: .7rem; }
     .map-stat-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .4rem; margin-bottom: .65rem; }
     .map-stat { border: 1px solid rgba(148,163,184,.14); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .45rem .5rem; }
     .map-stat strong { display: block; font-size: 1rem; }
@@ -818,12 +885,12 @@
       <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
       <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
       <button id="nav-percorsi" onclick="showView('percorsi')">Percorsi</button>
-      <button id="nav-calendar" class="nav-icon-btn" onclick="showCalendarFromHeader()" title="Calendario" aria-label="Calendario">
+      <button id="nav-calendar" class="nav-icon-btn" onclick="showView('calendario')" title="Calendario" aria-label="Calendario">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
         </svg>
       </button>
-      <button id="nav-auto-orari" class="nav-icon-btn" onclick="alert('Promemoria: qui andra la gestione automatica degli orari delle lezioni.')" title="Gestione automatica orari lezioni - da definire" aria-label="Gestione automatica orari lezioni - da definire">
+      <button id="nav-auto-orari" class="nav-icon-btn" onclick="showView('appuntamenti')" title="Appuntamenti automatici" aria-label="Appuntamenti automatici">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v5.5"/>
           <path d="M7 14h4"/>
@@ -920,10 +987,24 @@
       <div class="card">
         <div id="lezioni-content"><div class="loading">Caricamento…</div></div>
       </div>
-    </section>
+	    </section>
 
-    <!-- VIEW: appuntamenti -->
-    <section id="view-appuntamenti" hidden>
+	    <!-- VIEW: calendario -->
+	    <section id="view-calendario" hidden>
+	      <div class="section-header">
+	        <div>
+	          <h2>Calendario</h2>
+	          <p class="appointments-subtitle">Settimana tipo. Aggiungi voci manuali o importa una variante dagli appuntamenti automatici.</p>
+	        </div>
+	        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+	          <button class="btn btn-outline btn-sm" onclick="showView('appuntamenti')">Appuntamenti automatici</button>
+	        </div>
+	      </div>
+	      <div id="calendario-content"><div class="loading">Caricamento…</div></div>
+	    </section>
+
+	    <!-- VIEW: appuntamenti -->
+	    <section id="view-appuntamenti" hidden>
       <div class="section-header">
         <div>
           <h2>Appuntamenti</h2>
@@ -998,6 +1079,12 @@
             <label>Luogo</label>
             <input type="text" id="lz-luogo" placeholder="es. Pista centrale" autocomplete="off" onfocus="mostraSuggerimentiLuogo()" oninput="mostraSuggerimentiLuogo()" onblur="nascondiSuggerimentiLuogoSoon()">
             <div id="lz-luogo-suggest" class="place-suggest-panel" hidden></div>
+          </div>
+          <div class="field">
+            <label>Location salvata</label>
+            <select id="lz-location-id" onchange="scegliLocationLezione(this.value)">
+              <option value="">Luogo manuale / nessuna location</option>
+            </select>
           </div>
           <div class="field"><label>Meteo</label><input type="text" id="lz-meteo" placeholder="Sole, vento, fondo bagnato..."></div>
         </div>
@@ -1562,7 +1649,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260607-rls-maestro-fix';
+  var appVersion = '20260611-map-points-expand-global';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }
