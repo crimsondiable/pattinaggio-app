@@ -289,6 +289,18 @@
     .appointments-toolbar .field { margin-bottom: 0; }
     .appointments-explainer { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .65rem .75rem; display: grid; gap: .18rem; color: var(--muted); font-size: .82rem; line-height: 1.38; }
     .appointments-explainer strong { color: var(--testo); font-size: .86rem; }
+    .appointment-selector-panel { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.014); padding: .65rem; display: grid; gap: .55rem; margin: .7rem 0; }
+    .appointment-selector-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: .5rem; align-items: center; color: var(--muted); font-size: .78rem; font-weight: 800; }
+    .appointment-selector-head strong { color: var(--testo); font-size: .9rem; }
+    .appointment-selector-actions { display: inline-flex; gap: .3rem; flex-wrap: wrap; justify-content: flex-end; }
+    .appointment-selector-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .38rem; max-height: 280px; overflow: auto; padding-right: .1rem; }
+    .appointment-selector-row { display: grid; grid-template-columns: auto minmax(0,1fr) minmax(96px,.35fr); gap: .42rem; align-items: center; border: 1px solid rgba(148,163,184,.15); border-radius: calc(var(--r) - 2px); background: rgba(7,17,22,.28); padding: .42rem .48rem; cursor: pointer; }
+    .appointment-selector-row.is-selected { border-color: rgba(110,231,249,.32); background: rgba(110,231,249,.045); }
+    .appointment-selector-name { min-width: 0; display: grid; gap: .08rem; }
+    .appointment-selector-name strong { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .appointment-selector-name small { color: var(--muted); font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .appointment-selector-row select { min-width: 0; height: 30px; padding: .18rem .34rem; font-size: .72rem; }
+    .appointment-agenda-types { display: flex; gap: .4rem; flex-wrap: wrap; margin: .65rem 0 .4rem; }
     .appointments-results { display: grid; gap: .45rem; margin-top: .85rem; }
     .appointment-plan { border: 1px solid rgba(110,231,249,.22); border-radius: var(--r); background: rgba(110,231,249,.045); padding: .65rem; display: grid; gap: .55rem; }
     .appointment-plan-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; align-items: baseline; }
@@ -332,6 +344,17 @@
     .appointments-warning { color: #facc15; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.24); border-radius: var(--r); padding: .6rem .7rem; font-size: .84rem; line-height: 1.38; margin-top: .75rem; }
     .appointments-status { color: var(--muted); font-size: .8rem; min-height: 1.15rem; margin-top: .55rem; }
     .appointment-schedule-actions { display: grid; justify-items: end; gap: .35rem; }
+    .appointment-preview-calendar { display: grid; grid-template-columns: repeat(7, minmax(86px,1fr)); gap: .4rem; min-width: 740px; overflow-x: auto; padding-bottom: .2rem; }
+    .appointment-preview-day { border: 1px solid rgba(148,163,184,.15); border-radius: calc(var(--r) - 2px); background: rgba(7,17,22,.28); overflow: hidden; }
+    .appointment-preview-day-title { height: 26px; display: grid; place-items: center; color: var(--blu); font-size: .68rem; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid rgba(148,163,184,.14); background: rgba(255,255,255,.025); }
+    .appointment-preview-lane { position: relative; height: 390px; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.08) 0, rgba(148,163,184,.08) 1px, transparent 1px, transparent 6.25%); }
+    .appointment-preview-excluded { position: absolute; left: .18rem; right: .18rem; border: 1px solid rgba(251,113,133,.34); border-radius: 4px; background: rgba(251,113,133,.18); z-index: 1; }
+    .appointment-preview-travel { position: absolute; left: .34rem; right: .34rem; border: 1px dashed rgba(250,204,21,.32); border-radius: 4px; background: rgba(250,204,21,.1); color: rgba(253,230,138,.86); display: grid; place-items: center; font-size: .58rem; font-weight: 900; z-index: 2; pointer-events: none; }
+    .appointment-preview-item { position: absolute; left: .26rem; right: .26rem; z-index: 3; border: 1px solid rgba(110,231,249,.42); border-radius: 5px; background: rgba(110,231,249,.82); color: #041015; padding: .2rem .22rem; display: grid; gap: .02rem; overflow: hidden; cursor: grab; box-shadow: 0 8px 14px rgba(0,0,0,.22); }
+    .appointment-preview-item.is-locked { border-color: rgba(52,211,153,.72); box-shadow: 0 0 0 1px rgba(52,211,153,.28), 0 8px 14px rgba(0,0,0,.22); }
+    .appointment-preview-item strong { font-size: .66rem; line-height: 1.05; }
+    .appointment-preview-item span, .appointment-preview-item small { font-size: .58rem; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .appointment-preview-item button { position: absolute; top: .12rem; right: .12rem; border: 0; border-radius: 3px; background: rgba(4,16,21,.18); color: #041015; font-size: .54rem; font-weight: 900; cursor: pointer; padding: .08rem .16rem; }
     .calendar-shell { padding: .7rem; }
     .calendar-shell-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
     .calendar-quick-title { color: var(--muted); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .45rem; }
@@ -368,6 +391,9 @@
     body.availability-dragging { user-select: none; }
     @media (max-width: 980px) {
       .appointments-grid, .appointments-toolbar, .appointments-preferences, .appointment-plan-head, .appointment-schedule-grid, .appointment-schedule-head, .appointment-agenda-item, .calendar-form, .calendar-extra-row { grid-template-columns: 1fr; }
+      .appointment-selector-list, .appointment-selector-head, .map-travel-form, .map-travel-row { grid-template-columns: 1fr; }
+      .appointment-selector-row { grid-template-columns: auto minmax(0,1fr); }
+      .appointment-selector-row select { grid-column: 1 / -1; }
       .calendar-board { min-width: 760px; grid-template-columns: repeat(7, minmax(108px, 1fr)); }
       .appointment-route-meta { grid-template-columns: 1fr; }
       .appointment-agenda-item span { white-space: normal; }
@@ -454,6 +480,12 @@
     .map-location-actions,
     .map-marker-popup-actions { display: flex; flex-wrap: wrap; gap: .28rem; align-items: center; }
     .map-location-badge { font-size: .66rem; padding: .16rem .42rem; }
+    .map-travel-form { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 82px auto; gap: .42rem; align-items: end; margin-top: .55rem; }
+    .map-travel-form .field { margin-bottom: 0; }
+    .map-travel-list { display: grid; gap: .32rem; margin-top: .5rem; }
+    .map-travel-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: .4rem; align-items: center; border: 1px solid rgba(148,163,184,.14); border-radius: 6px; background: rgba(7,17,22,.28); padding: .38rem .45rem; }
+    .map-travel-row span { color: var(--muted); font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .map-travel-row strong { color: var(--testo); font-size: .78rem; white-space: nowrap; }
     .btn-xs { padding: .2rem .48rem; font-size: .7rem; border-radius: calc(var(--r) - 3px); }
     .map-row-status { white-space: nowrap; font-weight: 850; }
     .map-location-row .map-missing { color: #facc15; font-weight: 850; }
@@ -1132,11 +1164,16 @@
         <!-- ── FORM INDIVIDUALE ─────────────────────────────────────────── -->
         <div id="form-individuale">
           <p class="form-sec">Anagrafica</p>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:0 1rem;align-items:end;margin-bottom:.5rem">
+          <div style="display:grid;grid-template-columns:1fr minmax(120px,.28fr);gap:0 1rem;align-items:end;margin-bottom:.5rem">
             <div class="field" style="margin:0"><label>Nickname</label><input type="text" id="na-nickname" placeholder="Es. Mamy, Freccia…"></div>
-            <div class="vip-toggle">
-              <label>VIP</label>
-              <span class="star-btn" id="na-vip-btn" onclick="toggleVip()" title="Allievo VIP">★</span>
+            <div class="field" style="margin:0">
+              <label>Tier</label>
+              <select id="na-tier" onchange="syncTierVipIndicator()">
+                <option value="VIP">VIP</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
               <input type="hidden" id="na-vip" value="false">
             </div>
           </div>
@@ -1653,7 +1690,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260613-unified-availability-modes';
+  var appVersion = '20260613-appointment-agenda-preview';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }

@@ -69,6 +69,9 @@ const MAESTRO_EXCLUDED_STORAGE_PREFIX = 'bladingManagerMaestroExcluded'
 const CALENDARIO_METADATA_KEY = 'calendario_settimanale_items'
 const CALENDARIO_STORAGE_PREFIX = 'bladingManagerCalendarioSettimanale'
 const MAP_POINTS_EXPANDED_STORAGE_KEY = 'bladingManagerMappaPuntiEspansi'
+const APPOINTMENT_SELECTION_STORAGE_KEY = 'bladingManagerAppointmentSelection'
+const APPOINTMENT_PRIORITY_STORAGE_KEY = 'bladingManagerAppointmentPriorityModes'
+const APPOINTMENT_TRAVEL_STORAGE_KEY = 'bladingManagerAppointmentTravelTimes'
 const AVAILABILITY_DAYS = [
   { value: 1, label: 'Lunedi', short: 'Lun' },
   { value: 2, label: 'Martedi', short: 'Mar' },
@@ -93,6 +96,11 @@ const APPOINTMENT_CONSECUTIVE_PREFER = 'prefer'
 const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
 let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
+let appointmentSelectedAllieviIds = null
+let appointmentPriorityModes = new Map()
+let appointmentCurrentVariant = null
+let appointmentGenerationNonce = 0
+let appointmentPreviewDragId = null
 const availabilityUndoStacks = new Map()
 const availabilityEditModes = new Map()
 let lastAppointmentScheduleVariants = []
@@ -1585,6 +1593,95 @@ function activeAppointmentAllievi() {
   return ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato' && !allievoInVacanza(a)))
 }
 
+function normalizeAllievoTier(value, vip = false) {
+  const raw = String(value || '').trim().toUpperCase()
+  if (raw === 'VIP' || vip === true) return 'VIP'
+  if (['A', 'B', 'C'].includes(raw)) return raw
+  return 'C'
+}
+
+function allievoTier(allievo = {}) {
+  return normalizeAllievoTier(allievo.tier || allievo.profilo?.tier, allievo.vip)
+}
+
+function allievoTierRank(allievo = {}) {
+  return { VIP: 0, A: 1, B: 2, C: 3 }[allievoTier(allievo)] ?? 3
+}
+
+function appointmentSelectableAllievi() {
+  return activeAppointmentAllievi()
+}
+
+function readAppointmentSelectedIds() {
+  try {
+    const raw = safeStorage.getItem(APPOINTMENT_SELECTION_STORAGE_KEY)
+    if (raw === null) return null
+    const ids = JSON.parse(raw || '[]')
+    return Array.isArray(ids) ? ids.map(String) : []
+  } catch {
+    return null
+  }
+}
+
+function writeAppointmentSelectedIds() {
+  safeStorage.setItem(APPOINTMENT_SELECTION_STORAGE_KEY, JSON.stringify([...(appointmentSelectedAllieviIds || new Set())]))
+}
+
+function ensureAppointmentSelectionDefaults() {
+  const activeIds = new Set(appointmentSelectableAllievi().map(a => String(a.id)))
+  if (!appointmentSelectedAllieviIds) {
+    const stored = readAppointmentSelectedIds()
+    appointmentSelectedAllieviIds = new Set(stored === null ? [...activeIds] : stored.filter(id => activeIds.has(String(id))))
+  }
+  ;[...appointmentSelectedAllieviIds].forEach(id => {
+    if (!activeIds.has(String(id))) appointmentSelectedAllieviIds.delete(id)
+  })
+  writeAppointmentSelectedIds()
+}
+
+function readAppointmentPriorityModes() {
+  try {
+    const rows = JSON.parse(safeStorage.getItem(APPOINTMENT_PRIORITY_STORAGE_KEY) || '{}')
+    return new Map(Object.entries(rows || {}).filter(([, value]) => ['priority', 'flex'].includes(value)))
+  } catch {
+    return new Map()
+  }
+}
+
+function writeAppointmentPriorityModes() {
+  safeStorage.setItem(APPOINTMENT_PRIORITY_STORAGE_KEY, JSON.stringify(Object.fromEntries(appointmentPriorityModes)))
+}
+
+function ensureAppointmentPriorityModes() {
+  if (!(appointmentPriorityModes instanceof Map) || !appointmentPriorityModes.size) appointmentPriorityModes = readAppointmentPriorityModes()
+}
+
+function appointmentAllievoMode(allievoId) {
+  ensureAppointmentPriorityModes()
+  return appointmentPriorityModes.get(String(allievoId)) || 'normal'
+}
+
+function appointmentTargetPriorityMode(target = {}) {
+  const modes = (target.memberIds || []).map(id => appointmentAllievoMode(id))
+  if (modes.includes('priority')) return 'priority'
+  if (modes.length && modes.every(mode => mode === 'flex')) return 'flex'
+  if (modes.includes('flex')) return 'flex'
+  return 'normal'
+}
+
+function appointmentSelectionStats() {
+  ensureAppointmentSelectionDefaults()
+  const total = appointmentSelectableAllievi().length
+  const selected = [...appointmentSelectedAllieviIds].filter(id => appointmentSelectableAllievi().some(a => String(a.id) === String(id))).length
+  return { selected, total }
+}
+
+function appointmentSelectedAllievi() {
+  ensureAppointmentSelectionDefaults()
+  const selected = appointmentSelectedAllieviIds || new Set()
+  return activeAppointmentAllievi().filter(a => selected.has(String(a.id)))
+}
+
 function appointmentGroups() {
   return [...new Set(activeAppointmentAllievi().map(a => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 }
@@ -2013,10 +2110,60 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
     </div>`
 }
 
+function appointmentSelectionPanelHtml(allievi = []) {
+  ensureAppointmentSelectionDefaults()
+  ensureAppointmentPriorityModes()
+  const selected = appointmentSelectedAllieviIds || new Set()
+  const stats = appointmentSelectionStats()
+  return `
+    <div class="appointment-selector-panel">
+      <div class="appointment-selector-head">
+        <strong>Allievi negli incroci</strong>
+        <span>${stats.selected}/${stats.total} selezionati</span>
+        <div class="appointment-selector-actions">
+          <button type="button" class="btn btn-outline btn-xs" onclick="setAllAppointmentSelection(true)">Tutti</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="setAllAppointmentSelection(false)">Nessuno</button>
+        </div>
+      </div>
+      <div class="appointment-selector-list">
+        ${allievi.length ? allievi.map(allievo => {
+          const id = String(allievo.id)
+          const checked = selected.has(id)
+          const mode = appointmentAllievoMode(id)
+          const tier = allievoTier(allievo)
+          return `
+            <label class="appointment-selector-row${checked ? ' is-selected' : ''}">
+              <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleAppointmentAllievoSelection(${jsArg(id)}, this.checked)">
+              <span class="appointment-selector-name">
+                <strong>${esc(lezioneTargetLabelAllievo(allievo))}</strong>
+                <small>${esc([tier, allievo.gruppo, vacationLabel(allievo)].filter(Boolean).join(' · '))}</small>
+              </span>
+              <select onchange="setAppointmentPriorityMode(${jsArg(id)}, this.value)" ${checked ? '' : 'disabled'}>
+                <option value="normal" ${mode === 'normal' ? 'selected' : ''}>Normale</option>
+                <option value="priority" ${mode === 'priority' ? 'selected' : ''}>Priorita</option>
+                <option value="flex" ${mode === 'flex' ? 'selected' : ''}>Flessibilita</option>
+              </select>
+            </label>`
+        }).join('') : '<div class="availability-empty">Nessun allievo attivo disponibile.</div>'}
+      </div>
+    </div>`
+}
+
+function appointmentAgendaTypesHtml() {
+  return `
+    <div class="appointment-agenda-types">
+      ${appointmentScheduleVariantDefinitions().map(variant => `
+        <button type="button" class="btn ${appointmentCurrentVariant?.id === variant.id ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="generateAppointmentAgenda(${jsArg(variant.id)})">
+          ${esc(variant.title)}
+        </button>`).join('')}
+    </div>`
+}
+
 function renderAppuntamenti() {
   const el = document.getElementById('appuntamenti-content')
   if (!el) return
   const attivi = activeAppointmentAllievi()
+  ensureAppointmentSelectionDefaults()
   if (appuntamentiSelectedAllievoId && !appointmentTargetExists(appuntamentiSelectedAllievoId)) appuntamentiSelectedAllievoId = null
   if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id
   const selectedTarget = selectedAppointmentTarget()
@@ -2029,6 +2176,7 @@ function renderAppuntamenti() {
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
   const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
+  const selectedStats = appointmentSelectionStats()
 
   el.innerHTML = `
     <div class="appointments-grid">
@@ -2095,7 +2243,7 @@ function renderAppuntamenti() {
         <div class="appointments-card-head">
           <div class="appointments-card-title">
             <h3>Incroci maestro-allievo</h3>
-            <span>Mostra le finestre in cui tu e ogni allievo filtrato siete entrambi disponibili.</span>
+            <span>Seleziona chi entra nella proposta e scegli il tipo di agenda da generare.</span>
           </div>
         </div>
         <div class="appointments-toolbar">
@@ -2113,14 +2261,20 @@ function renderAppuntamenti() {
           </div>
           <div class="field">
             <label>Durata fallback</label>
-            <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="renderAppointmentIntersections()">
+            <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="clearAppointmentAgendaPreview()">
           </div>
         </div>
-        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? 'o' : 'i'} nel filtro corrente.</div>
+        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? 'o' : 'i'} nel filtro corrente · ${selectedStats.selected} selezionat${selectedStats.selected === 1 ? 'o' : 'i'} per il planner.</div>
+        ${appointmentSelectionPanelHtml(filteredAllievi)}
+        <div class="appointments-explainer">
+          <strong>Generazione agenda</strong>
+          <span>Clicca una tipologia per generare una proposta. Ogni click sulla stessa tipologia prova un'alternativa diversa; le lezioni bloccate restano ferme.</span>
+        </div>
+        ${appointmentAgendaTypesHtml()}
         <div id="appointments-intersections"></div>
       </div>
     </div>`
-  renderAppointmentIntersections()
+  renderAppointmentAgendaPreview()
   requestAnimationFrame(() => motion.cards(el))
 }
 
@@ -2131,13 +2285,52 @@ function setAppuntamentiAllievo(id) {
 
 function setAppuntamentiQuery(value) {
   appuntamentiAllieviQuery = value || ''
+  appointmentCurrentVariant = null
   renderAppuntamenti()
   document.getElementById('appointments-search')?.focus()
 }
 
 function setAppuntamentiGroupFilter(value) {
   appuntamentiGruppoFiltro = value || 'all'
+  appointmentCurrentVariant = null
   renderAppuntamenti()
+}
+
+function toggleAppointmentAllievoSelection(allievoId, checked) {
+  ensureAppointmentSelectionDefaults()
+  const id = String(allievoId)
+  if (checked) appointmentSelectedAllieviIds.add(id)
+  else appointmentSelectedAllieviIds.delete(id)
+  writeAppointmentSelectedIds()
+  appointmentCurrentVariant = null
+  renderAppuntamenti()
+}
+
+function setAllAppointmentSelection(checked) {
+  ensureAppointmentSelectionDefaults()
+  const visibleIds = filteredAppointmentAllievi().map(a => String(a.id))
+  visibleIds.forEach(id => {
+    if (checked) appointmentSelectedAllieviIds.add(id)
+    else appointmentSelectedAllieviIds.delete(id)
+  })
+  writeAppointmentSelectedIds()
+  appointmentCurrentVariant = null
+  renderAppuntamenti()
+}
+
+function setAppointmentPriorityMode(allievoId, mode) {
+  ensureAppointmentPriorityModes()
+  const id = String(allievoId)
+  if (mode === 'priority' || mode === 'flex') appointmentPriorityModes.set(id, mode)
+  else appointmentPriorityModes.delete(id)
+  writeAppointmentPriorityModes()
+  appointmentCurrentVariant = null
+  renderAppuntamenti()
+}
+
+function clearAppointmentAgendaPreview() {
+  appointmentCurrentVariant = null
+  renderAppointmentAgendaPreview()
 }
 
 function filteredAppointmentAllievi() {
@@ -2159,6 +2352,9 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
   const previousSlots = availabilityUndoSnapshot(availabilitySlotsForOwner(owner))
   if (!options.skipUndo && availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
     pushAvailabilityUndo(owner, previousSlots, target)
+  }
+  if (availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
+    appointmentCurrentVariant = null
   }
   if (owner === 'maestro') {
     const saved = await saveMaestroAvailabilitySlots(slots)
@@ -2546,13 +2742,13 @@ async function saveSelectedAppointmentPreferences() {
       await saveGroupAppointmentPreferences(target.gruppo, { weeklyCount, consecutiveMode })
       document.getElementById('appointments-weekly-count').value = String(weeklyCount)
       setAvailabilityStatus('allievo', `Preferenze salvate su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
-      renderAppointmentIntersections()
+      clearAppointmentAgendaPreview()
       return
     }
     await saveAllievoAppointmentPreferences(target.allievo.id, { weeklyCount, consecutiveMode, individualActive })
     document.getElementById('appointments-weekly-count').value = String(weeklyCount)
     setAvailabilityStatus('allievo', 'Preferenze appuntamenti salvate.', 'ok')
-    renderAppointmentIntersections()
+    clearAppointmentAgendaPreview()
   } catch (e) {
     setAvailabilityStatus('allievo', e.message || 'Errore salvataggio preferenze.', 'err')
   }
@@ -2889,6 +3085,8 @@ function hydrateAppointmentTarget(target, fallbackDuration) {
   target.routeEndKey = target.locationInfo.endKey
   target.routeEndPoint = target.locationInfo.endPoint
   target.routeIsItinerary = target.locationInfo.isRoute
+  target.priorityMode = appointmentTargetPriorityMode(target)
+  target.tierRank = Math.min(...(target.members || []).map(member => allievoTierRank(member)), 3)
   return target
 }
 
@@ -2907,11 +3105,13 @@ function appointmentSchedulableTargets(filteredAllievi = []) {
   const fallbackDuration = appointmentCurrentFallbackDuration()
   const targets = []
   const grouped = new Set()
+  const selectedIds = new Set(filteredAllievi.map(allievo => String(allievo.id)))
   filteredAllievi.forEach(allievo => {
     if (allievo.gruppo) {
       if (!grouped.has(allievo.gruppo)) {
         grouped.add(allievo.gruppo)
         const members = appointmentGroupMembers(allievo.gruppo)
+          .filter(member => selectedIds.has(String(member.id)))
         if (members.length) {
           targets.push(hydrateAppointmentTarget({
             type: 'gruppo',
@@ -2954,6 +3154,8 @@ function appointmentTargetFromResult(result) {
     routeEndKey: result.routeEndKey,
     routeEndPoint: result.routeEndPoint,
     routeIsItinerary: result.routeIsItinerary,
+    priorityMode: result.priorityMode,
+    tierRank: result.tierRank,
   }
 }
 
@@ -2986,6 +3188,8 @@ function buildAppointmentScheduleCandidates(results, bufferMin) {
           routeEndKey: target.routeEndKey,
           routeEndPoint: target.routeEndPoint,
           routeIsItinerary: target.routeIsItinerary,
+          priorityMode: target.priorityMode,
+          tierRank: target.tierRank,
           day: window.day,
           startMin,
           lessonEndMin,
@@ -3074,6 +3278,9 @@ function scoreAppointmentCandidate(candidate, scheduled, variant) {
   const dayLoad = sameDay.length
   const scarcity = candidate.targetCandidateCount || 999
   let score = scarcity * 2 + availabilityDayOrder(candidate.day) * 6 + candidate.startMin / 60
+  score += (candidate.tierRank || 0) * 8
+  if (candidate.priorityMode === 'priority') score -= 120
+  if (candidate.priorityMode === 'flex') score += 120
   if (appointmentHasConsecutiveDay(candidate, scheduled)) score += appointmentConsecutiveModeIsStrict(candidate.consecutiveMode) ? 10000 : 90
   if (variant.id === 'balanced') score += dayLoad * 16
   if (variant.id === 'max') score += dayLoad * 4
@@ -3093,14 +3300,35 @@ function scoreAppointmentCandidate(candidate, scheduled, variant) {
     score += candidate.heatOverlap ? 260 + candidate.heatOverlap : 0
     score += dayLoad * 7
   }
+  if (variant.randomness) score += Math.random() * variant.randomness
   return score
 }
 
-function buildAppointmentScheduleVariant(results, variant, bufferMin) {
+function appointmentScheduledItemKey(item = {}) {
+  return String(item.previewId || `${item.targetId}:${item.day}:${item.startMin}:${item.lessonEndMin}`)
+}
+
+function normalizeAppointmentLockedSlots(lockedSlots = []) {
+  return (lockedSlots || []).map(item => ({
+    ...item,
+    locked: true,
+    previewId: item.previewId || appointmentScheduledItemKey(item),
+  }))
+}
+
+function buildAppointmentScheduleVariant(results, variant, bufferMin, options = {}) {
   const totalDemand = results.reduce((sum, result) => sum + result.weeklyCount, 0)
   const candidates = buildAppointmentScheduleCandidates(results, bufferMin)
   const remaining = new Map(results.map(result => [result.targetId, result.weeklyCount]))
   const scheduled = []
+  normalizeAppointmentLockedSlots(options.lockedSlots).forEach(item => {
+    if (!remaining.has(item.targetId)) return
+    if ((remaining.get(item.targetId) || 0) <= 0) return
+    if (appointmentSameTargetSameDay(item, scheduled)) return
+    if (appointmentCandidateConflicts(item, scheduled)) return
+    scheduled.push(item)
+    remaining.set(item.targetId, Math.max(0, (remaining.get(item.targetId) || 0) - 1))
+  })
   let guard = 0
   while (guard < totalDemand && scheduled.length < totalDemand) {
     guard += 1
@@ -3111,7 +3339,7 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin) {
       .filter(candidate => !appointmentCandidateConflicts(candidate, scheduled))
     if (!viable.length) break
     viable.sort((a, b) => scoreAppointmentCandidate(a, scheduled, variant) - scoreAppointmentCandidate(b, scheduled, variant))
-    const chosen = viable[0]
+    const chosen = { ...viable[0], previewId: `${variant.id}:${appointmentGenerationNonce}:${scheduled.length}:${viable[0].targetId}:${viable[0].day}:${viable[0].startMin}` }
     scheduled.push(chosen)
     remaining.set(chosen.targetId, (remaining.get(chosen.targetId) || 0) - 1)
   }
@@ -3146,18 +3374,126 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin) {
   }
 }
 
-function buildAppointmentScheduleVariants(results, bufferMin) {
-  const variants = [
+function appointmentScheduleVariantDefinitions() {
+  return [
     { id: 'max', title: 'Massima copertura', note: 'Piazza il maggior numero di lezioni, dando priorita a chi ha meno finestre disponibili.' },
     { id: 'compact', title: 'Compatta spostamenti', note: 'Tiene vicine nello stesso giorno le lezioni con stesso luogo, alias simili o coordinate vicine.' },
     { id: 'anti_heat', title: 'Anti-caldo', note: 'Evita il piu possibile le lezioni tra 13:00 e 15:30.' },
     { id: 'balanced', title: 'Distribuita', note: 'Distribuisce il carico sui giorni, utile quando non vuoi giornate troppo dense.' },
   ]
+}
+
+function buildAppointmentScheduleVariants(results, bufferMin) {
+  const variants = appointmentScheduleVariantDefinitions()
   return variants.map(variant => buildAppointmentScheduleVariant(results, variant, bufferMin))
+}
+
+function readAppointmentTravelRules() {
+  try {
+    const rows = JSON.parse(safeStorage.getItem(APPOINTMENT_TRAVEL_STORAGE_KEY) || '[]')
+    return Array.isArray(rows) ? rows : []
+  } catch {
+    return []
+  }
+}
+
+function writeAppointmentTravelRules(rows = []) {
+  safeStorage.setItem(APPOINTMENT_TRAVEL_STORAGE_KEY, JSON.stringify(rows))
+}
+
+function appointmentTravelRuleKey(fromKey, toKey) {
+  const keys = [normalizeMapMatchText(fromKey), normalizeMapMatchText(toKey)].filter(Boolean).sort()
+  return keys.length === 2 ? `${keys[0]}::${keys[1]}` : ''
+}
+
+function appointmentTravelRuleFor(fromKey, toKey) {
+  const key = appointmentTravelRuleKey(fromKey, toKey)
+  if (!key) return null
+  return readAppointmentTravelRules().find(rule => rule.key === key) || null
+}
+
+function appointmentTravelMinutesBetween(a, b) {
+  if (!a || !b) return 0
+  const fromKey = a.routeEndKey || a.locationKey
+  const toKey = b.routeStartKey || b.locationKey
+  if (fromKey && toKey && normalizeMapMatchText(fromKey) === normalizeMapMatchText(toKey)) return 0
+  const rule = appointmentTravelRuleFor(fromKey, toKey)
+  if (rule) return Math.max(0, parseInt(rule.minutes, 10) || 0)
+  return APPOINTMENT_BUFFER_MIN
+}
+
+function appointmentPreviewRangeStyle(startMin, endMin) {
+  const dayStart = AVAILABILITY_START_MIN
+  const dayEnd = AVAILABILITY_END_MIN
+  const top = ((Math.max(dayStart, startMin) - dayStart) / (dayEnd - dayStart)) * 100
+  const height = (Math.max(AVAILABILITY_STEP_MIN, Math.min(dayEnd, endMin) - Math.max(dayStart, startMin)) / (dayEnd - dayStart)) * 100
+  return `top:${top.toFixed(3)}%;height:${Math.max(1.6, height).toFixed(3)}%`
+}
+
+function appointmentPreviewExcludedBlocks(items = []) {
+  const blocks = []
+  normalizeAvailabilitySlots(maestroExcludedSlots).forEach(slot => blocks.push({ ...slot, label: 'Maestro', kind: 'maestro' }))
+  ;(items || []).forEach(item => {
+    const exclusions = item.targetType === 'gruppo'
+      ? availabilityExcludedSlotsForGroup(appointmentGroupFromTarget(item.targetId))
+      : availabilityExcludedSlotsForAllievo(allievoById(String(item.targetId).replace(/^allievo:/, '')))
+    normalizeAvailabilitySlots(exclusions).forEach(slot => blocks.push({ ...slot, label: item.targetName, kind: 'allievo' }))
+  })
+  const deduped = new Map()
+  blocks.forEach(slot => deduped.set(`${slot.kind}:${slot.label}:${slot.day}:${slot.start}:${slot.end}`, slot))
+  return [...deduped.values()]
 }
 
 function appointmentScheduleByDayHtml(items) {
   if (!items.length) return '<div class="availability-empty">Nessuna lezione piazzabile con le disponibilita correnti.</div>'
+  const excluded = appointmentPreviewExcludedBlocks(items)
+  return `
+    <div class="appointment-preview-calendar">
+      ${AVAILABILITY_DAYS.map(day => {
+        const dayItems = items
+          .filter(item => Number(item.day) === Number(day.value))
+          .sort((a, b) => a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), 'it', { sensitivity: 'base' }))
+        const dayExcluded = excluded.filter(slot => Number(slot.day) === Number(day.value))
+        const travelBlocks = dayItems.slice(0, -1).map((item, index) => {
+          const next = dayItems[index + 1]
+          const minutes = appointmentTravelMinutesBetween(item, next)
+          if (!minutes) return null
+          const startMin = Math.min(item.lessonEndMin, next.startMin)
+          const endMin = Math.min(next.startMin, startMin + minutes)
+          if (endMin <= startMin) return null
+          return { startMin, endMin, from: item.targetName, to: next.targetName, minutes }
+        }).filter(Boolean)
+        return `
+          <div class="appointment-preview-day" data-day="${day.value}" ondragover="event.preventDefault()" ondrop="dropAppointmentPreviewItem(event,${day.value})">
+            <div class="appointment-preview-day-title">${esc(day.short)}</div>
+            <div class="appointment-preview-lane">
+              ${dayExcluded.map(slot => {
+                const startMin = timeToMinutes(slot.start)
+                const endMin = timeToMinutes(slot.end)
+                return `<div class="appointment-preview-excluded" style="${appointmentPreviewRangeStyle(startMin, endMin)}" title="${esc(slot.label)} · ${esc(slot.start)}-${esc(slot.end)}"></div>`
+              }).join('')}
+              ${travelBlocks.map(block => `
+                <div class="appointment-preview-travel" style="${appointmentPreviewRangeStyle(block.startMin, block.endMin)}" title="Spostamento ${esc(block.from)} → ${esc(block.to)} · ${block.minutes} min">
+                  ${block.minutes}m
+                </div>`).join('')}
+              ${dayItems.map(item => {
+                const optionsText = item.targetCandidateCount > 1 ? `${item.targetCandidateCount} opzioni` : '1 opzione'
+                const modeText = item.priorityMode === 'priority' ? 'priorita' : item.priorityMode === 'flex' ? 'flessibile' : ''
+                return `
+                  <div class="appointment-preview-item${item.locked ? ' is-locked' : ''}" draggable="true" data-preview-id="${esc(appointmentScheduledItemKey(item))}" style="${appointmentPreviewRangeStyle(item.startMin, item.lessonEndMin)}" ondragstart="startAppointmentPreviewDrag(event,${jsArg(appointmentScheduledItemKey(item))})">
+                    <strong>${esc(item.start)}-${esc(item.lessonEnd)}</strong>
+                    <span>${esc(item.targetName)}</span>
+                    <small>${esc([optionsText, modeText, item.location].filter(Boolean).join(' · '))}</small>
+                    <button type="button" onclick="event.stopPropagation(); toggleAppointmentPreviewLock(${jsArg(appointmentScheduledItemKey(item))})" title="${item.locked ? 'Sblocca proposta' : 'Blocca proposta'}">${item.locked ? 'Fissa' : 'Blocca'}</button>
+                  </div>`
+              }).join('')}
+            </div>
+          </div>`
+      }).join('')}
+    </div>`
+}
+
+function appointmentScheduleByDayListHtml(items) {
   return AVAILABILITY_DAYS.map(day => {
     const dayItems = items.filter(item => Number(item.day) === Number(day.value))
     if (!dayItems.length) return ''
@@ -3175,6 +3511,61 @@ function appointmentScheduleByDayHtml(items) {
         </div>
       </div>`
   }).join('')
+}
+
+function appointmentPreviewItemById(previewId) {
+  if (!appointmentCurrentVariant) return null
+  const key = String(previewId)
+  return appointmentCurrentVariant.scheduled.find(item => appointmentScheduledItemKey(item) === key) || null
+}
+
+function normalizePreviewScheduledItem(item) {
+  const lessonDuration = item.lessonDuration || Math.max(AVAILABILITY_STEP_MIN, item.lessonEndMin - item.startMin)
+  return {
+    ...item,
+    start: minutesToTime(item.startMin),
+    lessonEndMin: item.startMin + lessonDuration,
+    lessonEnd: minutesToTime(item.startMin + lessonDuration),
+    blockEndMin: item.startMin + lessonDuration + APPOINTMENT_BUFFER_MIN,
+    blockEnd: minutesToTime(item.startMin + lessonDuration + APPOINTMENT_BUFFER_MIN),
+  }
+}
+
+function rerenderCurrentAppointmentPreview() {
+  if (!appointmentCurrentVariant) return renderAppointmentAgendaPreview()
+  appointmentCurrentVariant.scheduled.sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), 'it', { sensitivity: 'base' }))
+  renderAppointmentAgendaPreview()
+}
+
+function toggleAppointmentPreviewLock(previewId) {
+  const item = appointmentPreviewItemById(previewId)
+  if (!item) return
+  item.locked = !item.locked
+  rerenderCurrentAppointmentPreview()
+}
+
+function startAppointmentPreviewDrag(event, previewId) {
+  appointmentPreviewDragId = String(previewId)
+  event.dataTransfer?.setData('text/plain', appointmentPreviewDragId)
+  event.dataTransfer?.setDragImage?.(event.currentTarget, 12, 12)
+}
+
+function dropAppointmentPreviewItem(event, day) {
+  event.preventDefault()
+  const previewId = event.dataTransfer?.getData('text/plain') || appointmentPreviewDragId
+  const item = appointmentPreviewItemById(previewId)
+  const lane = event.currentTarget.querySelector('.appointment-preview-lane')
+  if (!item || !lane) return
+  const rect = lane.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)))
+  const duration = item.lessonDuration || Math.max(AVAILABILITY_STEP_MIN, item.lessonEndMin - item.startMin)
+  const rawStart = AVAILABILITY_START_MIN + ratio * (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN)
+  const startMin = availabilityClampStart(availabilitySnap(rawStart), duration + APPOINTMENT_BUFFER_MIN)
+  item.day = Number(day)
+  item.startMin = startMin
+  item.locked = true
+  Object.assign(item, normalizePreviewScheduledItem(item))
+  rerenderCurrentAppointmentPreview()
 }
 
 function appointmentPointDistance(a, b) {
@@ -3286,11 +3677,9 @@ function appointmentCurrentFallbackDuration() {
   return fallback
 }
 
-function renderAppointmentIntersections() {
-  const el = document.getElementById('appointments-intersections')
-  if (!el) return
+function buildAppointmentPlannerResults() {
   const fallbackDuration = appointmentCurrentFallbackDuration()
-  const filtered = filteredAppointmentAllievi()
+  const filtered = appointmentSelectedAllievi()
   const missing = []
   const maestroSlots = normalizeAvailabilitySlots(maestroAvailabilitySlots)
   const effectiveMaestroSlots = effectiveMaestroAvailabilitySlots()
@@ -3322,25 +3711,50 @@ function renderAppointmentIntersections() {
       routeEndKey: target.routeEndKey,
       routeEndPoint: target.routeEndPoint,
       routeIsItinerary: target.routeIsItinerary,
+      priorityMode: target.priorityMode,
+      tierRank: target.tierRank,
       windows,
       plan: chooseAppointmentWeeklyPlan(windows, target.weeklyCount, target.consecutiveMode),
     }
   })
-  const scheduleVariants = buildAppointmentScheduleVariants(targetResults, APPOINTMENT_BUFFER_MIN)
-  lastAppointmentScheduleVariants = scheduleVariants
+  return { fallbackDuration, missing, targets, targetResults }
+}
+
+function generateAppointmentAgenda(variantId) {
+  const el = document.getElementById('appointments-intersections')
+  if (!el) return
+  appointmentGenerationNonce += 1
+  const { fallbackDuration, missing, targets, targetResults } = buildAppointmentPlannerResults()
+  const definition = appointmentScheduleVariantDefinitions().find(item => item.id === variantId) || appointmentScheduleVariantDefinitions()[0]
+  const lockedSlots = appointmentCurrentVariant?.scheduled?.filter(item => item.locked) || []
+  const variant = buildAppointmentScheduleVariant(targetResults, { ...definition, randomness: 45 + (appointmentGenerationNonce % 7) * 9 }, APPOINTMENT_BUFFER_MIN, { lockedSlots })
+  appointmentCurrentVariant = variant
+  lastAppointmentScheduleVariants = [variant]
+  renderAppointmentAgendaPreview({ fallbackDuration, missing, targets, targetResults })
+}
+
+function renderAppointmentAgendaPreview(context = null) {
+  const el = document.getElementById('appointments-intersections')
+  if (!el) return
+  const data = context || buildAppointmentPlannerResults()
+  const { fallbackDuration, missing, targets, targetResults } = data
+  const totalDemand = targetResults.reduce((sum, result) => sum + result.weeklyCount, 0)
+  if (!appointmentCurrentVariant) {
+    el.innerHTML = `
+      ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(', '))}.</div>` : ''}
+      <div class="availability-empty">Scegli una tipologia agenda per generare la preview. Verranno considerati ${targets.length} element${targets.length === 1 ? 'o' : 'i'} e ${totalDemand} lezion${totalDemand === 1 ? 'e' : 'i'} richieste.</div>`
+    return
+  }
+  const scheduleVariants = [appointmentCurrentVariant]
   el.innerHTML = `
     ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(', '))}.</div>` : ''}
-    <div class="appointments-explainer">
-      <strong>Planner automatico</strong>
-      <span>Il gestionale prova a piazzare tutte le lezioni richieste nella settimana tipo. Ogni elemento usa la durata lezione salvata nella sua logistica; se manca, usa il fallback di ${fallbackDuration} min. A ogni lezione aggiunge ${APPOINTMENT_BUFFER_MIN} min di pausa/spostamento.</span>
-    </div>
     <div class="appointments-results">
       <div class="appointments-card-title">
-        <h3>Agende automatiche</h3>
-        <span>${targets.length} element${targets.length === 1 ? 'o' : 'i'} da pianificare · ${scheduleVariants[0]?.totalDemand || 0} lezion${(scheduleVariants[0]?.totalDemand || 0) === 1 ? 'e' : 'i'} richieste</span>
+        <h3>Preview agenda</h3>
+        <span>${targets.length} element${targets.length === 1 ? 'o' : 'i'} da pianificare · ${scheduleVariants[0]?.totalDemand || 0} lezion${(scheduleVariants[0]?.totalDemand || 0) === 1 ? 'e' : 'i'} richieste · fallback ${fallbackDuration} min</span>
       </div>
       <div id="appointments-calendar-status" class="appointments-status"></div>
-      <div class="appointment-schedule-grid">
+      <div>
         ${scheduleVariants.map(appointmentScheduleVariantHtml).join('')}
       </div>
     </div>`
@@ -3736,6 +4150,64 @@ function mappaVisibleRecords(records) {
   return records.filter(record => normalizeText(record.tipologia || 'Location') === target)
 }
 
+function renderTravelTimePanel(records = []) {
+  const options = records
+    .filter(record => record.nome)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it', { sensitivity: 'base' }))
+  const rules = readAppointmentTravelRules()
+  const optionHtml = '<option value="">Scegli location</option>' + options.map(record => `<option value="${esc(record.nome)}">${esc(record.nome)}</option>`).join('')
+  return `
+    <div class="map-panel">
+      <h3>Spostamenti medi</h3>
+      <div class="map-panel-meta">Questi tempi vengono mostrati nella preview appuntamenti come blocchi trasparenti tra due lezioni consecutive.</div>
+      <div class="map-travel-form">
+        <div class="field"><label>Da</label><select id="map-travel-from">${optionHtml}</select></div>
+        <div class="field"><label>A</label><select id="map-travel-to">${optionHtml}</select></div>
+        <div class="field"><label>Minuti</label><input id="map-travel-minutes" type="number" min="0" step="5" value="${APPOINTMENT_BUFFER_MIN}"></div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="saveMapTravelTime()">Salva</button>
+      </div>
+      <div id="map-travel-status" class="appointments-status"></div>
+      <div class="map-travel-list">
+        ${rules.length ? rules.map(rule => `
+          <div class="map-travel-row">
+            <span>${esc(rule.fromLabel)} - ${esc(rule.toLabel)}</span>
+            <strong>${Number(rule.minutes || 0)} min</strong>
+            <button type="button" class="btn btn-outline btn-xs" onclick="deleteMapTravelTime(${jsArg(rule.key)})">Rimuovi</button>
+          </div>`).join('') : '<div class="map-empty-inline">Nessuno spostamento personalizzato.</div>'}
+      </div>
+    </div>`
+}
+
+function setMapTravelStatus(text, cls = '') {
+  const el = document.getElementById('map-travel-status')
+  if (!el) return
+  el.textContent = text || ''
+  el.style.color = cls === 'err' ? 'var(--danger)' : (cls === 'ok' ? 'var(--success)' : 'var(--muted)')
+}
+
+function saveMapTravelTime() {
+  const fromLabel = document.getElementById('map-travel-from')?.value.trim() || ''
+  const toLabel = document.getElementById('map-travel-to')?.value.trim() || ''
+  const minutes = Math.max(0, parseInt(document.getElementById('map-travel-minutes')?.value, 10) || 0)
+  const key = appointmentTravelRuleKey(fromLabel, toLabel)
+  if (!key || normalizeMapMatchText(fromLabel) === normalizeMapMatchText(toLabel)) {
+    setMapTravelStatus('Scegli due location diverse.', 'err')
+    return
+  }
+  const rows = readAppointmentTravelRules().filter(rule => rule.key !== key)
+  rows.push({ key, fromLabel, toLabel, minutes, updatedAt: new Date().toISOString() })
+  rows.sort((a, b) => String(a.fromLabel).localeCompare(String(b.fromLabel), 'it', { sensitivity: 'base' }) || String(a.toLabel).localeCompare(String(b.toLabel), 'it', { sensitivity: 'base' }))
+  writeAppointmentTravelRules(rows)
+  if (appointmentCurrentVariant) rerenderCurrentAppointmentPreview()
+  renderMappa(mappaSelectedLocationName)
+}
+
+function deleteMapTravelTime(key) {
+  writeAppointmentTravelRules(readAppointmentTravelRules().filter(rule => rule.key !== key))
+  if (appointmentCurrentVariant) rerenderCurrentAppointmentPreview()
+  renderMappa(mappaSelectedLocationName)
+}
+
 async function renderMappa(selectedName) {
   const el = document.getElementById('mappa-content')
   if (!el) return
@@ -3829,6 +4301,8 @@ async function renderMappa(selectedName) {
             </div>
           ` : ''}
         </div>
+
+        ${renderTravelTimePanel(records)}
 
         <div class="map-panel map-points-panel${mappaPuntiEspansi ? ' is-expanded' : ''}">
           <div class="map-panel-title-row">
@@ -4176,7 +4650,8 @@ function allieviVisibiliGod() {
 
 function ordinaAllieviLista(lista) {
   return [...lista].sort((a, b) => {
-    if (!!a.vip !== !!b.vip) return a.vip ? -1 : 1
+    const tierDelta = allievoTierRank(a) - allievoTierRank(b)
+    if (tierDelta) return tierDelta
     return String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' })
       || String(a.cognome || '').localeCompare(String(b.cognome || ''), 'it', { sensitivity: 'base' })
       || String(a.nickname || '').localeCompare(String(b.nickname || ''), 'it', { sensitivity: 'base' })
@@ -4642,13 +5117,13 @@ function renderAllievi() {
       <col style="width:28%">
       <col style="width:19%">
       <col style="width:14%">
-      <col style="width:6%">
+      <col style="width:7%">
       <col>
       <col style="width:52px">
     </colgroup>`
   const renderAllievoRow = (a, extraClass = '') => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
-      <td style="width:42px;text-align:center;white-space:nowrap">${a.vip ? '<span class="vip-star">★</span>' : ''}${vacationIconHtml(allievoInVacanza(a))}</td>
+      <td style="width:42px;text-align:center;white-space:nowrap">${allievoTier(a) === 'VIP' ? '<span class="vip-star">★</span>' : ''}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
         <strong>${esc(a.nome)}</strong>
         ${a.tipo === 'associazione' ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ''}
@@ -4657,7 +5132,7 @@ function renderAllievi() {
       </td>
       <td>${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
       <td style="color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ''}</td>
-      <td>${a.livello_attuale}</td>
+      <td><span class="chip" title="Tier">${esc(allievoTier(a))}</span></td>
       <td>${esc(a.blocco_attuale)}</td>
       <td style="width:40px;text-align:center">
         <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
@@ -4702,7 +5177,7 @@ function renderAllievi() {
       <div class="table-wrap">
         <table>
           ${allieviColgroup}
-          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
+          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
           <tbody>
             ${senzaGruppo.map(renderAllievoRow).join('')}
             ${gruppiRows}
@@ -4717,7 +5192,7 @@ function renderAllievi() {
     <div class="table-wrap">
       <table>
         ${allieviColgroup}
-        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
         <tbody>
           ${lista.map(renderAllievoRow).join('')}
         </tbody>
@@ -4779,11 +5254,18 @@ async function setArchivio(on) {
 }
 
 function toggleVip() {
-  const btn = document.getElementById('na-vip-btn')
   const inp = document.getElementById('na-vip')
+  const tier = document.getElementById('na-tier')
+  if (!inp) return
   const isOn = inp.value === 'true'
   inp.value = String(!isOn)
-  btn.classList.toggle('on', !isOn)
+  if (tier) tier.value = !isOn ? 'VIP' : 'C'
+}
+
+function syncTierVipIndicator() {
+  const tier = document.getElementById('na-tier')?.value || 'C'
+  const inp = document.getElementById('na-vip')
+  if (inp) inp.value = String(tier === 'VIP')
 }
 
 function setDot(groupId, val) {
@@ -4833,10 +5315,10 @@ function initNuovoAllievo(id) {
   document.getElementById('na-in-vacanza').checked = allievo ? allievoInVacanzaDiretta(allievo) : false
   calcolaEtaForm()
 
-  // VIP
-  const vipVal = allievo?.vip === true
-  document.getElementById('na-vip').value = String(vipVal)
-  document.getElementById('na-vip-btn').classList.toggle('on', vipVal)
+  // Tier / VIP
+  const tierVal = allievo ? allievoTier(allievo) : 'C'
+  document.getElementById('na-tier').value = tierVal
+  document.getElementById('na-vip').value = String(tierVal === 'VIP')
 
   // Profilo logistica
   const indirizzoInput = document.getElementById('na-indirizzo')
@@ -5228,6 +5710,7 @@ async function salvaAllievo() {
     }).filter(f => f.nome || f.cognome || f.telefono)
 
     const inVacanza = !!document.getElementById('na-in-vacanza')?.checked
+    const tierValue = normalizeAllievoTier(document.getElementById('na-tier')?.value || 'C')
     const logisticaIndividuale = {
       durata_lezione:   parseInt(document.getElementById('na-durata').value)        || null,
       compenso:         parseFloat(document.getElementById('na-compenso').value)   || null,
@@ -5242,6 +5725,7 @@ async function salvaAllievo() {
       casa_latitudine:  addressEditable ? casaLat : (profiloOriginale.casa_latitudine ?? profiloOriginale.casa_lat ?? null),
       casa_longitudine: addressEditable ? casaLng : (profiloOriginale.casa_longitudine ?? profiloOriginale.casa_lng ?? profiloOriginale.casa_lon ?? null),
       indirizzo_condiviso: addressEditable ? !!document.getElementById('na-indirizzo-condiviso')?.checked : !!profiloOriginale.indirizzo_condiviso,
+      tier:             tierValue,
       cultura:          document.getElementById('na-cultura').value.trim()      || null,
       note_salute:      document.getElementById('na-note-salute').value.trim()  || null,
       scadenza_cert:    dateInputToIso(document.getElementById('na-cert').value)        || null,
@@ -5303,7 +5787,8 @@ async function salvaAllievo() {
   const payload = {
     nome, cognome, tipo,
     nickname:        isAss ? (document.getElementById('ass-nick').value.trim() || null) : (document.getElementById('na-nickname').value.trim() || null),
-    vip:             isAss ? false : document.getElementById('na-vip').value === 'true',
+    tier:            isAss ? 'C' : normalizeAllievoTier(document.getElementById('na-tier')?.value || 'C'),
+    vip:             isAss ? false : normalizeAllievoTier(document.getElementById('na-tier')?.value || 'C') === 'VIP',
     blocco_attuale:  isAss ? 'Base' : document.getElementById('na-blocco').value,
     gruppo:          isAss ? (document.getElementById('ass-gruppo').value.trim() || null) : (gruppoAttivo ? (document.getElementById('na-gruppo').value.trim() || null) : null),
     data_nascita:    isAss ? null : (dateInputToIso(document.getElementById('na-nascita').value) || null),
@@ -5322,14 +5807,14 @@ async function salvaAllievo() {
     let data, error
     if (savedId) {
       ;({ data, error } = await sb.from('allievi').update(payload).eq('id', savedId).select().single())
-      if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
-        const { aggiornato_il, ...compatPayload } = payload
+      if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || '')) {
+        const { aggiornato_il, tier, ...compatPayload } = payload
         ;({ data, error } = await sb.from('allievi').update(compatPayload).eq('id', savedId).select().single())
       }
     } else {
       ;({ data, error } = await sb.from('allievi').insert(payload).select().single())
-      if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
-        const { aggiornato_il, ...compatPayload } = payload
+      if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || '')) {
+        const { aggiornato_il, tier, ...compatPayload } = payload
         ;({ data, error } = await sb.from('allievi').insert(compatPayload).select().single())
       }
     }
@@ -5339,6 +5824,7 @@ async function salvaAllievo() {
       nome: 'nome',
       cognome: 'cognome',
       nickname: 'nickname',
+      tier: 'tier',
       vip: 'VIP',
       blocco_attuale: 'blocco',
       gruppo: 'gruppo',
@@ -5755,7 +6241,7 @@ async function salvaGruppo() {
             gruppo: nomeGruppo,
             data_iscrizione: oggi,
             note_generali: a.note || null,
-            profilo: { ...commonProfile, familiari: a.referenti },
+            profilo: { ...commonProfile, tier: 'C', familiari: a.referenti },
             maestro_id: writeUid,
           })
           if (error) throw error
@@ -5807,7 +6293,7 @@ async function salvaGruppo() {
           gruppo: nomeGruppo,
           data_iscrizione: oggi,
           note_generali: a.note || null,
-          profilo: { ...commonProfile, familiari: a.referenti },
+          profilo: { ...commonProfile, tier: 'C', familiari: a.referenti },
           maestro_id: writeUid,
         })
       }
@@ -6109,7 +6595,7 @@ async function loadScheda(id) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
           <div class="scheda-nome">
-            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievo.vip ? ' <span class="vip-star">★</span>' : ''}${vacationIconHtml(!!statoVacanza)}
+            ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievoTier(allievo) === 'VIP' ? ' <span class="vip-star">★</span>' : ''}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
        </div>
@@ -7719,7 +8205,7 @@ function stampaScheda(id) {
 
 <div class="header">
   <div>
-    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ''}${allievo.vip ? ' <span style="color:#22b8cf">★</span>' : ''}</h1>
+    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ''}${allievoTier(allievo) === 'VIP' ? ' <span style="color:#22b8cf">★</span>' : ''}</h1>
     <div class="meta">
       Iscritto il ${fmtDate(allievo.data_iscrizione)}${allievo.data_nascita ? ` · Nato il ${fmtDate(allievo.data_nascita)}` : ''}${allievo.gruppo ? ` · Gruppo: ${allievo.gruppo}` : ''}
     </div>
