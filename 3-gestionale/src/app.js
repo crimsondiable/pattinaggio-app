@@ -94,7 +94,7 @@ const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
 let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
 const availabilityUndoStacks = new Map()
-const availabilityEditUnlocked = new Set()
+const availabilityEditModes = new Map()
 let lastAppointmentScheduleVariants = []
 const importedAppointmentVariantIds = new Set()
 let godMode = false, godScope = 'all', shareContext = null
@@ -1575,7 +1575,7 @@ function loadMaestroExcludedSlots(metadata = {}) {
 }
 
 function setAvailabilityStatus(owner, text, cls = '') {
-  const el = document.getElementById(`${owner}-availability-status`)
+  const el = document.getElementById(`${availabilityBaseOwner(owner)}-availability-status`)
   if (!el) return
   el.textContent = text || ''
   el.style.color = cls === 'err' ? 'var(--danger)' : (cls === 'ok' ? 'var(--success)' : 'var(--muted)')
@@ -1668,6 +1668,10 @@ function availabilitySlotsForAllievo(allievo) {
   return normalizeAvailabilitySlots(allievo?.profilo?.disponibilita_slots || allievo?.profilo?.availability_slots || [])
 }
 
+function availabilityExcludedSlotsForAllievo(allievo) {
+  return normalizeAvailabilitySlots(allievo?.profilo?.disponibilita_escluse_slots || allievo?.profilo?.availability_excluded_slots || [])
+}
+
 function availabilitySlotsSignature(slots = []) {
   return JSON.stringify(normalizeAvailabilitySlots(slots).map(slot => ({
     day: Number(slot.day),
@@ -1681,6 +1685,10 @@ function availabilityGroupDedicatedSlotsForMember(member) {
   return normalizeAvailabilitySlots(member?.profilo?.disponibilita_gruppo_slots || member?.profilo?.group_availability_slots || [])
 }
 
+function availabilityGroupDedicatedExcludedSlotsForMember(member) {
+  return normalizeAvailabilitySlots(member?.profilo?.disponibilita_gruppo_escluse_slots || member?.profilo?.group_availability_excluded_slots || [])
+}
+
 function availabilitySlotsForGroup(gruppo) {
   const members = appointmentGroupMembers(gruppo)
   const source = members.find(member => availabilityGroupDedicatedSlotsForMember(member).length)
@@ -1689,10 +1697,24 @@ function availabilitySlotsForGroup(gruppo) {
   return legacySource ? availabilitySlotsForAllievo(legacySource) : []
 }
 
+function availabilityExcludedSlotsForGroup(gruppo) {
+  const members = appointmentGroupMembers(gruppo)
+  const source = members.find(member => availabilityGroupDedicatedExcludedSlotsForMember(member).length)
+  if (source) return availabilityGroupDedicatedExcludedSlotsForMember(source)
+  const legacySource = members.find(member => availabilityExcludedSlotsForAllievo(member).length)
+  return legacySource ? availabilityExcludedSlotsForAllievo(legacySource) : []
+}
+
 function availabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
   if (!target) return []
   if (target.type === 'gruppo') return availabilitySlotsForGroup(target.gruppo)
   return availabilitySlotsForAllievo(target.allievo)
+}
+
+function availabilityExcludedSlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return []
+  if (target.type === 'gruppo') return availabilityExcludedSlotsForGroup(target.gruppo)
+  return availabilityExcludedSlotsForAllievo(target.allievo)
 }
 
 function availabilityNoteForAppointmentTarget(target = selectedAppointmentTarget()) {
@@ -1801,7 +1823,12 @@ function appointmentLessonDurationForTarget(target = selectedAppointmentTarget()
 function availabilitySlotsForOwner(owner) {
   if (owner === 'maestro') return normalizeAvailabilitySlots(maestroAvailabilitySlots)
   if (owner === 'maestro-excluded') return normalizeAvailabilitySlots(maestroExcludedSlots)
+  if (owner === 'allievo-excluded') return availabilityExcludedSlotsForAppointmentTarget()
   return availabilitySlotsForAppointmentTarget()
+}
+
+function availabilityBaseOwner(owner) {
+  return availabilityOwnerIsExcluded(owner) ? String(owner).replace(/-excluded$/, '') : owner
 }
 
 function availabilityTargetUndoKey(target = selectedAppointmentTarget()) {
@@ -1813,6 +1840,7 @@ function availabilityTargetUndoKey(target = selectedAppointmentTarget()) {
 function availabilityOwnerKey(owner, target = selectedAppointmentTarget()) {
   if (owner === 'maestro') return 'maestro'
   if (owner === 'maestro-excluded') return 'maestro-excluded'
+  if (owner === 'allievo-excluded') return `${availabilityTargetUndoKey(target)}:excluded`
   return availabilityTargetUndoKey(target)
 }
 
@@ -1820,8 +1848,22 @@ function availabilityCanUndo(owner, target = selectedAppointmentTarget()) {
   return (availabilityUndoStacks.get(availabilityOwnerKey(owner, target)) || []).length > 0
 }
 
+function availabilityOwnerIsExcluded(owner) {
+  return String(owner || '').endsWith('-excluded')
+}
+
+function availabilityModeKey(owner, target = selectedAppointmentTarget()) {
+  return availabilityOwnerKey(availabilityBaseOwner(owner), target)
+}
+
+function availabilityPlannerMode(owner, target = selectedAppointmentTarget()) {
+  return availabilityEditModes.get(availabilityModeKey(owner, target)) || ''
+}
+
 function availabilityPlannerIsEditable(owner, target = selectedAppointmentTarget()) {
-  return availabilityEditUnlocked.has(availabilityOwnerKey(owner, target))
+  const mode = availabilityPlannerMode(owner, target)
+  if (!mode) return false
+  return availabilityOwnerIsExcluded(owner) ? mode === 'excluded' : mode === 'available'
 }
 
 function availabilityUndoSnapshot(slots = []) {
@@ -1836,25 +1878,40 @@ function pushAvailabilityUndo(owner, previousSlots, target = selectedAppointment
   availabilityUndoStacks.set(key, stack)
 }
 
-function setAvailabilityPlannerEditing(owner, enabled) {
-  const key = availabilityOwnerKey(owner)
-  if (enabled) availabilityEditUnlocked.add(key)
-  else availabilityEditUnlocked.delete(key)
+function setAvailabilityPlannerMode(owner, mode) {
+  const baseOwner = availabilityBaseOwner(owner)
+  const key = availabilityModeKey(baseOwner)
+  const normalizedMode = mode === 'excluded' ? 'excluded' : mode === 'available' ? 'available' : ''
+  const currentMode = availabilityEditModes.get(key) || ''
+  if (!normalizedMode || currentMode === normalizedMode) availabilityEditModes.delete(key)
+  else availabilityEditModes.set(key, normalizedMode)
   renderAppuntamenti()
-  setAvailabilityStatus(owner, enabled ? 'Modifica disponibilita attiva.' : 'Modifica disponibilita bloccata.', enabled ? 'ok' : '')
+  const nextMode = availabilityEditModes.get(key) || ''
+  setAvailabilityStatus(baseOwner, nextMode === 'excluded'
+    ? 'Inserimento fasce escluse attivo.'
+    : nextMode === 'available'
+      ? 'Inserimento disponibilita attivo.'
+      : 'Inserimento disattivato.',
+    nextMode ? 'ok' : '')
 }
 
-function unlockAvailabilityPlanner(owner) {
-  setAvailabilityPlannerEditing(owner, true)
-}
-
-function lockAvailabilityPlanner(owner) {
-  setAvailabilityPlannerEditing(owner, false)
+function availabilityModeControlsHtml(owner) {
+  const mode = availabilityPlannerMode(owner)
+  const availableActive = mode === 'available'
+  const excludedActive = mode === 'excluded'
+  const excludedOwner = `${owner}-excluded`
+  return `
+    <div class="availability-card-actions">
+      <button type="button" class="btn ${availableActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','available')">Inserisci disponibilita</button>
+      <button type="button" class="btn ${excludedActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','excluded')">Inserisci fasce escluse</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? '' : 'disabled'}>Undo disp.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? '' : 'disabled'}>Undo escl.</button>
+    </div>`
 }
 
 async function undoAvailability(owner) {
-  const target = owner === 'maestro' || owner === 'maestro-excluded' ? null : selectedAppointmentTarget()
-  if (owner !== 'maestro' && owner !== 'maestro-excluded' && !target) return
+  const target = availabilityBaseOwner(owner) === 'maestro' ? null : selectedAppointmentTarget()
+  if (availabilityBaseOwner(owner) !== 'maestro' && !target) return
   const key = availabilityOwnerKey(owner, target)
   const stack = availabilityUndoStacks.get(key) || []
   const previousSlots = stack.pop()
@@ -1908,41 +1965,36 @@ function availabilitySlotStyle(slot) {
   return `top:${top}px;height:${height}px`
 }
 
-function availabilityOwnerIsExcluded(owner) {
-  return owner === 'maestro-excluded'
-}
-
 function availabilitySlotBlockHtml(owner, slot, preview = false) {
   const excluded = availabilityOwnerIsExcluded(owner)
-  const cls = `${preview ? 'availability-drag-preview' : 'availability-slot-block'}${excluded ? ' is-excluded' : ''}`
+  const editable = !preview && availabilityPlannerIsEditable(owner)
+  const cls = `${preview ? 'availability-drag-preview' : 'availability-slot-block'}${excluded ? ' is-excluded' : ''}${!preview && !editable ? ' is-inactive' : ''}${editable ? ' is-editable' : ''}`
   const title = `${excluded ? 'Esclusa · ' : ''}${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` · ${slot.note}` : ''}`
-  const handlers = preview
+  const handlers = preview || !editable
     ? ''
     : `onpointerdown="startAvailabilityMove(event,'${owner}',${jsArg(slot.id)})" ondblclick="editAvailabilitySlotNote('${owner}',${jsArg(slot.id)})"`
   return `
     <div class="${cls}" style="${availabilitySlotStyle(slot)}" title="${esc(title)}" ${handlers}>
       <span class="availability-slot-time"><span>${esc(slot.start)}</span><span>${esc(slot.end)}</span></span>
       ${slot.note ? `<span class="availability-slot-note">${esc(slot.note)}</span>` : ''}
-      ${preview ? '' : `<button type="button" class="availability-slot-delete" onclick="event.stopPropagation(); removeAvailabilitySlot('${owner}',${jsArg(slot.id)})" title="Elimina fascia">×</button><div class="availability-slot-resize" onpointerdown="startAvailabilityResize(event,'${owner}',${jsArg(slot.id)})"></div>`}
+      ${editable ? `<button type="button" class="availability-slot-delete" onclick="event.stopPropagation(); removeAvailabilitySlot('${owner}',${jsArg(slot.id)})" title="Elimina fascia">×</button><div class="availability-slot-resize" onpointerdown="startAvailabilityResize(event,'${owner}',${jsArg(slot.id)})"></div>` : ''}
     </div>`
 }
 
-function availabilityPlannerHtml(owner, slots) {
+function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
   const normalized = normalizeAvailabilitySlots(slots)
+  const normalizedExcluded = normalizeAvailabilitySlots(excludedSlots)
   const byDay = new Map(AVAILABILITY_DAYS.map(day => [day.value, []]))
-  normalized.forEach(slot => byDay.get(Number(slot.day))?.push(slot))
+  normalized.forEach(slot => byDay.get(Number(slot.day))?.push({ owner, slot }))
+  normalizedExcluded.forEach(slot => byDay.get(Number(slot.day))?.push({ owner: `${owner}-excluded`, slot }))
+  byDay.forEach(items => items.sort((a, b) => timeToMinutes(a.slot.start) - timeToMinutes(b.slot.start) || timeToMinutes(a.slot.end) - timeToMinutes(b.slot.end) || (availabilityOwnerIsExcluded(a.owner) ? 1 : 0) - (availabilityOwnerIsExcluded(b.owner) ? 1 : 0)))
   const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`
-  const editable = availabilityPlannerIsEditable(owner)
-  const excluded = availabilityOwnerIsExcluded(owner)
+  const mode = availabilityPlannerMode(owner)
+  const editable = !!mode
   return `
-    <div class="availability-planner ${editable ? 'is-editing' : 'is-locked'}${excluded ? ' is-excluded-planner' : ''}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
-      <div class="availability-planner-help">${excluded ? 'Inserisci qui gli orari da togliere dalle disponibilita maestro: pause, impegni fissi, spostamenti o blocchi personali.' : 'Trascina in verticale per scegliere l orario e in orizzontale per coprire piu giorni. Trascina un blocco per spostarlo, usa il bordo basso per allungarlo o accorciarlo, doppio click per aggiungere una nota.'}</div>
+    <div class="availability-planner ${editable ? 'is-editing' : 'is-locked'}${mode === 'excluded' ? ' is-excluded-planner' : ''}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
+      <div class="availability-planner-help">${mode === 'excluded' ? 'Modalita fasce escluse: trascina per creare blocchi da sottrarre al planner.' : mode === 'available' ? 'Modalita disponibilita: trascina per creare orari utili al planner. Trascina un blocco per spostarlo, usa il bordo basso per ridimensionarlo, doppio click per una nota.' : 'Scegli Inserisci disponibilita o Inserisci fasce escluse prima di modificare la griglia.'}</div>
       <div class="availability-grid-wrap">
-        ${editable ? '' : `
-          <button type="button" class="availability-edit-cover" onclick="unlockAvailabilityPlanner('${owner}')">
-            <strong>${excluded ? 'Modifica fasce escluse' : 'Modifica disponibilita'}</strong>
-            <span>Tocca qui prima di cambiare la tabella.</span>
-          </button>`}
         <div class="availability-week-head">
           <div></div>
           ${AVAILABILITY_DAYS.map(day => `<div>${esc(day.short)}</div>`).join('')}
@@ -1953,11 +2005,11 @@ function availabilityPlannerHtml(owner, slots) {
           </div>
           ${AVAILABILITY_DAYS.map(day => `
             <div class="availability-day-col" data-owner="${owner}" data-day="${day.value}" onpointerdown="startAvailabilityCreate(event,'${owner}',${day.value})">
-              ${(byDay.get(day.value) || []).map(slot => availabilitySlotBlockHtml(owner, slot)).join('')}
+              ${(byDay.get(day.value) || []).map(item => availabilitySlotBlockHtml(item.owner, item.slot)).join('')}
             </div>`).join('')}
         </div>
       </div>
-      ${normalized.length ? `<div class="appointments-status">${normalized.length} fasc${normalized.length === 1 ? 'ia' : 'e'} ${excluded ? 'esclus' : 'inserit'}${normalized.length === 1 ? 'a' : 'e'}.</div>` : `<div class="availability-empty">${excluded ? 'Nessuna fascia esclusa: il planner usa tutte le disponibilita maestro inserite sopra.' : 'Nessuna fascia inserita: trascina dentro la griglia per crearne una.'}</div>`}
+      <div class="appointments-status">${normalized.length} disponibilita · ${normalizedExcluded.length} fasc${normalizedExcluded.length === 1 ? 'ia esclusa' : 'e escluse'}.</div>
     </div>`
 }
 
@@ -1969,14 +2021,12 @@ function renderAppuntamenti() {
   if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id
   const selectedTarget = selectedAppointmentTarget()
   const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget)
+  const selectedExcludedSlots = availabilityExcludedSlotsForAppointmentTarget(selectedTarget)
   const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget)
   const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget)
   const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget)
   const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
-  const maestroEditable = availabilityPlannerIsEditable('maestro')
-  const maestroExcludedEditable = availabilityPlannerIsEditable('maestro-excluded')
-  const allievoEditable = availabilityPlannerIsEditable('allievo')
   const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
 
@@ -1986,27 +2036,12 @@ function renderAppuntamenti() {
         <div class="appointments-card-head">
           <div class="appointments-card-title">
             <h3>Disponibilita maestro</h3>
-            <span>Fasce settimanali ricorrenti. Salvate localmente e, se possibile, nei dati utente.</span>
+            <span>Unica griglia: inserisci disponibilita o fasce escluse scegliendo la modalita.</span>
           </div>
-          <div class="availability-card-actions">
-            <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('maestro')" ${availabilityCanUndo('maestro') ? '' : 'disabled'}>Undo</button>
-            ${maestroEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'maestro\')">Blocca</button>' : ''}
-          </div>
+          ${availabilityModeControlsHtml('maestro')}
         </div>
-        ${availabilityPlannerHtml('maestro', maestroAvailabilitySlots)}
+        ${availabilityPlannerHtml('maestro', maestroAvailabilitySlots, maestroExcludedSlots)}
         <div class="appointments-status" id="maestro-availability-status"></div>
-        <div class="appointments-card-head" style="margin-top:1rem">
-          <div class="appointments-card-title">
-            <h3>Fasce escluse maestro</h3>
-            <span>Orari da sottrarre sempre al planner automatico: pause, impegni fissi o blocchi non prenotabili.</span>
-          </div>
-          <div class="availability-card-actions">
-            <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('maestro-excluded')" ${availabilityCanUndo('maestro-excluded') ? '' : 'disabled'}>Undo</button>
-            ${maestroExcludedEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'maestro-excluded\')">Blocca</button>' : ''}
-          </div>
-        </div>
-        ${availabilityPlannerHtml('maestro-excluded', maestroExcludedSlots)}
-        <div class="appointments-status" id="maestro-excluded-availability-status"></div>
       </div>
 
       <div class="card">
@@ -2016,10 +2051,7 @@ function renderAppuntamenti() {
             <span>${selectedTarget?.type === 'gruppo' ? 'Le fasce vengono salvate su tutti i membri attivi del gruppo selezionato.' : 'Le fasce vengono salvate nel profilo dell allievo selezionato.'}</span>
           </div>
           ${selectedTarget ? `
-            <div class="availability-card-actions">
-              <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('allievo')" ${availabilityCanUndo('allievo') ? '' : 'disabled'}>Undo</button>
-              ${allievoEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'allievo\')">Blocca</button>' : ''}
-            </div>` : ''}
+            ${availabilityModeControlsHtml('allievo')}` : ''}
         </div>
         <div class="field">
           <label>Allievo o gruppo</label>
@@ -2049,7 +2081,7 @@ function renderAppuntamenti() {
               </label>
             </div>
           </div>
-          ${availabilityPlannerHtml('allievo', selectedSlots)}
+          ${availabilityPlannerHtml('allievo', selectedSlots, selectedExcludedSlots)}
           <div class="field" style="margin-top:.75rem">
             <label>Note disponibilita</label>
             <textarea id="appointments-allievo-note" placeholder="Testo libero, vincoli dei genitori, preferenze...">${esc(selectedNote)}</textarea>
@@ -2122,12 +2154,9 @@ function filteredAppointmentAllievi() {
 }
 
 async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibilita salvata.', options = {}) {
-  const target = owner === 'maestro' || owner === 'maestro-excluded' ? null : selectedAppointmentTarget()
-  const previousSlots = owner === 'maestro'
-    ? availabilityUndoSnapshot(maestroAvailabilitySlots)
-    : owner === 'maestro-excluded'
-      ? availabilityUndoSnapshot(maestroExcludedSlots)
-      : availabilityUndoSnapshot(availabilitySlotsForAppointmentTarget(target))
+  const baseOwner = availabilityBaseOwner(owner)
+  const target = baseOwner === 'maestro' ? null : selectedAppointmentTarget()
+  const previousSlots = availabilityUndoSnapshot(availabilitySlotsForOwner(owner))
   if (!options.skipUndo && availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
     pushAvailabilityUndo(owner, previousSlots, target)
   }
@@ -2144,6 +2173,18 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
     return
   }
   if (!target) return
+  if (owner === 'allievo-excluded') {
+    if (target.type === 'gruppo') {
+      await saveGroupAvailabilityExclusions(target.gruppo, slots)
+      renderAppuntamenti()
+      setAvailabilityStatus('allievo', `${message} Salvata su ${target.members.length} sched${target.members.length === 1 ? 'a' : 'e'} del gruppo.`, 'ok')
+      return
+    }
+    await saveAllievoAvailabilityExclusions(target.allievo.id, slots, { individualTarget: true })
+    renderAppuntamenti()
+    setAvailabilityStatus('allievo', message, 'ok')
+    return
+  }
   if (target.type === 'gruppo') {
     await saveGroupAvailability(target.gruppo, slots)
     renderAppuntamenti()
@@ -2156,11 +2197,11 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
 }
 
 function availabilityDayColumn(owner, day) {
-  return document.querySelector(`.availability-day-col[data-owner="${owner}"][data-day="${day}"]`)
+  return document.querySelector(`.availability-day-col[data-owner="${availabilityBaseOwner(owner)}"][data-day="${day}"]`)
 }
 
 function availabilityDayFromPointer(owner, event) {
-  const cols = [...document.querySelectorAll(`.availability-day-col[data-owner="${owner}"]`)]
+  const cols = [...document.querySelectorAll(`.availability-day-col[data-owner="${availabilityBaseOwner(owner)}"]`)]
   return cols.find(col => {
     const rect = col.getBoundingClientRect()
     return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom
@@ -2189,14 +2230,20 @@ function bindAvailabilityDragEnd() {
 }
 
 function startAvailabilityCreate(event, owner, day) {
-  if (!availabilityPlannerIsEditable(owner)) return
+  const mode = availabilityPlannerMode(owner)
+  if (!mode) {
+    setAvailabilityStatus(owner, 'Scegli prima cosa inserire: disponibilita o fasce escluse.')
+    return
+  }
+  const targetOwner = mode === 'excluded' ? `${owner}-excluded` : owner
+  if (!availabilityPlannerIsEditable(targetOwner)) return
   if (event.button !== undefined && event.button !== 0) return
   if (event.target.closest('.availability-slot-block')) return
   const col = event.currentTarget
   const startMin = availabilityClampStart(availabilityMinutesFromEvent(event, col), AVAILABILITY_STEP_MIN)
   availabilityDragState = {
     mode: 'create',
-    owner,
+    owner: targetOwner,
     startDay: day,
     endDay: day,
     startMin,
@@ -2293,7 +2340,10 @@ async function finishAvailabilityPointerDrag() {
     ? [...slots, ...dragSlots.map(slot => ({ ...slot, id: newAvailabilityId() }))]
     : slots.map(item => String(item.id) === String(state.slotId) ? { ...dragSlots[0], id: item.id } : item)
   try {
-    await saveAvailabilitySlotsForOwner(state.owner, next, state.mode === 'create' ? (dragSlots.length > 1 ? 'Fasce create.' : 'Fascia creata.') : 'Fascia aggiornata.')
+    const excluded = availabilityOwnerIsExcluded(state.owner)
+    await saveAvailabilitySlotsForOwner(state.owner, next, state.mode === 'create'
+      ? (dragSlots.length > 1 ? (excluded ? 'Fasce escluse create.' : 'Fasce create.') : (excluded ? 'Fascia esclusa creata.' : 'Fascia creata.'))
+      : (excluded ? 'Fascia esclusa aggiornata.' : 'Fascia aggiornata.'))
   } catch (e) {
     setAvailabilityStatus(state.owner, e.message || 'Errore salvataggio fascia.', 'err')
   }
@@ -2317,7 +2367,7 @@ function availabilityCurrentDragSlotsFromState(state) {
 
 async function editAvailabilitySlotNote(owner, slotId) {
   if (!availabilityPlannerIsEditable(owner)) {
-    setAvailabilityStatus(owner, 'Premi Modifica disponibilita prima di cambiare la tabella.')
+    setAvailabilityStatus(owner, 'Attiva la modalita corretta prima di cambiare questa fascia.')
     return
   }
   const slots = availabilitySlotsForOwner(owner)
@@ -2335,22 +2385,12 @@ async function editAvailabilitySlotNote(owner, slotId) {
 
 async function removeAvailabilitySlot(owner, slotId) {
   if (!availabilityPlannerIsEditable(owner)) {
-    setAvailabilityStatus(owner, 'Premi Modifica disponibilita prima di cambiare la tabella.')
+    setAvailabilityStatus(owner, 'Attiva la modalita corretta prima di cambiare questa fascia.')
     return
   }
   try {
-    if (owner === 'maestro') {
-      await saveAvailabilitySlotsForOwner(owner, maestroAvailabilitySlots.filter(slot => String(slot.id) !== String(slotId)), 'Fascia rimossa.')
-      return
-    }
-    if (owner === 'maestro-excluded') {
-      await saveAvailabilitySlotsForOwner(owner, maestroExcludedSlots.filter(slot => String(slot.id) !== String(slotId)), 'Fascia esclusa rimossa.')
-      return
-    }
-    const target = selectedAppointmentTarget()
-    if (!target) return
-    const next = availabilitySlotsForAppointmentTarget(target).filter(slot => String(slot.id) !== String(slotId))
-    await saveAvailabilitySlotsForOwner(owner, next, 'Fascia rimossa.')
+    const next = availabilitySlotsForOwner(owner).filter(slot => String(slot.id) !== String(slotId))
+    await saveAvailabilitySlotsForOwner(owner, next, availabilityOwnerIsExcluded(owner) ? 'Fascia esclusa rimossa.' : 'Fascia rimossa.')
   } catch (e) {
     setAvailabilityStatus(owner, e.message || 'Errore rimozione fascia.', 'err')
   }
@@ -2418,6 +2458,33 @@ async function saveAllievoAvailability(allievoId, slots, noteValue = undefined, 
   logModificaLocale('allievo', allievoId, 'Aggiornate disponibilita')
 }
 
+async function saveAllievoAvailabilityExclusions(allievoId, slots, options = {}) {
+  const allievo = allievoById(allievoId)
+  if (!allievo) throw new Error('Allievo non trovato.')
+  const normalizedSlots = normalizeAvailabilitySlots(slots)
+  const profilo = {
+    ...(allievo.profilo || {}),
+    disponibilita_escluse_updated_at: new Date().toISOString(),
+  }
+  if (options.groupTarget) {
+    profilo.disponibilita_gruppo_escluse_slots = normalizedSlots
+    profilo.disponibilita_gruppo_escluse_updated_at = new Date().toISOString()
+    if (!appointmentIndividualLessonsActiveForAllievo(allievo)) profilo.disponibilita_escluse_slots = normalizedSlots
+  } else {
+    profilo.disponibilita_escluse_slots = normalizedSlots
+    if (allievo.gruppo && options.individualTarget) profilo.disponibilita_individuale_attiva = true
+  }
+  let payload = { profilo, aggiornato_il: new Date().toISOString() }
+  let { data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single()
+  if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+    payload = { profilo }
+    ;({ data, error } = await sb.from('allievi').update(payload).eq('id', allievoId).select().single())
+  }
+  if (error) throw error
+  allAllievi = allAllievi.map(a => String(a.id) === String(allievoId) ? (data || { ...a, ...payload }) : a)
+  logModificaLocale('allievo', allievoId, 'Aggiornate fasce escluse disponibilita')
+}
+
 async function saveAllievoAppointmentPreferences(allievoId, preferences) {
   const allievo = allievoById(allievoId)
   if (!allievo) throw new Error('Allievo non trovato.')
@@ -2448,6 +2515,14 @@ async function saveGroupAvailability(gruppo, slots, noteValue = undefined) {
   if (!members.length) throw new Error('Gruppo non trovato.')
   for (const member of members) {
     await saveAllievoAvailability(member.id, slots, noteValue, { groupTarget: true })
+  }
+}
+
+async function saveGroupAvailabilityExclusions(gruppo, slots) {
+  const members = appointmentGroupMembers(gruppo)
+  if (!members.length) throw new Error('Gruppo non trovato.')
+  for (const member of members) {
+    await saveAllievoAvailabilityExclusions(member.id, slots, { groupTarget: true })
   }
 }
 
@@ -2555,6 +2630,20 @@ function effectiveMaestroAvailabilitySlots() {
   return subtractAvailabilityExclusions(maestroAvailabilitySlots, maestroExcludedSlots)
 }
 
+function effectiveAvailabilitySlotsForAllievo(allievo) {
+  return subtractAvailabilityExclusions(availabilitySlotsForAllievo(allievo), availabilityExcludedSlotsForAllievo(allievo))
+}
+
+function effectiveAvailabilitySlotsForGroup(gruppo) {
+  return subtractAvailabilityExclusions(availabilitySlotsForGroup(gruppo), availabilityExcludedSlotsForGroup(gruppo))
+}
+
+function effectiveAvailabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return []
+  if (target.type === 'gruppo') return effectiveAvailabilitySlotsForGroup(target.gruppo)
+  return effectiveAvailabilitySlotsForAllievo(target.allievo)
+}
+
 function computeAvailabilityIntersectionsFromSources(appointmentSourcesInput, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
   const appointmentSources = (appointmentSourcesInput || []).filter(Boolean)
   if (!appointmentSources.length) return []
@@ -2612,7 +2701,7 @@ function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_
   const ids = (allievoIds || []).filter(Boolean)
   return computeAvailabilityIntersectionsFromSources(ids.map(id => {
     const allievo = allievoById(id)
-    return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: availabilitySlotsForAllievo(allievo) }
+    return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: effectiveAvailabilitySlotsForAllievo(allievo) }
   }), minDuration, bufferMin)
 }
 
@@ -2622,7 +2711,7 @@ function computeAvailabilityIntersectionsForTarget(target, minDuration = APPOINT
     return computeAvailabilityIntersectionsFromSources([{
       id: target.id,
       label: target.label,
-      slots: availabilitySlotsForGroup(target.gruppo),
+      slots: effectiveAvailabilitySlotsForGroup(target.gruppo),
     }], minDuration, bufferMin)
   }
   return computeAvailabilityIntersections(target.memberIds, minDuration, bufferMin)
@@ -2630,7 +2719,7 @@ function computeAvailabilityIntersectionsForTarget(target, minDuration = APPOINT
 
 function availabilitySlotsForAppointmentScheduleTarget(target) {
   if (!target) return []
-  return target.type === 'gruppo' ? availabilitySlotsForGroup(target.gruppo) : availabilitySlotsForAllievo(target.allievo)
+  return effectiveAvailabilitySlotsForAppointmentTarget(target)
 }
 
 function appointmentDayCombinations(days, count) {
