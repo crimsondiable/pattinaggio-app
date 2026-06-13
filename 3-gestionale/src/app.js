@@ -1612,6 +1612,49 @@ function appointmentSelectableAllievi() {
   return activeAppointmentAllievi()
 }
 
+function appointmentSelectionEntries(allievi = appointmentSelectableAllievi()) {
+  const entries = []
+  const grouped = new Set()
+  allievi.forEach(allievo => {
+    if (allievo.gruppo) {
+      if (!grouped.has(allievo.gruppo)) {
+        grouped.add(allievo.gruppo)
+        const members = appointmentGroupMembers(allievo.gruppo)
+        if (members.length) {
+          entries.push({
+            type: 'gruppo',
+            id: appointmentGroupTargetValue(allievo.gruppo),
+            gruppo: allievo.gruppo,
+            label: allievo.gruppo,
+            memberIds: members.map(member => String(member.id)),
+            meta: `${members.length} alliev${members.length === 1 ? 'o' : 'i'} del gruppo`,
+          })
+        }
+      }
+      if (!appointmentIndividualLessonsActiveForAllievo(allievo)) return
+    }
+    entries.push({
+      type: 'allievo',
+      id: String(allievo.id),
+      allievo,
+      label: lezioneTargetLabelAllievo(allievo),
+      memberIds: [String(allievo.id)],
+      meta: [allievoTier(allievo), allievo.gruppo ? 'individuale' : '', allievo.gruppo, vacationLabel(allievo)].filter(Boolean).join(' · '),
+    })
+  })
+  return entries
+}
+
+function appointmentSelectionEntryIsSelected(entry) {
+  const selected = appointmentSelectedAllieviIds || new Set()
+  return (entry.memberIds || []).length && entry.memberIds.every(id => selected.has(String(id)))
+}
+
+function appointmentSelectionEntryMode(entry) {
+  if (entry.type === 'gruppo') return appointmentTargetPriorityMode({ memberIds: entry.memberIds || [] })
+  return appointmentAllievoMode(entry.id)
+}
+
 function readAppointmentSelectedIds() {
   try {
     const raw = safeStorage.getItem(APPOINTMENT_SELECTION_STORAGE_KEY)
@@ -1671,8 +1714,9 @@ function appointmentTargetPriorityMode(target = {}) {
 
 function appointmentSelectionStats() {
   ensureAppointmentSelectionDefaults()
-  const total = appointmentSelectableAllievi().length
-  const selected = [...appointmentSelectedAllieviIds].filter(id => appointmentSelectableAllievi().some(a => String(a.id) === String(id))).length
+  const entries = appointmentSelectionEntries()
+  const total = entries.length
+  const selected = entries.filter(appointmentSelectionEntryIsSelected).length
   return { selected, total }
 }
 
@@ -2113,12 +2157,12 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
 function appointmentSelectionPanelHtml(allievi = []) {
   ensureAppointmentSelectionDefaults()
   ensureAppointmentPriorityModes()
-  const selected = appointmentSelectedAllieviIds || new Set()
   const stats = appointmentSelectionStats()
+  const entries = appointmentSelectionEntries(allievi)
   return `
     <div class="appointment-selector-panel">
       <div class="appointment-selector-head">
-        <strong>Allievi negli incroci</strong>
+        <strong>Elementi negli incroci</strong>
         <span>${stats.selected}/${stats.total} selezionati</span>
         <div class="appointment-selector-actions">
           <button type="button" class="btn btn-outline btn-xs" onclick="setAllAppointmentSelection(true)">Tutti</button>
@@ -2126,25 +2170,29 @@ function appointmentSelectionPanelHtml(allievi = []) {
         </div>
       </div>
       <div class="appointment-selector-list">
-        ${allievi.length ? allievi.map(allievo => {
-          const id = String(allievo.id)
-          const checked = selected.has(id)
-          const mode = appointmentAllievoMode(id)
-          const tier = allievoTier(allievo)
+        ${entries.length ? entries.map(entry => {
+          const checked = appointmentSelectionEntryIsSelected(entry)
+          const mode = appointmentSelectionEntryMode(entry)
+          const toggleCall = entry.type === 'gruppo'
+            ? `toggleAppointmentGroupSelection(${jsArg(entry.gruppo)}, this.checked)`
+            : `toggleAppointmentAllievoSelection(${jsArg(entry.id)}, this.checked)`
+          const modeCall = entry.type === 'gruppo'
+            ? `setAppointmentGroupPriorityMode(${jsArg(entry.gruppo)}, this.value)`
+            : `setAppointmentPriorityMode(${jsArg(entry.id)}, this.value)`
           return `
             <label class="appointment-selector-row${checked ? ' is-selected' : ''}">
-              <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleAppointmentAllievoSelection(${jsArg(id)}, this.checked)">
+              <input type="checkbox" ${checked ? 'checked' : ''} onchange="${toggleCall}">
               <span class="appointment-selector-name">
-                <strong>${esc(lezioneTargetLabelAllievo(allievo))}</strong>
-                <small>${esc([tier, allievo.gruppo, vacationLabel(allievo)].filter(Boolean).join(' · '))}</small>
+                <strong>${entry.type === 'gruppo' ? 'Gruppo ' : ''}${esc(entry.label)}</strong>
+                <small>${esc(entry.meta)}</small>
               </span>
-              <select onchange="setAppointmentPriorityMode(${jsArg(id)}, this.value)" ${checked ? '' : 'disabled'}>
+              <select onchange="${modeCall}" ${checked ? '' : 'disabled'}>
                 <option value="normal" ${mode === 'normal' ? 'selected' : ''}>Normale</option>
                 <option value="priority" ${mode === 'priority' ? 'selected' : ''}>Priorita</option>
                 <option value="flex" ${mode === 'flex' ? 'selected' : ''}>Flessibilita</option>
               </select>
             </label>`
-        }).join('') : '<div class="availability-empty">Nessun allievo attivo disponibile.</div>'}
+        }).join('') : '<div class="availability-empty">Nessun elemento attivo disponibile.</div>'}
       </div>
     </div>`
 }
@@ -2306,9 +2354,24 @@ function toggleAppointmentAllievoSelection(allievoId, checked) {
   renderAppuntamenti()
 }
 
+function toggleAppointmentGroupSelection(gruppo, checked) {
+  ensureAppointmentSelectionDefaults()
+  appointmentGroupMembers(gruppo).forEach(member => {
+    const id = String(member.id)
+    if (checked) appointmentSelectedAllieviIds.add(id)
+    else appointmentSelectedAllieviIds.delete(id)
+  })
+  writeAppointmentSelectedIds()
+  appointmentCurrentVariant = null
+  renderAppuntamenti()
+}
+
 function setAllAppointmentSelection(checked) {
   ensureAppointmentSelectionDefaults()
-  const visibleIds = filteredAppointmentAllievi().map(a => String(a.id))
+  const visibleIds = new Set()
+  appointmentSelectionEntries(filteredAppointmentAllievi()).forEach(entry => {
+    ;(entry.memberIds || []).forEach(id => visibleIds.add(String(id)))
+  })
   visibleIds.forEach(id => {
     if (checked) appointmentSelectedAllieviIds.add(id)
     else appointmentSelectedAllieviIds.delete(id)
@@ -2318,12 +2381,19 @@ function setAllAppointmentSelection(checked) {
   renderAppuntamenti()
 }
 
-function setAppointmentPriorityMode(allievoId, mode) {
+function setAppointmentPriorityMode(allievoId, mode, options = {}) {
   ensureAppointmentPriorityModes()
   const id = String(allievoId)
   if (mode === 'priority' || mode === 'flex') appointmentPriorityModes.set(id, mode)
   else appointmentPriorityModes.delete(id)
   writeAppointmentPriorityModes()
+  appointmentCurrentVariant = null
+  if (options.skipRender) return
+  renderAppuntamenti()
+}
+
+function setAppointmentGroupPriorityMode(gruppo, mode) {
+  appointmentGroupMembers(gruppo).forEach(member => setAppointmentPriorityMode(member.id, mode, { skipRender: true }))
   appointmentCurrentVariant = null
   renderAppuntamenti()
 }
