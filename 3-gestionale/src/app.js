@@ -63,7 +63,9 @@ const MILANO_COORD_HINTS = [
   { match: ['istituto leopardi', 'leopardi'], x: 599, y: 431, label: 'Centro ovest' },
 ]
 const MAESTRO_AVAILABILITY_METADATA_KEY = 'disponibilita_maestro_slots'
+const MAESTRO_EXCLUDED_METADATA_KEY = 'disponibilita_maestro_escluse_slots'
 const MAESTRO_AVAILABILITY_STORAGE_PREFIX = 'bladingManagerMaestroAvailability'
+const MAESTRO_EXCLUDED_STORAGE_PREFIX = 'bladingManagerMaestroExcluded'
 const CALENDARIO_METADATA_KEY = 'calendario_settimanale_items'
 const CALENDARIO_STORAGE_PREFIX = 'bladingManagerCalendarioSettimanale'
 const MAP_POINTS_EXPANDED_STORAGE_KEY = 'bladingManagerMappaPuntiEspansi'
@@ -89,7 +91,7 @@ const APPOINTMENT_HEAT_START_MIN = 13 * 60
 const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30
 const APPOINTMENT_CONSECUTIVE_PREFER = 'prefer'
 const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
-let maestroAvailabilitySlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
+let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
 const availabilityUndoStacks = new Map()
 const availabilityEditUnlocked = new Set()
@@ -404,6 +406,7 @@ async function initApp() {
   currentEmail = (user?.email || '').toLowerCase()
   currentUserMetadata = user?.user_metadata || {}
   maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata)
+  maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata)
   calendarioItems = loadCalendarioItems(currentUserMetadata)
 
   const [{ data: a }, { data: s }, { data: p }, { data: pr }] = await Promise.all([
@@ -1452,6 +1455,10 @@ function maestroAvailabilityStorageKey() {
   return `${MAESTRO_AVAILABILITY_STORAGE_PREFIX}:${currentUid || currentEmail || 'local'}`
 }
 
+function maestroExcludedStorageKey() {
+  return `${MAESTRO_EXCLUDED_STORAGE_PREFIX}:${currentUid || currentEmail || 'local'}`
+}
+
 function availabilityDayOrder(day) {
   return (Number(day) + 6) % 7
 }
@@ -1550,6 +1557,20 @@ function loadMaestroAvailabilitySlots(metadata = {}) {
   const remote = normalizeAvailabilitySlots(metadata?.[MAESTRO_AVAILABILITY_METADATA_KEY] || metadata?.disponibilita_maestro?.slots || [])
   const slots = remote.length ? remote : normalizeAvailabilitySlots(local)
   safeStorage.setItem(maestroAvailabilityStorageKey(), JSON.stringify(slots))
+  return slots
+}
+
+function loadMaestroExcludedSlots(metadata = {}) {
+  let local = []
+  try { local = JSON.parse(safeStorage.getItem(maestroExcludedStorageKey()) || '[]') || [] } catch { local = [] }
+  const remote = normalizeAvailabilitySlots(
+    metadata?.[MAESTRO_EXCLUDED_METADATA_KEY] ||
+    metadata?.disponibilita_maestro?.excluded_slots ||
+    metadata?.disponibilita_maestro?.fasce_escluse ||
+    []
+  )
+  const slots = remote.length ? remote : normalizeAvailabilitySlots(local)
+  safeStorage.setItem(maestroExcludedStorageKey(), JSON.stringify(slots))
   return slots
 }
 
@@ -1779,6 +1800,7 @@ function appointmentLessonDurationForTarget(target = selectedAppointmentTarget()
 
 function availabilitySlotsForOwner(owner) {
   if (owner === 'maestro') return normalizeAvailabilitySlots(maestroAvailabilitySlots)
+  if (owner === 'maestro-excluded') return normalizeAvailabilitySlots(maestroExcludedSlots)
   return availabilitySlotsForAppointmentTarget()
 }
 
@@ -1789,7 +1811,9 @@ function availabilityTargetUndoKey(target = selectedAppointmentTarget()) {
 }
 
 function availabilityOwnerKey(owner, target = selectedAppointmentTarget()) {
-  return owner === 'maestro' ? 'maestro' : availabilityTargetUndoKey(target)
+  if (owner === 'maestro') return 'maestro'
+  if (owner === 'maestro-excluded') return 'maestro-excluded'
+  return availabilityTargetUndoKey(target)
 }
 
 function availabilityCanUndo(owner, target = selectedAppointmentTarget()) {
@@ -1829,8 +1853,8 @@ function lockAvailabilityPlanner(owner) {
 }
 
 async function undoAvailability(owner) {
-  const target = owner === 'maestro' ? null : selectedAppointmentTarget()
-  if (owner !== 'maestro' && !target) return
+  const target = owner === 'maestro' || owner === 'maestro-excluded' ? null : selectedAppointmentTarget()
+  if (owner !== 'maestro' && owner !== 'maestro-excluded' && !target) return
   const key = availabilityOwnerKey(owner, target)
   const stack = availabilityUndoStacks.get(key) || []
   const previousSlots = stack.pop()
@@ -1884,9 +1908,14 @@ function availabilitySlotStyle(slot) {
   return `top:${top}px;height:${height}px`
 }
 
+function availabilityOwnerIsExcluded(owner) {
+  return owner === 'maestro-excluded'
+}
+
 function availabilitySlotBlockHtml(owner, slot, preview = false) {
-  const cls = preview ? 'availability-drag-preview' : 'availability-slot-block'
-  const title = `${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` · ${slot.note}` : ''}`
+  const excluded = availabilityOwnerIsExcluded(owner)
+  const cls = `${preview ? 'availability-drag-preview' : 'availability-slot-block'}${excluded ? ' is-excluded' : ''}`
+  const title = `${excluded ? 'Esclusa · ' : ''}${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` · ${slot.note}` : ''}`
   const handlers = preview
     ? ''
     : `onpointerdown="startAvailabilityMove(event,'${owner}',${jsArg(slot.id)})" ondblclick="editAvailabilitySlotNote('${owner}',${jsArg(slot.id)})"`
@@ -1904,13 +1933,14 @@ function availabilityPlannerHtml(owner, slots) {
   normalized.forEach(slot => byDay.get(Number(slot.day))?.push(slot))
   const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`
   const editable = availabilityPlannerIsEditable(owner)
+  const excluded = availabilityOwnerIsExcluded(owner)
   return `
-    <div class="availability-planner ${editable ? 'is-editing' : 'is-locked'}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
-      <div class="availability-planner-help">Trascina in verticale per scegliere l orario e in orizzontale per coprire piu giorni. Trascina un blocco per spostarlo, usa il bordo basso per allungarlo o accorciarlo, doppio click per aggiungere una nota.</div>
+    <div class="availability-planner ${editable ? 'is-editing' : 'is-locked'}${excluded ? ' is-excluded-planner' : ''}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
+      <div class="availability-planner-help">${excluded ? 'Inserisci qui gli orari da togliere dalle disponibilita maestro: pause, impegni fissi, spostamenti o blocchi personali.' : 'Trascina in verticale per scegliere l orario e in orizzontale per coprire piu giorni. Trascina un blocco per spostarlo, usa il bordo basso per allungarlo o accorciarlo, doppio click per aggiungere una nota.'}</div>
       <div class="availability-grid-wrap">
         ${editable ? '' : `
           <button type="button" class="availability-edit-cover" onclick="unlockAvailabilityPlanner('${owner}')">
-            <strong>Modifica disponibilita</strong>
+            <strong>${excluded ? 'Modifica fasce escluse' : 'Modifica disponibilita'}</strong>
             <span>Tocca qui prima di cambiare la tabella.</span>
           </button>`}
         <div class="availability-week-head">
@@ -1927,7 +1957,7 @@ function availabilityPlannerHtml(owner, slots) {
             </div>`).join('')}
         </div>
       </div>
-      ${normalized.length ? `<div class="appointments-status">${normalized.length} fasc${normalized.length === 1 ? 'ia' : 'e'} inserit${normalized.length === 1 ? 'a' : 'e'}.</div>` : '<div class="availability-empty">Nessuna fascia inserita: trascina dentro la griglia per crearne una.</div>'}
+      ${normalized.length ? `<div class="appointments-status">${normalized.length} fasc${normalized.length === 1 ? 'ia' : 'e'} ${excluded ? 'esclus' : 'inserit'}${normalized.length === 1 ? 'a' : 'e'}.</div>` : `<div class="availability-empty">${excluded ? 'Nessuna fascia esclusa: il planner usa tutte le disponibilita maestro inserite sopra.' : 'Nessuna fascia inserita: trascina dentro la griglia per crearne una.'}</div>`}
     </div>`
 }
 
@@ -1945,6 +1975,7 @@ function renderAppuntamenti() {
   const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
   const maestroEditable = availabilityPlannerIsEditable('maestro')
+  const maestroExcludedEditable = availabilityPlannerIsEditable('maestro-excluded')
   const allievoEditable = availabilityPlannerIsEditable('allievo')
   const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
@@ -1964,6 +1995,18 @@ function renderAppuntamenti() {
         </div>
         ${availabilityPlannerHtml('maestro', maestroAvailabilitySlots)}
         <div class="appointments-status" id="maestro-availability-status"></div>
+        <div class="appointments-card-head" style="margin-top:1rem">
+          <div class="appointments-card-title">
+            <h3>Fasce escluse maestro</h3>
+            <span>Orari da sottrarre sempre al planner automatico: pause, impegni fissi o blocchi non prenotabili.</span>
+          </div>
+          <div class="availability-card-actions">
+            <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('maestro-excluded')" ${availabilityCanUndo('maestro-excluded') ? '' : 'disabled'}>Undo</button>
+            ${maestroExcludedEditable ? '<button type="button" class="btn btn-outline btn-sm" onclick="lockAvailabilityPlanner(\'maestro-excluded\')">Blocca</button>' : ''}
+          </div>
+        </div>
+        ${availabilityPlannerHtml('maestro-excluded', maestroExcludedSlots)}
+        <div class="appointments-status" id="maestro-excluded-availability-status"></div>
       </div>
 
       <div class="card">
@@ -2079,8 +2122,12 @@ function filteredAppointmentAllievi() {
 }
 
 async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibilita salvata.', options = {}) {
-  const target = owner === 'maestro' ? null : selectedAppointmentTarget()
-  const previousSlots = owner === 'maestro' ? availabilityUndoSnapshot(maestroAvailabilitySlots) : availabilityUndoSnapshot(availabilitySlotsForAppointmentTarget(target))
+  const target = owner === 'maestro' || owner === 'maestro-excluded' ? null : selectedAppointmentTarget()
+  const previousSlots = owner === 'maestro'
+    ? availabilityUndoSnapshot(maestroAvailabilitySlots)
+    : owner === 'maestro-excluded'
+      ? availabilityUndoSnapshot(maestroExcludedSlots)
+      : availabilityUndoSnapshot(availabilitySlotsForAppointmentTarget(target))
   if (!options.skipUndo && availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
     pushAvailabilityUndo(owner, previousSlots, target)
   }
@@ -2088,6 +2135,12 @@ async function saveAvailabilitySlotsForOwner(owner, slots, message = 'Disponibil
     const saved = await saveMaestroAvailabilitySlots(slots)
     renderAppuntamenti()
     setAvailabilityStatus('maestro', saved.remote ? message : 'Salvata localmente. Sync online non disponibile.', saved.remote ? 'ok' : '')
+    return
+  }
+  if (owner === 'maestro-excluded') {
+    const saved = await saveMaestroExcludedSlots(slots)
+    renderAppuntamenti()
+    setAvailabilityStatus('maestro-excluded', saved.remote ? message : 'Salvata localmente. Sync online non disponibile.', saved.remote ? 'ok' : '')
     return
   }
   if (!target) return
@@ -2290,6 +2343,10 @@ async function removeAvailabilitySlot(owner, slotId) {
       await saveAvailabilitySlotsForOwner(owner, maestroAvailabilitySlots.filter(slot => String(slot.id) !== String(slotId)), 'Fascia rimossa.')
       return
     }
+    if (owner === 'maestro-excluded') {
+      await saveAvailabilitySlotsForOwner(owner, maestroExcludedSlots.filter(slot => String(slot.id) !== String(slotId)), 'Fascia esclusa rimossa.')
+      return
+    }
     const target = selectedAppointmentTarget()
     if (!target) return
     const next = availabilitySlotsForAppointmentTarget(target).filter(slot => String(slot.id) !== String(slotId))
@@ -2307,6 +2364,21 @@ async function saveMaestroAvailabilitySlots(slots) {
     ...currentUserMetadata,
     [MAESTRO_AVAILABILITY_METADATA_KEY]: maestroAvailabilitySlots,
     disponibilita_maestro_updated_at: new Date().toISOString(),
+  }
+  const { user, error } = await updateCurrentUserMetadata(payload)
+  if (error) return { remote: false, error }
+  currentUserMetadata = user?.user_metadata || payload
+  return { remote: true }
+}
+
+async function saveMaestroExcludedSlots(slots) {
+  maestroExcludedSlots = normalizeAvailabilitySlots(slots)
+  safeStorage.setItem(maestroExcludedStorageKey(), JSON.stringify(maestroExcludedSlots))
+  if (!sb?.auth) return { remote: false }
+  const payload = {
+    ...currentUserMetadata,
+    [MAESTRO_EXCLUDED_METADATA_KEY]: maestroExcludedSlots,
+    disponibilita_maestro_escluse_updated_at: new Date().toISOString(),
   }
   const { user, error } = await updateCurrentUserMetadata(payload)
   if (error) return { remote: false, error }
@@ -2436,12 +2508,59 @@ function slotsForDay(slots, day) {
     .map(slot => ({ ...slot, startMin: timeToMinutes(slot.start), endMin: timeToMinutes(slot.end) }))
 }
 
+function subtractAvailabilityExclusions(slots, exclusions) {
+  const excludedByDay = new Map()
+  normalizeAvailabilitySlots(exclusions).forEach(slot => {
+    const day = Number(slot.day)
+    if (!excludedByDay.has(day)) excludedByDay.set(day, [])
+    excludedByDay.get(day).push({
+      startMin: timeToMinutes(slot.start),
+      endMin: timeToMinutes(slot.end),
+    })
+  })
+  excludedByDay.forEach(items => items.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin))
+  const output = []
+  normalizeAvailabilitySlots(slots).forEach(slot => {
+    let segments = [{
+      startMin: timeToMinutes(slot.start),
+      endMin: timeToMinutes(slot.end),
+    }]
+    ;(excludedByDay.get(Number(slot.day)) || []).forEach(excluded => {
+      const nextSegments = []
+      segments.forEach(segment => {
+        const overlapStart = Math.max(segment.startMin, excluded.startMin)
+        const overlapEnd = Math.min(segment.endMin, excluded.endMin)
+        if (overlapEnd <= overlapStart) {
+          nextSegments.push(segment)
+          return
+        }
+        if (segment.startMin < overlapStart) nextSegments.push({ startMin: segment.startMin, endMin: overlapStart })
+        if (overlapEnd < segment.endMin) nextSegments.push({ startMin: overlapEnd, endMin: segment.endMin })
+      })
+      segments = nextSegments
+    })
+    segments
+      .filter(segment => segment.endMin - segment.startMin >= AVAILABILITY_STEP_MIN)
+      .forEach(segment => output.push({
+        ...slot,
+        id: `${slot.id}:${segment.startMin}-${segment.endMin}`,
+        start: minutesToTime(segment.startMin),
+        end: minutesToTime(segment.endMin),
+      }))
+  })
+  return normalizeAvailabilitySlots(output)
+}
+
+function effectiveMaestroAvailabilitySlots() {
+  return subtractAvailabilityExclusions(maestroAvailabilitySlots, maestroExcludedSlots)
+}
+
 function computeAvailabilityIntersectionsFromSources(appointmentSourcesInput, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
   const appointmentSources = (appointmentSourcesInput || []).filter(Boolean)
   if (!appointmentSources.length) return []
   const requiredDuration = minDuration + bufferMin
   const sources = [
-    { id: 'maestro', label: 'Maestro', slots: maestroAvailabilitySlots },
+    { id: 'maestro', label: 'Maestro', slots: effectiveMaestroAvailabilitySlots() },
     ...appointmentSources,
   ]
   if (sources.some(source => !normalizeAvailabilitySlots(source.slots).length)) return []
@@ -3084,7 +3203,10 @@ function renderAppointmentIntersections() {
   const fallbackDuration = appointmentCurrentFallbackDuration()
   const filtered = filteredAppointmentAllievi()
   const missing = []
-  if (!normalizeAvailabilitySlots(maestroAvailabilitySlots).length) missing.push('Maestro')
+  const maestroSlots = normalizeAvailabilitySlots(maestroAvailabilitySlots)
+  const effectiveMaestroSlots = effectiveMaestroAvailabilitySlots()
+  if (!maestroSlots.length) missing.push('Maestro')
+  else if (!effectiveMaestroSlots.length) missing.push('Maestro senza fasce utili dopo le esclusioni')
   const targets = appointmentSchedulableTargets(filtered)
   const withoutSlots = targets.filter(target => !availabilitySlotsForAppointmentScheduleTarget(target).length)
   if (withoutSlots.length) {

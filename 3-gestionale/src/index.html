@@ -273,6 +273,8 @@
     .availability-day-col { position: relative; height: var(--availability-grid-height); border-left: 1px solid rgba(148,163,184,.11); cursor: crosshair; touch-action: none; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.11) 0, rgba(148,163,184,.11) 1px, transparent 1px, transparent var(--availability-hour-px)); }
     .availability-day-col:hover { background-color: rgba(110,231,249,.025); }
     .availability-slot-block, .availability-drag-preview { position: absolute; left: .12rem; right: .12rem; border: 1px solid rgba(110,231,249,.46); border-radius: 5px; background: linear-gradient(135deg, rgba(34,184,207,.9), rgba(110,231,249,.86)); color: #041015; box-shadow: 0 8px 14px rgba(0,0,0,.2); padding: .22rem .24rem .36rem; overflow: hidden; cursor: grab; font-size: .66rem; line-height: 1.08; z-index: 3; }
+    .availability-slot-block.is-excluded, .availability-drag-preview.is-excluded { border-color: rgba(251,113,133,.54); background: linear-gradient(135deg, rgba(251,113,133,.92), rgba(253,186,116,.88)); color: #23070d; }
+    .availability-planner.is-excluded-planner .availability-day-col:hover { background-color: rgba(251,113,133,.035); }
     .availability-slot-block:active { cursor: grabbing; }
     .availability-drag-preview { pointer-events: none; opacity: .72; z-index: 5; }
     .availability-slot-time { display: flex; flex-wrap: wrap; gap: .04rem .18rem; font-weight: 900; white-space: normal; overflow: hidden; }
@@ -1649,7 +1651,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260611-map-points-expand-global';
+  var appVersion = '20260613-maestro-exclusions';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }
