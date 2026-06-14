@@ -344,17 +344,22 @@
     .appointments-warning { color: #facc15; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.24); border-radius: var(--r); padding: .6rem .7rem; font-size: .84rem; line-height: 1.38; margin-top: .75rem; }
     .appointments-status { color: var(--muted); font-size: .8rem; min-height: 1.15rem; margin-top: .55rem; }
     .appointment-schedule-actions { display: grid; justify-items: end; gap: .35rem; }
-    .appointment-preview-calendar { display: grid; grid-template-columns: repeat(7, minmax(86px,1fr)); gap: .4rem; min-width: 740px; overflow-x: auto; padding-bottom: .2rem; }
+    .appointment-preview-calendar { display: grid; grid-template-columns: 54px repeat(7, minmax(96px,1fr)); gap: .4rem; min-width: 850px; overflow-x: auto; padding-bottom: .2rem; }
     .appointment-preview-day { border: 1px solid rgba(148,163,184,.15); border-radius: calc(var(--r) - 2px); background: rgba(7,17,22,.28); overflow: hidden; }
     .appointment-preview-day-title { height: 26px; display: grid; place-items: center; color: var(--blu); font-size: .68rem; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid rgba(148,163,184,.14); background: rgba(255,255,255,.025); }
-    .appointment-preview-lane { position: relative; height: 390px; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.08) 0, rgba(148,163,184,.08) 1px, transparent 1px, transparent 6.25%); }
+    .appointment-preview-lane { position: relative; height: 760px; background: repeating-linear-gradient(to bottom, rgba(148,163,184,.08) 0, rgba(148,163,184,.08) 1px, transparent 1px, transparent 6.25%); }
+    .appointment-preview-time-rail { overflow: visible; background: transparent; border-color: transparent; }
+    .appointment-preview-time-title { height: 26px; border-bottom: 1px solid transparent; }
+    .appointment-preview-time-lane { background: transparent; }
+    .appointment-preview-hour-label { position: absolute; right: .2rem; transform: translateY(-50%); color: var(--muted); font-size: .62rem; line-height: 1; font-weight: 850; white-space: nowrap; }
     .appointment-preview-excluded { position: absolute; left: .18rem; right: .18rem; border: 1px solid rgba(251,113,133,.34); border-radius: 4px; background: rgba(251,113,133,.18); z-index: 1; }
     .appointment-preview-travel { position: absolute; left: .34rem; right: .34rem; border: 1px dashed rgba(250,204,21,.32); border-radius: 4px; background: rgba(250,204,21,.1); color: rgba(253,230,138,.86); display: grid; place-items: center; font-size: .58rem; font-weight: 900; z-index: 2; pointer-events: none; }
-    .appointment-preview-item { position: absolute; left: .26rem; right: .26rem; z-index: 3; border: 1px solid rgba(110,231,249,.42); border-radius: 5px; background: rgba(110,231,249,.82); color: #041015; padding: .2rem .22rem; display: grid; gap: .02rem; overflow: hidden; cursor: grab; box-shadow: 0 8px 14px rgba(0,0,0,.22); }
+    .appointment-preview-item { position: absolute; left: .26rem; right: .26rem; z-index: 3; border: 1px solid rgba(110,231,249,.42); border-radius: 5px; background: rgba(110,231,249,.82); color: #041015; padding: .28rem .34rem; display: grid; align-content: start; gap: .12rem; overflow: hidden; cursor: grab; box-shadow: 0 8px 14px rgba(0,0,0,.22); }
     .appointment-preview-item.is-locked { border-color: rgba(52,211,153,.72); box-shadow: 0 0 0 1px rgba(52,211,153,.28), 0 8px 14px rgba(0,0,0,.22); }
-    .appointment-preview-item strong { font-size: .66rem; line-height: 1.05; }
-    .appointment-preview-item span, .appointment-preview-item small { font-size: .58rem; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .appointment-preview-item button { position: absolute; top: .12rem; right: .12rem; border: 0; border-radius: 3px; background: rgba(4,16,21,.18); color: #041015; font-size: .54rem; font-weight: 900; cursor: pointer; padding: .08rem .16rem; }
+    .appointment-preview-item strong { font-size: .74rem; line-height: 1.12; padding-right: 1.6rem; }
+    .appointment-preview-item span { font-size: .68rem; line-height: 1.12; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .appointment-preview-item button { position: absolute; top: .14rem; right: .14rem; border: 0; border-radius: 3px; background: rgba(4,16,21,.18); color: #041015; font-size: .54rem; font-weight: 900; cursor: pointer; padding: .08rem .16rem; opacity: 0; transition: opacity .12s ease; }
+    .appointment-preview-item:hover button, .appointment-preview-item:focus-within button { opacity: 1; }
     .calendar-shell { padding: .7rem; }
     .calendar-shell-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
     .calendar-quick-title { color: var(--muted); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .45rem; }
@@ -1690,7 +1695,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260613-save-session-diagnostics';
+  var appVersion = '20260614-appointment-member-day-conflicts';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }

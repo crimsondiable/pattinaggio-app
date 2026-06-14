@@ -3164,6 +3164,9 @@ function appointmentLocationInfoForTarget(target) {
 }
 
 function hydrateAppointmentTarget(target, fallbackDuration) {
+  target.memberIds = (target.memberIds || target.members?.map(member => member.id) || [])
+    .map(id => String(id))
+    .filter(Boolean)
   target.weeklyCount = appointmentWeeklyCountForTarget(target)
   target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target)
   target.consecutiveMode = appointmentConsecutiveModeForTarget(target)
@@ -3234,6 +3237,7 @@ function appointmentTargetFromResult(result) {
     id: result.targetId,
     label: result.targetName,
     type: result.targetType,
+    memberIds: (result.memberIds || []).map(id => String(id)).filter(Boolean),
     weeklyCount: result.weeklyCount,
     avoidConsecutive: result.avoidConsecutive,
     consecutiveMode: result.consecutiveMode,
@@ -3268,6 +3272,7 @@ function buildAppointmentScheduleCandidates(results, bufferMin) {
           targetId: target.id,
           targetName: target.label,
           targetType: target.type,
+          memberIds: target.memberIds || [],
           weeklyCount: target.weeklyCount,
           avoidConsecutive: target.avoidConsecutive,
           consecutiveMode: target.consecutiveMode,
@@ -3312,6 +3317,25 @@ function appointmentCandidateConflicts(candidate, scheduled) {
 
 function appointmentSameTargetSameDay(candidate, scheduled) {
   return scheduled.some(item => item.targetId === candidate.targetId && Number(item.day) === Number(candidate.day))
+}
+
+function appointmentMemberIdsForScheduleItem(item = {}) {
+  if (Array.isArray(item.memberIds) && item.memberIds.length) return item.memberIds.map(id => String(id)).filter(Boolean)
+  if (item.targetType === 'gruppo' || appointmentTargetIsGroup(item.targetId)) {
+    return appointmentGroupMembers(appointmentGroupFromTarget(item.targetId)).map(member => String(member.id))
+  }
+  const rawId = String(item.targetId || '').replace(/^allievo:/, '')
+  return rawId ? [rawId] : []
+}
+
+function appointmentSameMemberSameDay(candidate, scheduled) {
+  const candidateIds = appointmentMemberIdsForScheduleItem(candidate)
+  if (!candidateIds.length) return false
+  const candidateSet = new Set(candidateIds)
+  return scheduled.some(item =>
+    Number(item.day) === Number(candidate.day) &&
+    appointmentMemberIdsForScheduleItem(item).some(id => candidateSet.has(String(id)))
+  )
 }
 
 function appointmentHasConsecutiveDay(candidate, scheduled) {
@@ -3418,7 +3442,7 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin, options = 
   normalizeAppointmentLockedSlots(options.lockedSlots).forEach(item => {
     if (!remaining.has(item.targetId)) return
     if ((remaining.get(item.targetId) || 0) <= 0) return
-    if (appointmentSameTargetSameDay(item, scheduled)) return
+    if (appointmentSameTargetSameDay(item, scheduled) || appointmentSameMemberSameDay(item, scheduled)) return
     if (appointmentCandidateConflicts(item, scheduled)) return
     scheduled.push(item)
     remaining.set(item.targetId, Math.max(0, (remaining.get(item.targetId) || 0) - 1))
@@ -3429,6 +3453,7 @@ function buildAppointmentScheduleVariant(results, variant, bufferMin, options = 
     const viable = candidates
       .filter(candidate => (remaining.get(candidate.targetId) || 0) > 0)
       .filter(candidate => !appointmentSameTargetSameDay(candidate, scheduled))
+      .filter(candidate => !appointmentSameMemberSameDay(candidate, scheduled))
       .filter(candidate => !appointmentViolatesStrictConsecutive(candidate, scheduled))
       .filter(candidate => !appointmentCandidateConflicts(candidate, scheduled))
     if (!viable.length) break
@@ -3524,6 +3549,27 @@ function appointmentPreviewRangeStyle(startMin, endMin) {
   return `top:${top.toFixed(3)}%;height:${Math.max(1.6, height).toFixed(3)}%`
 }
 
+function appointmentPreviewPointStyle(min) {
+  const dayStart = AVAILABILITY_START_MIN
+  const dayEnd = AVAILABILITY_END_MIN
+  const top = ((Math.max(dayStart, Math.min(dayEnd, min)) - dayStart) / (dayEnd - dayStart)) * 100
+  return `top:${top.toFixed(3)}%`
+}
+
+function appointmentPreviewHourLabelsHtml() {
+  const labels = []
+  for (let min = AVAILABILITY_START_MIN; min <= AVAILABILITY_END_MIN; min += 60) {
+    labels.push(`<span class="appointment-preview-hour-label" style="${appointmentPreviewPointStyle(min)}">${minutesToTime(min)}</span>`)
+  }
+  return `
+    <div class="appointment-preview-day appointment-preview-time-rail" aria-hidden="true">
+      <div class="appointment-preview-time-title"></div>
+      <div class="appointment-preview-lane appointment-preview-time-lane">
+        ${labels.join('')}
+      </div>
+    </div>`
+}
+
 function appointmentPreviewExcludedBlocks(items = []) {
   const blocks = []
   normalizeAvailabilitySlots(maestroExcludedSlots).forEach(slot => blocks.push({ ...slot, label: 'Maestro', kind: 'maestro' }))
@@ -3543,6 +3589,7 @@ function appointmentScheduleByDayHtml(items) {
   const excluded = appointmentPreviewExcludedBlocks(items)
   return `
     <div class="appointment-preview-calendar">
+      ${appointmentPreviewHourLabelsHtml()}
       ${AVAILABILITY_DAYS.map(day => {
         const dayItems = items
           .filter(item => Number(item.day) === Number(day.value))
@@ -3573,11 +3620,11 @@ function appointmentScheduleByDayHtml(items) {
               ${dayItems.map(item => {
                 const optionsText = item.targetCandidateCount > 1 ? `${item.targetCandidateCount} opzioni` : '1 opzione'
                 const modeText = item.priorityMode === 'priority' ? 'priorita' : item.priorityMode === 'flex' ? 'flessibile' : ''
+                const detailsText = [optionsText, modeText, item.location].filter(Boolean).join(' · ')
                 return `
-                  <div class="appointment-preview-item${item.locked ? ' is-locked' : ''}" draggable="true" data-preview-id="${esc(appointmentScheduledItemKey(item))}" style="${appointmentPreviewRangeStyle(item.startMin, item.lessonEndMin)}" ondragstart="startAppointmentPreviewDrag(event,${jsArg(appointmentScheduledItemKey(item))})">
-                    <strong>${esc(item.start)}-${esc(item.lessonEnd)}</strong>
-                    <span>${esc(item.targetName)}</span>
-                    <small>${esc([optionsText, modeText, item.location].filter(Boolean).join(' · '))}</small>
+                  <div class="appointment-preview-item${item.locked ? ' is-locked' : ''}" draggable="true" data-preview-id="${esc(appointmentScheduledItemKey(item))}" style="${appointmentPreviewRangeStyle(item.startMin, item.lessonEndMin)}" title="${esc(detailsText)}" ondragstart="startAppointmentPreviewDrag(event,${jsArg(appointmentScheduledItemKey(item))})">
+                    <strong>${esc(item.targetName)}</strong>
+                    <span>${esc(item.start)}-${esc(item.lessonEnd)}</span>
                     <button type="button" onclick="event.stopPropagation(); toggleAppointmentPreviewLock(${jsArg(appointmentScheduledItemKey(item))})" title="${item.locked ? 'Sblocca proposta' : 'Blocca proposta'}">${item.locked ? 'Fissa' : 'Blocca'}</button>
                   </div>`
               }).join('')}
@@ -3791,6 +3838,7 @@ function buildAppointmentPlannerResults() {
       targetId: target.id,
       targetName: target.label,
       targetType: target.type,
+      memberIds: target.memberIds || [],
       weeklyCount: target.weeklyCount,
       avoidConsecutive: target.avoidConsecutive,
       consecutiveMode: target.consecutiveMode,
