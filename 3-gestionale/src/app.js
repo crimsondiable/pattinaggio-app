@@ -1,13 +1,14 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
-let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard', pendingLessonLocation = null
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
+let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
 let mappaTipoFiltro = 'all', mappaSelectedLocationName = null, mappaSingleFocusName = null, mappaPuntiEspansi = false, mappaPuntiEspansiLoaded = false
 let calendarioSuggestTimer = null
 const lezioniColumnState = { data: false, luogo: false, note: false }
 const LEZIONE_DRAFT_KEY = 'lezioneDraftInCorso'
 const GROUP_SKILL_ROWS_KEY = '__group__'
+const FREE_LESSON_SKILL_ROWS_KEY = '__free__'
 const APP_NOTES_KEY = 'bladingManagerAppNotes'
 const APP_NOTES_REMOTE_KEY = 'gestionale'
 const LOCATION_MAP_COORDS_KEY = 'bladingManagerLocationMapCoords'
@@ -96,6 +97,7 @@ const APPOINTMENT_CONSECUTIVE_PREFER = 'prefer'
 const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
 let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
 let availabilityDragState = null
+let calendarioDragId = null
 let appointmentSelectedAllieviIds = null
 let appointmentPriorityModes = new Map()
 let appointmentCurrentVariant = null
@@ -351,6 +353,13 @@ document.addEventListener('pointerdown', e => {
   motion.press(target)
 })
 
+document.addEventListener('click', e => {
+  const newSkillBtn = e.target.closest('[data-lesson-action="new-skill"]')
+  if (!newSkillBtn || newSkillBtn.dataset.handledInline === '1') return
+  e.preventDefault()
+  addNewLessonSkillRow(newSkillBtn.dataset.ownerId)
+})
+
 // ── Auth ──────────────────────────────────────────────────────────────
 
 async function handleAuthSession(session) {
@@ -452,11 +461,12 @@ async function initApp() {
   allPrereqs = p || []
   allProgressi = pr || []
   skillDefinitions = await loadSkillDefinitions()
-  await loadLocations()
+  loadLocations().catch(error => console.warn('locations non precaricate', error))
   renderGodPanel()
   renderAllievi()
   const initialRoute = consumeInitialRoute()
   showView(initialRoute.name, initialRoute.id || undefined)
+  scheduleNuovaLezioneRouteRepair()
   refreshDashboardData()
 }
 
@@ -472,6 +482,21 @@ async function loadSkillDefinitions() {
 
 function isOwnedByCurrentMaestro(record = {}) {
   return !record?.maestro_id || String(record.maestro_id) === String(currentUid || '') || (godMode && isSuperMaestro())
+}
+
+function canShareAllievo(allievo = null) {
+  if (!allievo || !currentUid) return false
+  return isSuperMaestro() || !allievo.maestro_id || String(allievo.maestro_id) === String(currentUid)
+}
+
+function shareableGruppoMembri(gruppo) {
+  const membri = gruppoMembri(gruppo)
+  if (!membri.length || !membri.every(canShareAllievo)) return []
+  return membri
+}
+
+function canShareGruppo(gruppo) {
+  return !!gruppo && shareableGruppoMembri(gruppo).length > 0
 }
 
 function canEditAllievoAddress(allievo = null) {
@@ -562,18 +587,6 @@ function openLocationMaps(nomeOrId) {
   const url = locationGoogleMapsUrl(record)
   if (!url) return
   window.open(url, '_blank', 'noopener,noreferrer')
-}
-
-function useLocationForLesson(nomeOrId) {
-  const record = locationRecordById(nomeOrId) || locationRecordByName(nomeOrId) || { nome: nomeOrId }
-  pendingLessonLocation = { id: record.id || '', nome: record.nome || '' }
-  showView('nuova-lezione')
-  setTimeout(() => {
-    const select = document.getElementById('lz-location-id')
-    const input = document.getElementById('lz-luogo')
-    if (select && record.id) select.value = record.id
-    if (input) input.value = record.nome || ''
-  }, 120)
 }
 
 function canEditLocation(record = null) {
@@ -831,18 +844,8 @@ function addLocationNameCandidate(map, nome) {
 function addLessonLocationCandidates(map, lezione = {}) {
   const luogo = String(lezione.luogo || '').trim()
   if (!luogo) return
-  const parts = appointmentLocationRouteParts(luogo)
   const participants = lessonParticipantsFromLesson(lezione)
-  const homeLike = part => /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(normalizeMapMatchText(part))
-  if (parts.length > 1) {
-    parts.forEach(part => {
-      if (homeLike(part) && participants.length === 1) addLocationNameCandidate(map, `Casa di ${mappaAllievoHomeName(participants[0])}`)
-      else addLocationNameCandidate(map, part)
-    })
-    return
-  }
-  if (homeLike(luogo) && participants.length === 1) addLocationNameCandidate(map, `Casa di ${mappaAllievoHomeName(participants[0])}`)
-  else addLocationNameCandidate(map, luogo)
+  lessonLocationEntries(luogo, participants.map(a => a.id).filter(Boolean)).forEach(entry => addLocationNameCandidate(map, entry.nome))
 }
 
 function addDefaultMeetingLocationCandidates(map) {
@@ -975,6 +978,10 @@ window.addEventListener('popstate', event => {
   appHistoryApplying = false
 })
 
+window.addEventListener('hashchange', () => {
+  scheduleNuovaLezioneRouteRepair()
+})
+
 function visibleViewName() {
   return ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
@@ -1080,6 +1087,7 @@ function showView(name, id) {
     if (!appHistoryApplying && isValidLocationBackTarget(target)) setLocationBackTarget(target)
     else if (!locationBackTarget && storedTarget) locationBackTarget = storedTarget
   }
+  document.body.dataset.view = name
   document.body.classList.toggle('route-builder-active', name === 'percorsi')
   if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
     const returnTarget = previousReturnTarget
@@ -1098,7 +1106,12 @@ function showView(name, id) {
   if (name === 'mappa')         renderMappa(id || null)
   if (name === 'location' && id) loadLocation(id)
   if (name === 'lezione' && id) loadLezione(id)
-  if (name === 'nuova-lezione') initNuovaLezione(id || null)
+  if (name === 'nuova-lezione') {
+    initNuovaLezione(id || null).catch(error => {
+      console.error('Inizializzazione nuova lezione non riuscita', error)
+      fallbackNuovaLezioneForm(id || null)
+    })
+  }
   if (name === 'nuovo-allievo') initNuovoAllievo(id || null)
   if (name === 'nuovo-gruppo')  initNuovoGruppo(id || null)
   if (name === 'gruppo' && id)  loadGruppo(id)
@@ -1108,6 +1121,52 @@ function showView(name, id) {
   if (name === 'app-notes')     initAppNotes()
   requestAnimationFrame(() => motion.view(name))
   recordAppHistory(name, id || null)
+}
+
+function lezioneTargetStillLoading() {
+  const select = document.getElementById('lz-tipo')
+  return !!select && select.options.length === 1 && /Caricamento/i.test(select.options[0]?.textContent || '')
+}
+
+function ensurePrepFallbackTarget(routeId = null) {
+  const select = document.getElementById('lz-tipo')
+  if (!select) return
+  const isPrep = String(routeId || '').startsWith('modo:prep') || lezioneFormMode === 'prep'
+  if (!isPrep || select.value) return
+  if (![...select.options].some(option => option.value === 'campo_libero')) {
+    select.insertAdjacentHTML('beforeend', '<option value="campo_libero">Campo libero</option>')
+  }
+  select.value = 'campo_libero'
+}
+
+function fallbackNuovaLezioneForm(routeId = null) {
+  try {
+    if (String(routeId || '').startsWith('modo:prep')) lezioneFormMode = 'prep'
+    renderLezioneTargetOptions(document.getElementById('lz-tipo')?.value || '')
+    ensurePrepFallbackTarget(routeId)
+    syncLezioneFormLabels(!!editingLezioneId)
+    renderLezionePartecipanti()
+  } catch (fallbackError) {
+    console.error('Fallback nuova lezione non riuscito', fallbackError)
+  }
+}
+
+function repairNuovaLezioneRouteIfNeeded() {
+  if (document.getElementById('screen-app')?.hidden) return
+  const route = initialRouteFromHash(window.location.hash)
+  if (route.name !== 'nuova-lezione') return
+  const select = document.getElementById('lz-tipo')
+  const needsPrepOption = String(route.id || '').startsWith('modo:prep')
+    && ![...(select?.options || [])].some(option => option.value === 'campo_libero')
+  if (!lezioneTargetStillLoading() && !needsPrepOption) return
+  initNuovaLezione(route.id || null).catch(error => {
+    console.error('Inizializzazione nuova lezione non riuscita', error)
+    fallbackNuovaLezioneForm(route.id || null)
+  })
+}
+
+function scheduleNuovaLezioneRouteRepair() {
+  ;[250, 1000, 2500].forEach(delay => setTimeout(repairNuovaLezioneRouteIfNeeded, delay))
 }
 
 function ensureRouteBuilderMounted() {
@@ -1157,6 +1216,8 @@ function closeAppNotes() {
   }
   document.querySelectorAll('#screen-app main > section').forEach(section => { section.hidden = true })
   targetEl.hidden = false
+  document.body.dataset.view = target
+  document.body.classList.toggle('route-builder-active', target === 'percorsi')
   syncNavActive(target)
   requestAnimationFrame(() => motion.view(target))
 }
@@ -1196,6 +1257,7 @@ function normalizeCalendarioItems(items = []) {
         source: String(item.source || 'manuale'),
         targetId: item.targetId || null,
         variantId: item.variantId || null,
+        locked: item.locked === true || item.locked === 'true' || item.locked === 1 || item.locked === '1',
         created_at: item.created_at || new Date().toISOString(),
       }
     })
@@ -1238,6 +1300,49 @@ function calendarioSetStatus(text, cls = '') {
   el.textContent = text || ''
 }
 
+function calendarioItemById(id) {
+  return calendarioItems.find(item => String(item.id) === String(id)) || null
+}
+
+function calendarioHourLabelsHtml() {
+  const labels = []
+  for (let min = AVAILABILITY_START_MIN; min <= AVAILABILITY_END_MIN; min += 60) {
+    labels.push(`<span class="calendar-hour-label" style="${appointmentPreviewPointStyle(min)}">${minutesToTime(min)}</span>`)
+  }
+  return `
+    <div class="calendar-day calendar-time-rail" aria-hidden="true">
+      <div class="calendar-time-title"></div>
+      <div class="calendar-day-body calendar-time-lane">
+        ${labels.join('')}
+      </div>
+    </div>`
+}
+
+function calendarioItemDuration(item = {}) {
+  const startMin = timeToMinutes(item.start)
+  const endMin = timeToMinutes(item.end)
+  if (startMin === null || endMin === null || endMin <= startMin) return AVAILABILITY_STEP_MIN
+  return endMin - startMin
+}
+
+function calendarioItemBlockHtml(item) {
+  const startMin = timeToMinutes(item.start)
+  const endMin = timeToMinutes(item.end)
+  const meta = [item.location, item.note].filter(Boolean).join(' · ')
+  const source = item.source === 'appuntamenti' ? 'auto' : 'manuale'
+  const title = [item.title, `${item.start}-${item.end}`, source, meta].filter(Boolean).join(' · ')
+  return `
+    <div class="calendar-event-block${item.locked ? ' is-locked' : ''}" draggable="true" data-calendar-id="${esc(item.id)}" style="${appointmentPreviewRangeStyle(startMin, endMin)}" title="${esc(title)}" ondragstart="startCalendarioDrag(event,${jsArg(item.id)})">
+      <strong>${esc(item.title)}</strong>
+      <span>${esc(item.start)}-${esc(item.end)}</span>
+      ${meta ? `<small>${esc(meta)}</small>` : ''}
+      <div class="calendar-event-tools">
+        <button type="button" onclick="event.stopPropagation(); toggleCalendarioItemLock(${jsArg(item.id)})" title="${item.locked ? 'Sblocca voce' : 'Blocca voce'}">${item.locked ? 'Fissa' : 'Blocca'}</button>
+        <button type="button" onclick="event.stopPropagation(); deleteCalendarioItem(${jsArg(item.id)})" title="Elimina voce" aria-label="Elimina voce">×</button>
+      </div>
+    </div>`
+}
+
 function calendarioItemHtml(item) {
   const meta = [item.location, item.note].filter(Boolean).join(' · ')
   const source = item.source === 'appuntamenti' ? 'auto' : 'manuale'
@@ -1269,13 +1374,15 @@ function calendarioItemHtml(item) {
 
 function calendarioBoardHtml() {
   const normalized = normalizeCalendarioItems(calendarioItems)
-  return `<div class="calendar-board-wrap"><div class="calendar-board">${AVAILABILITY_DAYS.map(day => {
+  return `<div class="calendar-board-wrap"><div class="calendar-board">
+    ${calendarioHourLabelsHtml()}
+    ${AVAILABILITY_DAYS.map(day => {
     const items = normalized.filter(item => Number(item.day) === Number(day.value))
     return `
-      <div class="calendar-day">
+      <div class="calendar-day" data-day="${day.value}" ondragover="event.preventDefault()" ondrop="dropCalendarioItem(event,${day.value})">
         <div class="calendar-day-head"><strong>${esc(day.label)}</strong><span>${items.length} voc${items.length === 1 ? 'e' : 'i'}</span></div>
         <div class="calendar-day-body">
-          ${items.length ? items.map(calendarioItemHtml).join('') : '<div class="calendar-day-empty">Vuoto</div>'}
+          ${items.map(calendarioItemBlockHtml).join('')}
         </div>
       </div>`
   }).join('')}</div></div>`
@@ -1298,7 +1405,7 @@ function renderCalendario() {
         <div class="field place-suggest-wrap">
           <label>Titolo</label>
           <input type="text" id="cal-new-title" placeholder="Es. Lezione Marco" autocomplete="off" oninput="mostraSuggerimentiCalendarioTitolo()" onfocus="mostraSuggerimentiCalendarioTitolo()" onblur="nascondiSuggerimentiCalendarioSoon('cal-title-suggest')">
-          <div id="cal-title-suggest" class="place-suggest-panel" hidden></div>
+          <div id="cal-title-suggest" class="place-suggest-panel calendar-title-suggest-panel" hidden></div>
         </div>
         <div class="field">
           <label>Inizio</label>
@@ -1329,20 +1436,24 @@ function renderCalendario() {
 function calendarioTitleSuggestions(queryText = '') {
   const query = normalizeText(queryText)
   const rows = []
-  ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato')).forEach(allievo => {
+  const allievi = activeAppointmentAllievi()
+    .filter(allievo => !allievo.gruppo || appointmentIndividualLessonsActiveForAllievo(allievo))
+  ordinaAllieviLista(allievi).forEach(allievo => {
     const name = allievoDisplayName(allievo.id)
     const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
     const location = logistica.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : '') || ''
     const haystack = normalizeText([name, allievo.nome, allievo.cognome, allievo.nickname, allievo.gruppo, location].filter(Boolean).join(' '))
     if (!query || haystack.includes(query)) rows.push({ type: 'Allievo', title: name, location, detail: allievo.gruppo || location || '' })
   })
-  gruppiEsistenti().forEach(gruppo => {
-    const profilo = profiloComuneGruppo(gruppoMembri(gruppo))
+  appointmentGroups().forEach(gruppo => {
+    const members = appointmentGroupMembers(gruppo)
+    if (!members.length) return
+    const profilo = profiloComuneGruppo(members)
     const location = profilo.luogo_incontro || ''
     const haystack = normalizeText([gruppo, location].filter(Boolean).join(' '))
-    if (!query || haystack.includes(query)) rows.push({ type: 'Gruppo', title: gruppo, location, detail: `${gruppoMembri(gruppo).length} allievi${location ? ' · ' + location : ''}` })
+    if (!query || haystack.includes(query)) rows.push({ type: 'Gruppo', title: gruppo, location, detail: `${members.length} allievi${location ? ' · ' + location : ''}` })
   })
-  return rows.slice(0, 10)
+  return rows
 }
 
 function mostraSuggerimentiCalendarioTitolo() {
@@ -1431,6 +1542,41 @@ async function updateCalendarioItem(id, field, value) {
   calendarioSetStatus(saved.remote ? 'Calendario aggiornato.' : 'Calendario aggiornato localmente.', saved.remote ? 'ok' : '')
 }
 
+function startCalendarioDrag(event, id) {
+  calendarioDragId = String(id)
+  event.dataTransfer?.setData('text/plain', calendarioDragId)
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer?.setDragImage?.(event.currentTarget, 12, 12)
+}
+
+async function dropCalendarioItem(event, day) {
+  event.preventDefault()
+  const id = event.dataTransfer?.getData('text/plain') || calendarioDragId
+  const item = calendarioItemById(id)
+  const lane = event.currentTarget.querySelector('.calendar-day-body')
+  if (!item || !lane) return
+  const rect = lane.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)))
+  const duration = calendarioItemDuration(item)
+  const rawStart = AVAILABILITY_START_MIN + ratio * (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN)
+  const startMin = availabilityClampStart(availabilitySnap(rawStart), duration)
+  const next = calendarioItems.map(entry => String(entry.id) === String(id)
+    ? { ...entry, day: Number(day), start: minutesToTime(startMin), end: minutesToTime(startMin + duration) }
+    : entry)
+  const saved = await saveCalendarioItems(next)
+  renderCalendario()
+  calendarioSetStatus(saved.remote ? 'Voce spostata.' : 'Voce spostata localmente.', saved.remote ? 'ok' : '')
+}
+
+async function toggleCalendarioItemLock(id) {
+  const item = calendarioItemById(id)
+  if (!item) return
+  const next = calendarioItems.map(entry => String(entry.id) === String(id) ? { ...entry, locked: !entry.locked } : entry)
+  const saved = await saveCalendarioItems(next)
+  renderCalendario()
+  calendarioSetStatus(`${item.locked ? 'Voce sbloccata' : 'Voce bloccata'}${saved.remote ? '.' : ' localmente.'}`, saved.remote ? 'ok' : '')
+}
+
 async function deleteCalendarioItem(id) {
   const saved = await saveCalendarioItems(calendarioItems.filter(item => String(item.id) !== String(id)))
   renderCalendario()
@@ -1442,10 +1588,21 @@ async function clearCalendario() {
     calendarioSetStatus('Calendario gia vuoto.')
     return
   }
-  if (!confirm('Cancellare tutte le voci del calendario?')) return
-  const saved = await saveCalendarioItems([])
+  const locked = calendarioItems.filter(item => item.locked)
+  const unlocked = calendarioItems.filter(item => !item.locked)
+  if (!unlocked.length) {
+    calendarioSetStatus('Tutte le voci sono bloccate: non cancello nulla.')
+    return
+  }
+  const message = locked.length
+    ? `Cancellare ${unlocked.length} voc${unlocked.length === 1 ? 'e non bloccata' : 'i non bloccate'}? ${locked.length} voc${locked.length === 1 ? 'e bloccata restera' : 'i bloccate resteranno'} nel calendario.`
+    : 'Cancellare tutte le voci del calendario?'
+  if (!confirm(message)) return
+  const saved = await saveCalendarioItems(locked)
   renderCalendario()
-  calendarioSetStatus(saved.remote ? 'Calendario svuotato.' : 'Calendario svuotato localmente.', saved.remote ? 'ok' : '')
+  calendarioSetStatus(locked.length
+    ? `${unlocked.length} voc${unlocked.length === 1 ? 'e cancellata' : 'i cancellate'}; ${locked.length} bloccat${locked.length === 1 ? 'a conservata' : 'e conservate'}.`
+    : (saved.remote ? 'Calendario svuotato.' : 'Calendario svuotato localmente.'), saved.remote ? 'ok' : '')
 }
 
 async function addAppointmentVariantToCalendar(variantId) {
@@ -1677,6 +1834,54 @@ function appointmentSelectionEntryIsSelected(entry) {
 function appointmentSelectionEntryMode(entry) {
   if (entry.type === 'gruppo') return appointmentTargetPriorityMode({ memberIds: entry.memberIds || [] })
   return appointmentAllievoMode(entry.id)
+}
+
+function latestIsoDateValue(values = []) {
+  let latest = ''
+  let latestTime = -Infinity
+  ;(values || []).forEach(value => {
+    if (!value) return
+    const raw = String(value)
+    const parsed = Date.parse(raw)
+    const fallback = Date.parse(`${raw.slice(0, 10)}T12:00:00`)
+    const time = Number.isNaN(parsed) ? fallback : parsed
+    if (!Number.isNaN(time) && time > latestTime) {
+      latest = raw
+      latestTime = time
+    }
+  })
+  return latest
+}
+
+function appointmentAvailabilityUpdatedAtForAllievo(allievo = {}, mode = 'individuale') {
+  const profilo = allievo?.profilo || {}
+  if (mode === 'gruppo') {
+    return latestIsoDateValue([
+      profilo.disponibilita_gruppo_updated_at,
+      profilo.disponibilita_gruppo_escluse_updated_at,
+    ])
+  }
+  return latestIsoDateValue([
+    profilo.disponibilita_updated_at,
+    profilo.disponibilita_escluse_updated_at,
+  ])
+}
+
+function appointmentAvailabilityUpdatedAtForTarget(target) {
+  if (!target) return ''
+  if (target.type === 'gruppo') {
+    return latestIsoDateValue((target.members || []).flatMap(member => [
+      appointmentAvailabilityUpdatedAtForAllievo(member, 'gruppo'),
+    ]))
+  }
+  return appointmentAvailabilityUpdatedAtForAllievo(target.allievo, 'individuale')
+}
+
+function appointmentAvailabilityUpdatedHtml(target) {
+  if (!target) return ''
+  const updatedAt = appointmentAvailabilityUpdatedAtForTarget(target)
+  const label = updatedAt ? formatDateWithWeekday(updatedAt) : 'non disponibile'
+  return `<div class="appointments-availability-updated">Ultima modifica disponibilita: <strong>${esc(label)}</strong></div>`
 }
 
 function readAppointmentSelectedIds() {
@@ -2279,6 +2484,7 @@ function renderAppuntamenti() {
             ${availabilityTargetOptions(appuntamentiSelectedAllievoId)}
           </select>
         </div>
+        ${appointmentAvailabilityUpdatedHtml(selectedTarget)}
         ${selectedTarget ? `
           <div class="appointments-preferences">
             <div class="field">
@@ -3114,6 +3320,30 @@ function appointmentLocationRouteParts(location) {
     .filter(Boolean)
 }
 
+function lessonLocationPartIsHome(part = '') {
+  const key = normalizeMapMatchText(part)
+  return !key || /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(key)
+}
+
+function lessonLocationEntries(luogo, allieviIds = []) {
+  const rawParts = appointmentLocationRouteParts(luogo)
+  const parts = rawParts.length ? rawParts : [String(luogo || '').trim()].filter(Boolean)
+  const linked = allieviIds.length === 1 ? allievoById(allieviIds[0]) : null
+  return parts
+    .map(part => {
+      const clean = String(part || '').trim()
+      if (!clean) return null
+      const homeLike = lessonLocationPartIsHome(clean)
+      const nome = homeLike && linked ? `Casa di ${mappaAllievoHomeName(linked)}` : clean
+      return { raw: clean, nome, homeLike, allievo: homeLike ? linked : null }
+    })
+    .filter(Boolean)
+}
+
+function missingLessonLocationEntries(luogo, allieviIds = []) {
+  return lessonLocationEntries(luogo, allieviIds).filter(entry => !locationRecordByName(entry.nome))
+}
+
 function appointmentHomeLocationRecord(allievo, fallbackName = 'casa') {
   const address = allievo ? visibleAllievoAddress(allievo) : {}
   const homeName = allievo ? `Casa di ${mappaAllievoHomeName(allievo)}` : fallbackName
@@ -3807,6 +4037,10 @@ function appointmentScheduleVariantHtml(variant) {
         <strong>Non piazzate</strong>
         ${variant.unplaced.map(item => `<span>${esc(item.targetName)}: ${item.missing} · ${esc(item.reason)}</span>`).join('')}
       </div>` : ''}
+      <div class="appointment-preview-toolbar">
+        <span>Le lezioni bloccate restano ferme.</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="generateAppointmentAgenda(${jsArg(variant.id)})">Nuovo suggerimento</button>
+      </div>
       ${appointmentScheduleByDayHtml(variant.scheduled)}
     </div>`
 }
@@ -4216,7 +4450,6 @@ function renderLocationCardActions(record = {}) {
   const mapsUrl = locationGoogleMapsUrl(record)
   return `<div class="map-location-actions">
     ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ''}
-    <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); useLocationForLesson(${jsArg(record.id || record.nome)})">Usa</button>
     <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); showView('location',${jsArg(record.nome)})">Modifica</button>
   </div>`
 }
@@ -4281,7 +4514,6 @@ function renderMappaPopup(record = {}, point = null) {
     <span>${Number(record.lessonCount || 0)} lezion${Number(record.lessonCount || 0) === 1 ? 'e' : 'i'}</span>
     <div class="map-marker-popup-actions">
       ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ''}
-      <button type="button" class="btn btn-outline btn-xs" onclick="useLocationForLesson(${jsArg(record.id || record.nome)})">Nuova lezione</button>
     </div>
   </div>`
 }
@@ -4709,14 +4941,17 @@ async function salvaLocation(originalName) {
   renderDashboard()
 }
 
-async function ensureLocationDaLezione(luogo, allieviIds = []) {
-  const nome = String(luogo || '').trim()
+async function ensureSingleLocationDaLezione(entry, allieviIds = []) {
+  const nome = String(entry?.nome || '').trim()
   if (!nome || locationRecordByName(nome)) return
-  const linked = allieviIds.length === 1 ? allAllievi.find(a => a.id === allieviIds[0]) : null
+  const linked = entry?.allievo || (entry?.homeLike && allieviIds.length === 1 ? allievoById(allieviIds[0]) : null)
+  const address = linked ? visibleAllievoAddress(linked) : {}
   const payload = {
     nome,
-    tipologia: linked && /casa|home|abitazione/i.test(nome) ? 'Casa allievo' : 'Location',
-    indirizzo: linked ? (visibleAllievoAddress(linked).indirizzo || null) : null,
+    tipologia: entry?.homeLike ? 'Casa allievo' : 'Location',
+    indirizzo: entry?.homeLike && linked ? (address.casa || address.indirizzo || null) : null,
+    latitudine: entry?.homeLike && linked ? (address.casa_latitudine ?? null) : null,
+    longitudine: entry?.homeLike && linked ? (address.casa_longitudine ?? null) : null,
     allievo_id: linked?.id || null,
     maestro_id: currentUid || null,
     condivisa: false,
@@ -4730,12 +4965,19 @@ async function ensureLocationDaLezione(luogo, allieviIds = []) {
       const local = JSON.parse(safeStorage.getItem('locationsLocal') || '[]').filter(l => !localLocationMatches(l, payload, nome))
       local.push(payload)
       safeStorage.setItem('locationsLocal', JSON.stringify(local))
-      allLocations = local
+      allLocations = local.map(locationWithLocalMapCoords)
       locationsLoaded = true
     }
     return
   }
   await loadLocations(true)
+}
+
+async function ensureLocationDaLezione(luogo, allieviIds = []) {
+  const entries = missingLessonLocationEntries(luogo, allieviIds)
+  for (const entry of entries) {
+    await ensureSingleLocationDaLezione(entry, allieviIds)
+  }
 }
 
 async function apriSchedaAllievoDaLezione(allievoId) {
@@ -4809,12 +5051,153 @@ function scheduleGlobalSearch() {
   globalSearchTimer = setTimeout(renderGlobalSearch, 120)
 }
 
+function resetGlobalSearchPanelPosition(panel) {
+  if (!panel) return
+  panel.classList.remove('is-fixed')
+  panel.style.removeProperty('left')
+  panel.style.removeProperty('top')
+  panel.style.removeProperty('width')
+  panel.style.removeProperty('max-height')
+}
+
+function positionGlobalSearchPanel() {
+  const input = document.getElementById('global-search-input')
+  const panel = document.getElementById('global-search-panel')
+  if (!input || !panel || panel.hidden) return
+  resetGlobalSearchPanelPosition(panel)
+  const margin = 8
+  const inputRect = input.getBoundingClientRect()
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0
+  const width = Math.min(430, Math.max(220, viewportW - margin * 2))
+  let left = inputRect.right - width
+  left = Math.min(Math.max(margin, left), Math.max(margin, viewportW - width - margin))
+  const top = Math.min(inputRect.bottom + 6, Math.max(margin, viewportH - 180))
+  const maxHeight = Math.max(160, viewportH - top - margin)
+  panel.classList.add('is-fixed')
+  panel.style.left = `${left}px`
+  panel.style.top = `${top}px`
+  panel.style.width = `${width}px`
+  panel.style.maxHeight = `${maxHeight}px`
+}
+
+function globalSearchTokens(value = '') {
+  return normalizeText(value).split(/\s+/).filter(Boolean)
+}
+
+function globalSearchRelationshipTokens() {
+  return new Set(['madre', 'mamma', 'padre', 'papa', 'genitore', 'genitori', 'tutore', 'tutori', 'nonna', 'nonno', 'zia', 'zio'])
+}
+
+function globalSearchHasRelationshipToken(tokens = []) {
+  const relationshipTokens = globalSearchRelationshipTokens()
+  return tokens.some(token => relationshipTokens.has(token))
+}
+
+function globalSearchIsRelationshipOnly(tokens = []) {
+  const relationshipTokens = globalSearchRelationshipTokens()
+  return tokens.length > 0 && tokens.every(token => relationshipTokens.has(token))
+}
+
+function globalSearchMatches(parts = [], tokens = []) {
+  const haystack = normalizeText(parts.filter(value => value !== undefined && value !== null && value !== '').join(' '))
+  return tokens.length > 0 && tokens.every(token => haystack.includes(token))
+}
+
+function globalSearchResultRank(result, queryText) {
+  const tokens = globalSearchTokens(queryText)
+  const relationshipSearch = globalSearchHasRelationshipToken(tokens)
+  const typeRanks = relationshipSearch ? {
+    Referente: 5,
+    Allievo: 30,
+    Gruppo: 40,
+    Location: 50,
+    'Lezione aperta': 60,
+    Lezione: 70,
+    Skill: 80,
+  } : {
+    Allievo: 10,
+    Referente: 20,
+    Gruppo: 30,
+    Location: 40,
+    'Lezione aperta': 50,
+    Lezione: 60,
+    Skill: 70,
+  }
+  const typeRank = typeRanks[result.type] || 90
+  const title = normalizeText(result.title)
+  const query = normalizeText(queryText)
+  const titleRank = title === query ? -6 : title.startsWith(query) ? -4 : title.includes(query) ? -2 : 0
+  return typeRank + titleRank
+}
+
+function addGlobalSearchResult(results, seen, result, queryText) {
+  const key = result.key || `${result.type}:${result.action}:${result.title}`
+  if (seen.has(key)) return
+  seen.add(key)
+  results.push({ ...result, rank: globalSearchResultRank(result, queryText) })
+}
+
+function allievoSearchParts(allievo = {}) {
+  const p = allievo.profilo || {}
+  const address = visibleAllievoAddress(allievo)
+  const individuale = logisticaIndividualeProfilo(p, !!allievo.gruppo)
+  const gruppo = allievo.gruppo ? profiloComuneGruppo(gruppoMembri(allievo.gruppo, { includeArchived: true })) : {}
+  return [
+    allievoDisplayName(allievo.id),
+    allievo.nome,
+    allievo.cognome,
+    allievo.nickname,
+    allievo.gruppo,
+    allievo.email,
+    allievo.telefono,
+    allievo.blocco_attuale,
+    allievo.livello_attuale,
+    allievo.note_generali,
+    p.cultura,
+    p.note_salute,
+    p.competenze,
+    p.obiettivi,
+    p.talenti,
+    p.paure,
+    p.sport,
+    p.equipaggiamento,
+    address.indirizzo,
+    address.casa,
+    individuale.appuntamento,
+    individuale.luogo_incontro,
+    gruppo.appuntamento,
+    gruppo.luogo_incontro,
+  ]
+}
+
+function allievoFamiliariSearchRows(allievo = {}) {
+  const familiari = Array.isArray(allievo.profilo?.familiari) ? allievo.profilo.familiari : []
+  return familiari
+    .map((familiare, index) => ({ ...normalizzaFamiliare(familiare), index }))
+    .filter(familiare => familiare.nome || familiare.cognome || familiare.relazione || familiare.telefono)
+}
+
+function locationSearchRecords() {
+  const byKey = new Map()
+  ;[...mappaLocationRecords(), ...allLocations.map(locationWithLocalMapCoords)].forEach(record => {
+    const nome = String(record?.nome || '').trim()
+    if (!nome) return
+    const key = record.source === 'allievo-casa' && record.allievo_id
+      ? `home:${record.allievo_id}`
+      : `location:${normalizeText(nome)}`
+    if (!byKey.has(key)) byKey.set(key, record)
+  })
+  return [...byKey.values()]
+}
+
 async function renderGlobalSearch() {
   const input = document.getElementById('global-search-input')
   const panel = document.getElementById('global-search-panel')
   if (!input || !panel) return
-  const query = normalizeText(input.value || '')
-  if (!query) {
+  const queryText = input.value || ''
+  const tokens = globalSearchTokens(queryText)
+  if (!tokens.length) {
     panel.hidden = true
     panel.innerHTML = ''
     return
@@ -4822,61 +5205,165 @@ async function renderGlobalSearch() {
   if (!lezioniCache) await loadLezioni(true)
   await loadLocations()
   const results = []
+  const seen = new Set()
+  const relationshipOnly = globalSearchIsRelationshipOnly(tokens)
   allieviVisibiliGod().forEach(a => {
     const name = allievoDisplayName(a.id)
     const address = visibleAllievoAddress(a)
-    const haystack = normalizeText([name, a.nome, a.cognome, a.nickname, a.gruppo, a.email, a.telefono, a.note_generali, a.profilo?.note_salute, address.indirizzo, address.casa, a.profilo?.luogo_incontro].filter(Boolean).join(' '))
-    if (haystack.includes(query)) results.push({ type: 'Allievo', title: name, detail: a.gruppo || a.profilo?.luogo_incontro || '', action: `loadScheda('${a.id}')` })
+    if (!relationshipOnly && globalSearchMatches(allievoSearchParts(a), tokens)) {
+      const detail = [a.gruppo, a.nickname ? `Nick ${a.nickname}` : '', a.telefono, address.indirizzo || address.casa].filter(Boolean).join(' · ')
+      addGlobalSearchResult(results, seen, { type: 'Allievo', title: name, detail, action: `loadScheda(${jsArg(a.id)})`, key: `allievo:${a.id}` }, queryText)
+    }
+    allievoFamiliariSearchRows(a).forEach(familiare => {
+      const familiareName = [familiare.nome, familiare.cognome].filter(Boolean).join(' ') || familiare.telefono || 'Referente'
+      const parts = [familiareName, familiare.nome, familiare.cognome, familiare.relazione, familiare.telefono, name, a.nome, a.cognome, a.nickname, a.gruppo]
+      if (!globalSearchMatches(parts, tokens)) return
+      const detail = [`${familiare.relazione || 'Referente'} di ${name}`, familiare.telefono].filter(Boolean).join(' · ')
+      addGlobalSearchResult(results, seen, { type: 'Referente', title: familiareName, detail, action: `loadScheda(${jsArg(a.id)})`, key: `referente:${a.id}:${familiare.index}` }, queryText)
+    })
   })
+  if (relationshipOnly) {
+    const limited = results.sort((a, b) => a.rank - b.rank || String(a.title || '').localeCompare(String(b.title || ''), 'it', { sensitivity: 'base' })).slice(0, 18)
+    panel.innerHTML = limited.length
+      ? limited.map(r => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong><span class="search-result-type">${esc(r.type)}</span>${esc(r.title)}</strong><span>${r.detail ? esc(r.detail) : ''}</span></button>`).join('')
+      : '<div class="place-suggest-empty">Nessun referente trovato.</div>'
+    panel.hidden = false
+    requestAnimationFrame(positionGlobalSearchPanel)
+    return
+  }
   gruppiEsistenti().forEach(gruppo => {
-    if (normalizeText(gruppo).includes(query)) results.push({ type: 'Gruppo', title: gruppo, detail: `${gruppoMembri(gruppo).length} allievi`, action: `showView('gruppo',${jsArg(gruppo)})` })
+    const membri = gruppoMembri(gruppo)
+    const profilo = profiloComuneGruppo(membri)
+    const parts = [
+      gruppo,
+      profilo.appuntamento,
+      profilo.luogo_incontro,
+      profilo.pagamento_metodo,
+      profilo.pagamento_stato,
+      ...membri.flatMap(a => [allievoDisplayName(a.id), a.nome, a.cognome, a.nickname]),
+    ]
+    if (!globalSearchMatches(parts, tokens)) return
+    const detail = [`${membri.length} allievi`, profilo.luogo_incontro, profilo.appuntamento].filter(Boolean).join(' · ')
+    addGlobalSearchResult(results, seen, { type: 'Gruppo', title: gruppo, detail, action: `showView('gruppo',${jsArg(gruppo)})`, key: `gruppo:${gruppo}` }, queryText)
   })
   allSkills.forEach(skill => {
-    const haystack = normalizeText([skill.nome, skill.ramo, skill.blocco, skill.descrizione].filter(Boolean).join(' '))
-    if (haystack.includes(query)) results.push({ type: 'Skill', title: skill.nome, detail: skillMetaLabel(skill), action: `openSkillDetailModal('${skill.id}')` })
+    const parts = [skill.nome, skill.ramo, skill.blocco, skill.descrizione]
+    if (globalSearchMatches(parts, tokens)) addGlobalSearchResult(results, seen, { type: 'Skill', title: skill.nome, detail: skillMetaLabel(skill), action: `openSkillDetailModal(${jsArg(skill.id)})`, key: `skill:${skill.id}` }, queryText)
   })
-  locationNamesFromLessons().forEach(nome => {
-    const rec = locationRecordByName(nome)
-    const haystack = normalizeText([nome, rec?.indirizzo, rec?.tipologia, rec?.note].filter(Boolean).join(' '))
-    if (haystack.includes(query)) results.push({ type: 'Location', title: nome, detail: [rec?.tipologia, rec?.indirizzo].filter(Boolean).join(' · '), action: `openLocation(${jsArg(nome)})` })
+  locationSearchRecords().forEach(record => {
+    const nome = String(record.nome || '').trim()
+    const linkedAllievo = record.allievo_id ? allAllievi.find(a => String(a.id) === String(record.allievo_id)) : null
+    const parts = [
+      nome,
+      normalizedLocationName(nome),
+      record.indirizzo,
+      record.tipologia,
+      record.tipo,
+      record.note,
+      ...(record.tags || []),
+      linkedAllievo ? allievoDisplayName(linkedAllievo.id) : '',
+    ]
+    if (!globalSearchMatches(parts, tokens)) return
+    const detail = [locationTipologia(record), record.indirizzo, record.lessonCount ? `${record.lessonCount} lezioni` : '', linkedAllievo ? allievoDisplayName(linkedAllievo.id) : ''].filter(Boolean).join(' · ')
+    addGlobalSearchResult(results, seen, { type: 'Location', title: nome, detail, action: `showView('mappa',${jsArg(nome)})`, key: `location:${record.source || ''}:${record.allievo_id || normalizeText(nome)}` }, queryText)
   })
   ;(lezioniCache || []).forEach(l => {
     const parsed = lessonParsedNotes(l)
-    const haystack = normalizeText([formatLessonDate(l), labelPartecipantiLezione(l), l.luogo, parsed.ora, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(' '))
-    if (haystack.includes(query)) results.push({ type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatLessonDate(l)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})` })
+    const parts = [formatLessonDate(l), labelPartecipantiLezione(l), l.luogo, parsed.ora, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note]
+    if (!globalSearchMatches(parts, tokens)) return
+    addGlobalSearchResult(results, seen, { type: lessonStatus(l) === 'aperta' ? 'Lezione aperta' : 'Lezione', title: `${formatLessonDate(l)} · ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || '', action: `openLezione(${jsArg(l.id)})`, key: `lezione:${l.id}` }, queryText)
   })
 
-  const limited = results.slice(0, 12)
+  const limited = results.sort((a, b) => a.rank - b.rank || String(a.title || '').localeCompare(String(b.title || ''), 'it', { sensitivity: 'base' })).slice(0, 18)
   panel.innerHTML = limited.length
-    ? limited.map(r => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong>${esc(r.title)}</strong><span>${esc(r.type)}${r.detail ? ` · ${esc(r.detail)}` : ''}</span></button>`).join('')
+    ? limited.map(r => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong><span class="search-result-type">${esc(r.type)}</span>${esc(r.title)}</strong><span>${r.detail ? esc(r.detail) : ''}</span></button>`).join('')
     : '<div class="place-suggest-empty">Nessun risultato.</div>'
   panel.hidden = false
+  requestAnimationFrame(positionGlobalSearchPanel)
 }
 
 function closeGlobalSearch() {
   const panel = document.getElementById('global-search-panel')
-  if (panel) panel.hidden = true
+  if (panel) {
+    panel.hidden = true
+    resetGlobalSearchPanelPosition(panel)
+  }
+}
+
+function resetActionPanelPosition(panel) {
+  if (!panel) return
+  panel.classList.remove('is-fixed')
+  panel.style.removeProperty('left')
+  panel.style.removeProperty('top')
+  panel.style.removeProperty('width')
+}
+
+function positionInlineActionPanel(panel) {
+  if (!panel || panel.hidden) return
+  resetActionPanelPosition(panel)
+  const margin = 8
+  const menu = panel.closest('.inline-action-menu')
+  const trigger = menu?.querySelector('button')
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0
+  const rect = panel.getBoundingClientRect()
+  const triggerRect = trigger?.getBoundingClientRect() || rect
+  const constrainedWidth = Math.min(Math.max(rect.width, 170), Math.max(170, viewportW - margin * 2))
+  const constrainedHeight = Math.min(rect.height, Math.max(140, viewportH - margin * 2))
+  const clippedByViewport = rect.left < margin || rect.right > viewportW - margin || rect.top < margin || rect.bottom > viewportH - margin
+  const clipParent = panel.closest('.table-wrap, .modal')
+  const parentRect = clipParent?.getBoundingClientRect()
+  const clippedByParent = !!parentRect && (rect.left < parentRect.left || rect.right > parentRect.right || rect.bottom > parentRect.bottom)
+  if (!clippedByViewport && !clippedByParent) return
+
+  let left = Math.min(Math.max(margin, triggerRect.right - constrainedWidth), viewportW - constrainedWidth - margin)
+  if (!Number.isFinite(left)) left = margin
+  let top = triggerRect.bottom + 6
+  if (top + constrainedHeight > viewportH - margin) top = triggerRect.top - constrainedHeight - 6
+  top = Math.min(Math.max(margin, top), Math.max(margin, viewportH - constrainedHeight - margin))
+
+  panel.classList.add('is-fixed')
+  panel.style.left = `${left}px`
+  panel.style.top = `${top}px`
+  panel.style.width = `${constrainedWidth}px`
+
+  const placed = panel.getBoundingClientRect()
+  const dx = left - placed.left
+  const dy = top - placed.top
+  if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+    panel.style.left = `${left + dx}px`
+    panel.style.top = `${top + dy}px`
+  }
+}
+
+function closeActionMenus() {
+  document.querySelectorAll('.inline-action-panel').forEach(panel => {
+    panel.hidden = true
+    resetActionPanelPosition(panel)
+  })
+  document.querySelectorAll('.inline-action-menu.action-menu-open, .card.action-menu-open').forEach(el => el.classList.remove('action-menu-open'))
 }
 
 function toggleActionMenu(id, event) {
   event?.stopPropagation()
-  document.querySelectorAll('.inline-action-panel').forEach(panel => {
-    if (panel.id !== id) panel.hidden = true
-  })
-  document.querySelectorAll('.inline-action-menu.action-menu-open, .card.action-menu-open').forEach(el => el.classList.remove('action-menu-open'))
   const panel = document.getElementById(id)
-  if (panel) {
-    panel.hidden = !panel.hidden
-    if (!panel.hidden) {
-      panel.closest('.inline-action-menu')?.classList.add('action-menu-open')
-      panel.closest('.card')?.classList.add('action-menu-open')
-    }
-  }
+  const shouldOpen = !!panel?.hidden
+  closeActionMenus()
+  if (!panel || !shouldOpen) return
+  panel.hidden = false
+  panel.closest('.inline-action-menu')?.classList.add('action-menu-open')
+  panel.closest('.card')?.classList.add('action-menu-open')
+  requestAnimationFrame(() => positionInlineActionPanel(panel))
 }
 
+window.addEventListener('resize', () => {
+  closeActionMenus()
+  positionGlobalSearchPanel()
+})
+window.addEventListener('scroll', positionGlobalSearchPanel, { passive: true })
+
 document.addEventListener('click', () => {
-  document.querySelectorAll('.inline-action-panel').forEach(panel => { panel.hidden = true })
-  document.querySelectorAll('.inline-action-menu.action-menu-open, .card.action-menu-open').forEach(el => el.classList.remove('action-menu-open'))
+  closeActionMenus()
   closeGlobalSearch()
 })
 
@@ -4951,6 +5438,19 @@ function openHistoryModal(tipo, id, title = 'Storico modifiche') {
   document.body.appendChild(overlay)
 }
 
+function setLezioneFormMessage(message = '', className = 'msg-err') {
+  const errEl = document.getElementById('lz-err')
+  if (!errEl) return
+  errEl.classList.remove('msg-err', 'msg-info', 'msg-ok', 'show')
+  errEl.classList.add(className)
+  errEl.textContent = message
+  if (message) errEl.classList.add('show')
+}
+
+function clearLezioneFormMessage() {
+  setLezioneFormMessage('')
+}
+
 function setLessonStatus(status) {
   const value = status === 'chiusa' ? 'chiusa' : 'aperta'
   const input = document.getElementById('lz-stato')
@@ -4958,6 +5458,7 @@ function setLessonStatus(status) {
   document.getElementById('lz-status-open')?.classList.toggle('is-on', value === 'aperta')
   document.getElementById('lz-status-done')?.classList.toggle('is-on', value === 'chiusa')
   syncLessonFeedbackVisibility()
+  syncGroupStudentFeedbackVisibility()
 }
 
 function lessonStatus(lezione) {
@@ -5261,7 +5762,7 @@ function renderAllievi() {
       <col style="width:14%">
       <col style="width:7%">
       <col>
-      <col style="width:52px">
+      <col style="width:118px">
     </colgroup>`
   const renderAllievoRow = (a, extraClass = '') => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
@@ -5278,21 +5779,19 @@ function renderAllievi() {
       <td>${esc(a.blocco_attuale)}</td>
       <td style="width:40px;text-align:center">
         <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
-          ${godMode && !a.maestro_id ? `<button class="btn btn-ghost btn-sm" title="Assegna a me" onclick="event.stopPropagation(); assegnaAllievoAMe('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Assegna</button>` : ''}
-          ${godMode ? `<button class="btn btn-ghost btn-sm" title="Condividi" onclick="event.stopPropagation(); apriCondividiAllievo('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Condividi</button>` : ''}
-          ${godMode && a.gruppo ? `<button class="btn btn-ghost btn-sm" title="Condividi gruppo" onclick="event.stopPropagation(); apriCondividiGruppo('${a.gruppo.replace(/'/g,"\\'")}')" style="padding:.2rem .45rem;font-size:.82rem">Gruppo</button>` : ''}
-          ${a.stato !== 'archiviato' ? `<button class="btn btn-ghost btn-sm" title="Modifica" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>` : ''}
+          ${renderAllievoActionMenu(a, `allievo-list-actions-${a.id}`)}
         </div>
       </td>
     </tr>`
 
   if (!filtroGruppo) {
     const senzaGruppo = lista.filter(a => !a.gruppo)
-    const gruppiRows = gruppi.map(gruppo => {
+    const gruppiRows = gruppi.map((gruppo, index) => {
       const membri = ordinaAllieviLista(lista.filter(a => a.gruppo === gruppo))
       const expanded = gruppiEspansi.has(gruppo)
       const blocchi = [...new Set(membri.map(a => a.blocco_attuale).filter(Boolean))].join(', ') || '—'
       const gruppoVacanza = gruppoInVacanza(gruppo)
+      const actionId = `gruppo-list-actions-${index}`
       return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
@@ -5304,7 +5803,7 @@ function renderAllievi() {
           <td style="width:40px;text-align:center">
             <div style="display:flex;justify-content:flex-end;gap:.25rem">
               <button class="btn btn-ghost btn-sm" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? '▴' : '▾'}</button>
-              <button class="btn btn-ghost btn-sm" title="Scheda gruppo" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>
+              ${renderGruppoActionMenu(gruppo, actionId)}
             </div>
           </td>
         </tr>
@@ -5378,6 +5877,63 @@ function toggleTuttiGruppi() {
   gruppiEspansi.clear()
   if (!tuttiEspansi) gruppi.forEach(g => gruppiEspansi.add(g))
   renderAllievi()
+}
+
+function renderAllievoActionMenu(allievo, actionId = 'allievo-actions') {
+  if (!allievo) return ''
+  const canShare = canShareAllievo(allievo)
+  const canShareGroup = allievo.gruppo && canShareGruppo(allievo.gruppo)
+  return `
+    <div class="inline-action-menu">
+      <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
+      <div class="inline-action-panel" id="${esc(actionId)}" hidden>
+        ${godMode && !allievo.maestro_id ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); assegnaAllievoAMe('${allievo.id}')">Assegna a me</button>` : ''}
+        ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiAllievo('${allievo.id}')">Condividi allievo</button>` : ''}
+        ${canShareGroup ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(allievo.gruppo)})">Condividi gruppo</button>` : ''}
+        ${allievo.stato !== 'archiviato' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${allievo.id}')">${editIcon()} Modifica</button>` : ''}
+      </div>
+    </div>`
+}
+
+function renderGruppoActionMenu(gruppo, actionId = 'gruppo-actions', options = {}) {
+  const membriAttivi = gruppoMembri(gruppo)
+  const isArchiviato = !membriAttivi.length && gruppoMembri(gruppo, { includeArchived: true }).length > 0
+  const showScheda = options.showScheda !== false
+  const canShare = !isArchiviato && canShareGruppo(gruppo)
+  return `
+    <div class="inline-action-menu">
+      <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
+      <div class="inline-action-panel" id="${esc(actionId)}" hidden>
+        ${showScheda ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})">Scheda gruppo</button>` : ''}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-gruppo',${jsArg(gruppo)})">${editIcon()} Modifica</button>` : ''}
+        ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(gruppo)})">Condividi</button>` : ''}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); archiviaGruppo(${jsArg(gruppo)})">Archivia</button>` : '<div class="inline-action-meta">Gruppo archiviato</div>'}
+      </div>
+    </div>`
+}
+
+async function archiviaGruppo(gruppo) {
+  const membri = gruppoMembri(gruppo)
+  if (!membri.length) {
+    alert('Nessun allievo attivo da archiviare in questo gruppo.')
+    return
+  }
+  if (!confirm(`Archiviare il gruppo "${gruppo}" e i ${membri.length} allievi attivi collegati? Potrai ritrovarli dalla lista Archivio.`)) return
+
+  try {
+    const ids = membri.map(a => a.id)
+    const { error } = await sb.from('allievi').update({ stato: 'archiviato' }).in('id', ids)
+    if (error) throw error
+    logModificaLocale('gruppo', gruppo, `Archiviato gruppo: ${membri.length} allievi`)
+    mostraArchiviati = true
+    filtroGruppo = null
+    filtroVacanza = false
+    gruppiEspansi.clear()
+    await ricaricaAllievi()
+    showView('allievi')
+  } catch (e) {
+    alert("Errore nell'archiviazione del gruppo: " + (e.message || e))
+  }
 }
 
 async function setArchivio(on) {
@@ -5616,11 +6172,26 @@ function renderLogisticaGruppoAllievo() {
   if (!checked || !gruppo || !membri.length || !hasLogistica) {
     panel.hidden = true
     panel.innerHTML = ''
+    panel.removeAttribute('role')
+    panel.removeAttribute('tabindex')
+    panel.removeAttribute('aria-label')
+    panel.onclick = null
+    panel.onkeydown = null
     return
   }
   const item = (label, value) => value ? `<div class="group-logistics-item"><span>${esc(label)}</span>${esc(String(value))}</div>` : ''
   const pagamento = [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(' · ')
   panel.hidden = false
+  panel.setAttribute('role', 'button')
+  panel.setAttribute('tabindex', '0')
+  panel.setAttribute('aria-label', `Apri scheda gruppo ${gruppo}`)
+  panel.onclick = () => openGruppoFromAllievoLogistica(gruppo)
+  panel.onkeydown = event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openGruppoFromAllievoLogistica(gruppo)
+    }
+  }
   panel.innerHTML = `
     <div class="group-logistics-title">${esc(gruppo)}</div>
     <div class="group-logistics-grid">
@@ -5632,6 +6203,11 @@ function renderLogisticaGruppoAllievo() {
       ${item('Note pagamento', profilo.pagamento_note)}
       ${item('Stato lezioni', profilo.in_vacanza ? 'In vacanza' : '')}
     </div>`
+}
+
+function openGruppoFromAllievoLogistica(gruppo) {
+  if (!gruppo || !gruppoMembri(gruppo, { includeArchived: true }).length) return
+  showView('gruppo', gruppo)
 }
 
 function aggiungiFamiliare() {
@@ -5984,9 +6560,9 @@ async function salvaAllievo() {
     renderAllievi()
 
     const lessonDraft = loadLezioneDraft()
-    if (!savedId && lessonDraft) {
+    if (!savedId && lessonDraft?.editingLezioneId) {
       pendingSpecialGuestId = data?.id || null
-      showView('nuova-lezione')
+      showView('nuova-lezione', `lezione:${lessonDraft.editingLezioneId}`)
       return
     }
 
@@ -6014,7 +6590,7 @@ async function salvaAllievo() {
 
 function initNuovoGruppo(nomeGruppo = null) {
   editingGruppoNome = nomeGruppo || null
-  const membri = editingGruppoNome ? gruppoMembri(editingGruppoNome) : []
+  const membri = editingGruppoNome ? gruppoMembri(editingGruppoNome, { includeArchived: true }) : []
   const profilo = profiloComuneGruppo(membri)
   document.getElementById('gr-title').textContent = editingGruppoNome ? `Modifica gruppo — ${editingGruppoNome}` : 'Nuovo gruppo'
   document.getElementById('btn-salva-gr').textContent = editingGruppoNome ? 'Aggiorna gruppo' : 'Salva gruppo'
@@ -6026,6 +6602,7 @@ function initNuovoGruppo(nomeGruppo = null) {
   document.getElementById('gr-durata').value = profilo.durata_lezione || ''
   document.getElementById('gr-compenso').value = profilo.compenso || ''
   document.getElementById('gr-in-vacanza').checked = !!profilo.in_vacanza
+  document.getElementById('gr-archiviato').checked = !!(membri.length && membri.every(a => a.stato === 'archiviato'))
   document.getElementById('gr-pagamento-metodo').value = profilo.pagamento_metodo || ''
   document.getElementById('gr-pagamento-stato').value = profilo.pagamento_stato || ''
   document.getElementById('gr-pagamento-note').value = profilo.pagamento_note || ''
@@ -6290,6 +6867,7 @@ async function salvaGruppo() {
   const durata = parseInt(document.getElementById('gr-durata').value) || null
   const compenso = parseFloat(document.getElementById('gr-compenso').value) || null
   const inVacanza = !!document.getElementById('gr-in-vacanza')?.checked
+  const archiviato = !!document.getElementById('gr-archiviato')?.checked
   const pagamentoMetodo = document.getElementById('gr-pagamento-metodo').value || null
   const pagamentoStato = document.getElementById('gr-pagamento-stato').value || null
   const pagamentoNote = document.getElementById('gr-pagamento-note').value.trim() || null
@@ -6364,6 +6942,7 @@ async function salvaGruppo() {
             cognome: a.cognome,
             nickname: a.nickname || null,
             gruppo: nomeGruppo,
+            stato: archiviato ? 'archiviato' : 'attivo',
             note_generali: a.note || null,
             profilo: { ...(original.profilo || {}), ...commonProfile, familiari: a.referenti },
           }
@@ -6378,6 +6957,7 @@ async function salvaGruppo() {
             vip: false,
             blocco_attuale: 'Base',
             gruppo: nomeGruppo,
+            stato: archiviato ? 'archiviato' : 'attivo',
             data_iscrizione: oggi,
             note_generali: a.note || null,
             profilo: { ...commonProfile, tier: 'C', familiari: a.referenti },
@@ -6393,6 +6973,14 @@ async function salvaGruppo() {
       editReturnTarget = null
       editingGruppoNome = null
       await ricaricaAllievi()
+      if (archiviato) {
+        mostraArchiviati = true
+        filtroGruppo = null
+        filtroVacanza = false
+        gruppiEspansi.clear()
+        showView('allievi')
+        return
+      }
       await goToReturnTarget(destination, { name: 'gruppo', id: nextGroup })
     } catch (e) {
       errEl.textContent = saveErrorMessage(e)
@@ -6414,6 +7002,7 @@ async function salvaGruppo() {
           cognome: a.cognome,
           nickname: a.nickname || null,
           gruppo: nomeGruppo,
+          stato: archiviato ? 'archiviato' : 'attivo',
           note_generali: a.note || null,
           profilo: { ...(original.profilo || {}), ...commonProfile, familiari: a.referenti },
         }
@@ -6428,6 +7017,7 @@ async function salvaGruppo() {
           vip: false,
           blocco_attuale: 'Base',
           gruppo: nomeGruppo,
+          stato: archiviato ? 'archiviato' : 'attivo',
           data_iscrizione: oggi,
           note_generali: a.note || null,
           profilo: { ...commonProfile, tier: 'C', familiari: a.referenti },
@@ -6442,6 +7032,14 @@ async function salvaGruppo() {
     filtroGruppo = nomeGruppo
     editReturnTarget = null
     await ricaricaAllievi()
+    if (archiviato) {
+      mostraArchiviati = true
+      filtroGruppo = null
+      filtroVacanza = false
+      gruppiEspansi.clear()
+      showView('allievi')
+      return
+    }
     showView('gruppo', nomeGruppo)
   } catch (e) {
     errEl.textContent = saveErrorMessage(e)
@@ -6484,7 +7082,9 @@ async function loadGruppo(nomeGruppo) {
   const el = document.getElementById('gruppo-content')
   el.innerHTML = '<div class="loading">Caricamento…</div>'
 
-  const membri = gruppoMembri(nomeGruppo)
+  const membriAttivi = gruppoMembri(nomeGruppo)
+  const membri = membriAttivi.length ? membriAttivi : gruppoMembri(nomeGruppo, { includeArchived: true })
+  const gruppoArchiviato = !membriAttivi.length && membri.length > 0
   if (!membri.length) {
     el.innerHTML = `<button class="back-btn" onclick="showView('allievi')">← Allievi</button><div class="card"><div class="empty">Gruppo non trovato.</div></div>`
     return
@@ -6544,8 +7144,8 @@ async function loadGruppo(nomeGruppo) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
       <button class="back-btn" onclick="showView('allievi')" style="margin-bottom:0">← Allievi</button>
       <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="showView('nuovo-gruppo',${jsArg(nomeGruppo)})">${editIcon()} Modifica gruppo</button>
-        <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione',${jsArg('gruppo:' + nomeGruppo)})">+ Lezione gruppo</button>
+        ${renderGruppoActionMenu(nomeGruppo, 'gruppo-scheda-actions', { showScheda: false })}
+        ${gruppoArchiviato ? '' : `<button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione',${jsArg('gruppo:' + nomeGruppo)})">+ Lezione gruppo</button>`}
       </div>
     </div>
 
@@ -6553,7 +7153,7 @@ async function loadGruppo(nomeGruppo) {
       <div class="lezione-read-head">
         <div>
           <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
-          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} attiv${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
+          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} ${gruppoArchiviato ? 'archiviat' : 'attiv'}${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
         </div>
         <div class="lezione-read-when">
           ${profilo.appuntamento ? `<div class="lezione-read-date">${esc(profilo.appuntamento)}</div>` : '<span>Orario non indicato</span>'}
@@ -6595,15 +7195,9 @@ async function loadScheda(id) {
   showView('scheda')
   currentSchedaId = id
   recordAppHistory('scheda', id)
-  const shortcut = document.getElementById('scheda-nuova-lezione')
   const prepShortcut = document.getElementById('scheda-prepara-lezione')
-  const postumaShortcut = document.getElementById('scheda-lezione-postuma')
-  shortcut.hidden = false
-  shortcut.onclick = () => showView('nuova-lezione', id)
   prepShortcut.hidden = false
   prepShortcut.onclick = () => showView('nuova-lezione', `modo:prep:${id}`)
-  postumaShortcut.hidden = false
-  postumaShortcut.onclick = () => showView('nuova-lezione', `modo:postuma:${id}`)
   document.getElementById('scheda-content').innerHTML = '<div class="loading">Caricamento…</div>'
 
   const allievo = allAllievi.find(a => a.id === id)
@@ -6693,6 +7287,7 @@ async function loadScheda(id) {
 
 	  const p = allievo.profilo || {}
 	  const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo)
+	  const logisticaGruppoScheda = allievo.gruppo ? profiloComuneGruppo(gruppoMembri(allievo.gruppo)) : {}
 	  const addressScheda = visibleAllievoAddress(allievo)
 	  const etaScheda = allievoEtaLabel(allievo.data_nascita)
 
@@ -6711,7 +7306,11 @@ async function loadScheda(id) {
     : '<span style="color:var(--muted);font-size:.87rem">Nessun familiare registrato.</span>'
 
   const compenso  = logisticaScheda.compenso ? '€ ' + Number(logisticaScheda.compenso).toFixed(2) : null
+  const compensoGruppo = logisticaGruppoScheda.compenso ? '€ ' + Number(logisticaGruppoScheda.compenso).toFixed(2) : null
   const hasPagamento = !!(compenso || logisticaScheda.pagamento_metodo || logisticaScheda.pagamento_stato || logisticaScheda.pagamento_note)
+  const hasLogisticaIndividuale = !!(logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento)
+  const hasPagamentoGruppo = !!(compensoGruppo || logisticaGruppoScheda.pagamento_metodo || logisticaGruppoScheda.pagamento_stato || logisticaGruppoScheda.pagamento_note)
+  const hasLogisticaGruppo = !!(logisticaGruppoScheda.appuntamento || logisticaGruppoScheda.luogo_incontro || logisticaGruppoScheda.durata_lezione || hasPagamentoGruppo || logisticaGruppoScheda.in_vacanza)
   const isAss     = allievo.tipo === 'associazione'
   const statoVacanza = vacationLabel(allievo)
 
@@ -6739,6 +7338,7 @@ async function loadScheda(id) {
             <button class="btn btn-outline btn-sm" onclick="toggleActionMenu('scheda-actions-${id}', event)" type="button">Azioni</button>
             <div class="inline-action-panel" id="scheda-actions-${id}" hidden>
               <button class="btn btn-ghost btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
+              ${canShareAllievo(allievo) ? `<button class="btn btn-ghost btn-sm" onclick="apriCondividiAllievo('${id}')">Condividi</button>` : ''}
               <button class="btn btn-ghost btn-sm" onclick="eliminaAllievo('${id}')">${allievo.stato === 'archiviato' ? 'Elimina definitivamente' : 'Archivia'}</button>
               <button class="btn btn-ghost btn-sm" onclick="esportaAllievo('${id}')">JSON</button>
               <button class="btn btn-ghost btn-sm" onclick="stampaScheda('${id}')">Stampa</button>
@@ -6781,9 +7381,11 @@ async function loadScheda(id) {
       <p class="sec-title">Salute e attenzioni</p>
       <div class="card"><div class="lezione-read-note">${esc(p.note_salute)}</div></div>` : ''}
 
-      ${(logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento) ? `
+      ${(hasLogisticaIndividuale || hasLogisticaGruppo) ? `
       <p class="sec-title">Logistica</p>
+      ${hasLogisticaIndividuale ? `
       <div class="card">
+        ${allievo.gruppo ? '<div class="info-label" style="margin-bottom:.45rem">Lezioni individuali</div>' : ''}
         <div class="info-grid">
           ${infoRow('Appuntamento', logisticaScheda.appuntamento)}
           ${infoRow('Durata lezione', logisticaScheda.durata_lezione ? logisticaScheda.durata_lezione + ' min' : null)}
@@ -6794,6 +7396,21 @@ async function loadScheda(id) {
           ${infoRow('Note pagamento', logisticaScheda.pagamento_note)}
         </div>
       </div>` : ''}
+      ${hasLogisticaGruppo ? `
+      <div class="card">
+        <div class="info-label" style="margin-bottom:.45rem">Lezioni di gruppo${allievo.gruppo ? ` · ${esc(allievo.gruppo)}` : ''}</div>
+        <div class="info-grid">
+          ${infoRow('Appuntamento', logisticaGruppoScheda.appuntamento)}
+          ${infoRow('Durata lezione', logisticaGruppoScheda.durata_lezione ? logisticaGruppoScheda.durata_lezione + ' min' : null)}
+          ${infoRow('Luogo di incontro', logisticaGruppoScheda.luogo_incontro)}
+          ${infoRow('Compenso lezione', compensoGruppo)}
+          ${infoRow('Metodo pagamento', logisticaGruppoScheda.pagamento_metodo)}
+          ${infoRow('Stato pagamento', logisticaGruppoScheda.pagamento_stato)}
+          ${infoRow('Note pagamento', logisticaGruppoScheda.pagamento_note)}
+          ${infoRow('Stato lezioni', logisticaGruppoScheda.in_vacanza ? 'In vacanza' : '')}
+        </div>
+      </div>` : ''}
+      ` : ''}
 
       <p class="sec-title">Profilo psicomotorio</p>
       <div class="card">
@@ -7995,6 +8612,10 @@ function chiudiCondividi() {
 function apriCondividiAllievo(id) {
   const allievo = allAllievi.find(a => a.id === id)
   if (!allievo) return
+  if (!canShareAllievo(allievo)) {
+    alert('Puoi condividere solo allievi assegnati al tuo account.')
+    return
+  }
   shareContext = { type: 'allievo', ids: [id], label: [allievo.nome, allievo.cognome].filter(Boolean).join(' ') }
   document.getElementById('condividi-title').textContent = 'Condividi allievo'
   document.getElementById('condividi-help').textContent = `Condividi ${shareContext.label} con un altro maestro. Potra vedere e modificare la scheda.`
@@ -8002,18 +8623,23 @@ function apriCondividiAllievo(id) {
   document.getElementById('condividi-err').classList.remove('show')
   document.getElementById('condividi-ok').classList.remove('show')
   document.getElementById('modal-condividi').hidden = false
+  document.getElementById('condividi-email').focus()
 }
 
 function apriCondividiGruppo(gruppo) {
-  const membri = allAllievi.filter(a => a.gruppo === gruppo).map(a => a.id)
-  if (!membri.length) return
-  shareContext = { type: 'gruppo', ids: membri, label: gruppo }
+  const membri = shareableGruppoMembri(gruppo)
+  if (!membri.length) {
+    alert('Puoi condividere solo gruppi con allievi attivi assegnati al tuo account.')
+    return
+  }
+  shareContext = { type: 'gruppo', ids: membri.map(a => a.id), label: gruppo }
   document.getElementById('condividi-title').textContent = 'Condividi gruppo'
   document.getElementById('condividi-help').textContent = `Condividi il gruppo "${gruppo}" (${membri.length} allievi) con un altro maestro.`
   document.getElementById('condividi-email').value = ''
   document.getElementById('condividi-err').classList.remove('show')
   document.getElementById('condividi-ok').classList.remove('show')
   document.getElementById('modal-condividi').hidden = false
+  document.getElementById('condividi-email').focus()
 }
 
 async function confermaCondividi() {
@@ -8030,6 +8656,16 @@ async function confermaCondividi() {
   }
   if (!email) {
     err.textContent = "Inserisci l'email del maestro."
+    err.classList.add('show')
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    err.textContent = 'Inserisci una email valida.'
+    err.classList.add('show')
+    return
+  }
+  if (email === currentEmail) {
+    err.textContent = 'Questo maestro e gia il tuo account.'
     err.classList.add('show')
     return
   }
@@ -8051,6 +8687,7 @@ async function confermaCondividi() {
       ? `Gruppo condiviso con ${email}.`
       : `Allievo condiviso con ${email}.`
     ok.classList.add('show')
+    await ricaricaAllievi()
   } catch (e) {
     err.textContent = e.message || 'Errore nella condivisione.'
     err.classList.add('show')
@@ -8798,7 +9435,13 @@ function lessonSideFeedbackCompactLabel(value) {
   return side === 'bilaterale' ? '' : lessonSideFeedbackLabel(side)
 }
 
+function lessonStudentResultFromRows(rows = []) {
+  const row = (rows || []).find(r => r?.dimensioni?.esito)
+  return row?.dimensioni?.esito ? normalizedLessonResult(row.dimensioni.esito) : ''
+}
+
 function renderSkillChipsLezione(lezione, allievoId = null) {
+  const isGroupLesson = lezione?.tipo === 'gruppo'
   const viste = new Set()
   const skills = (lezione.lezioni_skills || [])
     .filter(ls => !allievoId || !ls.allievo_id || String(ls.allievo_id) === String(allievoId))
@@ -8812,7 +9455,7 @@ function renderSkillChipsLezione(lezione, allievoId = null) {
     })
   return skills.length
     ? skills.map(s => {
-        const feedback = [lessonResultCompactLabel(s.esito), lessonSideFeedbackCompactLabel(s.latoFeedback)].filter(Boolean).join(' · ')
+        const feedback = isGroupLesson ? '' : [lessonResultCompactLabel(s.esito), lessonSideFeedbackCompactLabel(s.latoFeedback)].filter(Boolean).join(' · ')
         return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ''}${feedback ? ` · ${esc(feedback)}` : ''}</span>`
       }).join(' ')
     : '—'
@@ -8869,6 +9512,7 @@ function toggleFiltroLezioniAperte() {
 
 function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || []
+  const isGroupLesson = lezione?.tipo === 'gruppo'
   const viste = new Set()
   const skills = skillRows
     .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback, originale: latestSkillReplacementName(ls.dimensioni) }))
@@ -8881,7 +9525,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
     })
   const skillsHtml = skills.length
     ? skills.map(s => {
-        const feedback = [s.esito ? lessonResultLabel(s.esito) : '', s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ''].filter(Boolean).join(' · ')
+        const feedback = isGroupLesson ? '' : [s.esito ? lessonResultLabel(s.esito) : '', s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ''].filter(Boolean).join(' · ')
         return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ''}${feedback ? ` · ${esc(feedback)}` : ''}${s.esercizi.length ? ` · ${esc(s.esercizi.join(', '))}` : ''}</span>`
       }).join('')
     : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'
@@ -9093,19 +9737,21 @@ async function loadLezione(id) {
     ? Object.entries(skillsByAllievo).map(([allievoId, rows]) => {
         const allievo = partecipanti.find(a => a.id === allievoId)
         const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(' ') : 'Skill lavorate'
+        const studentResult = lezione.tipo === 'gruppo' ? lessonStudentResultFromRows(rows) : ''
+        const titoloFeedback = studentResult ? ` · ${lessonResultLabel(studentResult)}` : ''
         const chips = rows
           .filter(r => r.skills?.nome)
           .map(r => {
             const direzione = r.dimensioni?.direzione || (r.fakie ? 'fakie' : '')
             const esercizi = normalizeExerciseList(r.dimensioni?.esercizi)
-            const feedback = [r.dimensioni?.esito ? lessonResultLabel(r.dimensioni.esito) : '', r.dimensioni?.lato_feedback ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ''].filter(Boolean)
+            const feedback = lezione.tipo === 'gruppo' ? [] : [r.dimensioni?.esito ? lessonResultLabel(r.dimensioni.esito) : '', r.dimensioni?.lato_feedback ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ''].filter(Boolean)
             const dimensionLabels = ['lato','superficie','piano','velocita','assistenza','stress'].map(key => dimensionValueLabel(r.dimensioni?.[key])).filter(Boolean)
             const extra = [...feedback, direzione, ...dimensionLabels, esercizi.length ? `esercizi: ${esercizi.join(', ')}` : ''].filter(Boolean).join(' · ')
             return `<span class="st st${r.stadio_raggiunto || 0}">${esc(r.skills.nome)}${extra ? ` · ${esc(extra)}` : ''}${r.skills.livello ? ` · Lv.${r.skills.livello}` : ''}</span>`
           })
           .join('')
         return `<div class="lezione-read-block">
-          <h4>${esc(titolo)}</h4>
+          <h4>${esc(titolo)}${titoloFeedback ? `<span class="lesson-student-result">${esc(titoloFeedback)}</span>` : ''}</h4>
           <div class="lezione-skill-list">${chips || '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'}</div>
         </div>`
       }).join('')
@@ -9205,14 +9851,11 @@ async function loadLezione(id) {
 function lezioneFormTitle(isEdit = false) {
   if (isEdit) return 'Modifica lezione'
   if (lezioneFormMode === 'prep') return 'Prepara lezione'
-  if (lezioneFormMode === 'postuma') return 'Lezione postuma'
   return 'Nuova lezione'
 }
 
 function lezioneFormSaveLabel(isEdit = false) {
   if (isEdit) return 'Salva modifiche'
-  if (lezioneFormMode === 'prep') return 'Preparazione'
-  if (lezioneFormMode === 'postuma') return 'Salva lezione fatta'
   return 'Salva lezione'
 }
 
@@ -9220,13 +9863,9 @@ function syncLezioneFormLabels(isEdit = !!editingLezioneId) {
   document.getElementById('lz-title').textContent = lezioneFormTitle(isEdit)
   document.getElementById('btn-salva-lz').textContent = lezioneFormSaveLabel(isEdit)
   document.getElementById('btn-salva-lz-top').textContent = lezioneFormSaveLabel(isEdit)
-  const prep = lezioneFormMode === 'prep' && !isEdit
-  document.getElementById('lz-check-title').hidden = prep
-  document.getElementById('lz-check-grid').hidden = prep
-  document.getElementById('lz-note-field').hidden = prep
   ;[document.getElementById('btn-salva-lz'), document.getElementById('btn-salva-lz-top')]
     .filter(Boolean)
-    .forEach(btn => { btn.hidden = prep })
+    .forEach(btn => { btn.hidden = false })
 }
 
 async function initNuovaLezione(presetAllievoId = null) {
@@ -9239,10 +9878,6 @@ async function initNuovaLezione(presetAllievoId = null) {
     lezioneFormMode = 'prep'
     explicitLezioneMode = true
     presetAllievoId = presetAllievoId.startsWith('modo:prep:') ? presetAllievoId.slice('modo:prep:'.length) : null
-  } else if (typeof presetAllievoId === 'string' && presetAllievoId.startsWith('modo:postuma')) {
-    lezioneFormMode = 'postuma'
-    explicitLezioneMode = true
-    presetAllievoId = presetAllievoId.startsWith('modo:postuma:') ? presetAllievoId.slice('modo:postuma:'.length) : null
   }
   const editId = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('lezione:')
     ? presetAllievoId.slice('lezione:'.length)
@@ -9250,6 +9885,10 @@ async function initNuovaLezione(presetAllievoId = null) {
   const groupPreset = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('gruppo:')
     ? presetAllievoId.slice('gruppo:'.length)
     : null
+  if (!editId && !groupPreset && !explicitLezioneMode) {
+    showView('lezioni')
+    return
+  }
   lezionePresetAllievoId = editId || groupPreset ? null : presetAllievoId
   if (!editId) {
     lezioneBackAllievoId = groupPreset ? null : (presetAllievoId || null)
@@ -9263,14 +9902,14 @@ async function initNuovaLezione(presetAllievoId = null) {
   const locationSelect = document.getElementById('lz-location-id')
   if (locationSelect) locationSelect.innerHTML = '<option value="">Luogo manuale / nessuna location</option>'
   document.getElementById('lz-meteo').value   = ''
-  setLessonStatus(lezioneFormMode === 'postuma' ? 'chiusa' : 'aperta')
+  setLessonStatus('aperta')
   document.getElementById('lz-luogo-suggest').hidden = true
   document.getElementById('lz-luogo-suggest').innerHTML = ''
   document.getElementById('lz-note-speciali').value = ''
   document.getElementById('lz-check-bene').value = ''
   document.getElementById('lz-check-non-fatto').value = ''
   document.getElementById('lz-note').value    = ''
-  document.getElementById('lz-err').classList.remove('show')
+  clearLezioneFormMessage()
   document.getElementById('lz-prep-board').hidden = true
   document.getElementById('lz-prep-board').innerHTML = ''
   document.getElementById('lz-skills-container').innerHTML = ''
@@ -9280,9 +9919,12 @@ async function initNuovaLezione(presetAllievoId = null) {
   document.getElementById('lz-hidden-checks').innerHTML = ''
   document.getElementById('lz-special-guest-panel').hidden = true
   document.getElementById('lz-special-guest-panel').innerHTML = ''
+  editingLezioneGroupFeedback = {}
   syncLezioneFormLabels(!!editId)
   document.getElementById('btn-cancella-lz').hidden = !editId
   document.getElementById('lz-back-btn').textContent = lezioneBackLabel()
+  renderLezioneTargetOptions()
+  ensurePrepFallbackTarget(presetAllievoId)
 
   if (editId) {
     let { data: lezione, error } = await sb.from('lezioni')
@@ -9343,13 +9985,14 @@ async function initNuovaLezione(presetAllievoId = null) {
     editingLezioneId = editId
     editingLezioneAllieviIds = (lezione.lezioni_allievi || []).map(r => r.allievo_id).filter(Boolean)
     ;(lezione.lezioni_skills || []).forEach(r => {
-      if (!r.allievo_id) return
-      if (!editingLezioneSkillRows[r.allievo_id]) editingLezioneSkillRows[r.allievo_id] = []
-      editingLezioneSkillRows[r.allievo_id].push({
+      const ownerId = r.allievo_id || FREE_LESSON_SKILL_ROWS_KEY
+      if (!editingLezioneSkillRows[ownerId]) editingLezioneSkillRows[ownerId] = []
+      if (r.allievo_id) rememberGroupStudentFeedback(r.allievo_id, r.dimensioni || {})
+      editingLezioneSkillRows[ownerId].push({
         skillId: r.skill_id,
         stadio: r.stadio_raggiunto || 1,
         fakie: !!r.fakie,
-        dimensioni: r.dimensioni || null,
+        dimensioni: lezione.tipo === 'gruppo' ? lessonSkillOnlyDimensions(r.dimensioni || {}) : (r.dimensioni || null),
       })
     })
 
@@ -9368,23 +10011,37 @@ async function initNuovaLezione(presetAllievoId = null) {
   }
 
   renderLezioneTargetOptions()
-  if (editId) setLezioneTargetFromEditing()
-  else if (groupPreset) document.getElementById('lz-tipo').value = `gruppo:${groupPreset}`
-  else if (lezionePresetAllievoId) document.getElementById('lz-tipo').value = `allievo:${lezionePresetAllievoId}`
-  else document.getElementById('lz-tipo').value = ''
-  if (editId && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds)
+  let restoredDraft = null
+  let draftSelectedIds = []
+  if (editId) {
+    const draft = loadLezioneDraft()
+    if (draft?.editingLezioneId && String(draft.editingLezioneId) === String(editId)) {
+      restoredDraft = draft
+      draftSelectedIds = restoreLezioneDraft(draft)
+      setLezioneFormMessage(`Bozza locale ripristinata: il salvataggio online precedente non era riuscito. Riprova quando sei online.`, 'msg-info')
+    } else {
+      setLezioneTargetFromEditing()
+    }
+  } else if (groupPreset) {
+    document.getElementById('lz-tipo').value = `gruppo:${groupPreset}`
+  } else if (lezionePresetAllievoId) {
+    document.getElementById('lz-tipo').value = `allievo:${lezionePresetAllievoId}`
+  } else {
+    document.getElementById('lz-tipo').value = ''
+  }
+  if (lezioneFormMode === 'prep' && !document.getElementById('lz-tipo').value) {
+    document.getElementById('lz-tipo').value = 'campo_libero'
+  }
+  if (editId && !restoredDraft && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds)
 
   const draft = !editId && !explicitLezioneMode ? loadLezioneDraft() : null
-  const draftSelectedIds = draft ? restoreLezioneDraft(draft) : []
-  if (draft?.formMode) lezioneFormMode = draft.formMode
+  if (draft && !draft.editingLezioneId) {
+    restoredDraft = draft
+    draftSelectedIds = restoreLezioneDraft(draft)
+  }
+  if (draft?.formMode) lezioneFormMode = draft.formMode === 'prep' ? 'prep' : 'standard'
   syncLezioneFormLabels(!!editId)
   if (!editId) renderLezioneLocationSelect('', document.getElementById('lz-luogo')?.value || '')
-  if (!editId && pendingLessonLocation) {
-    const pending = pendingLessonLocation
-    pendingLessonLocation = null
-    document.getElementById('lz-luogo').value = pending.nome || ''
-    renderLezioneLocationSelect(pending.id || '', pending.nome || '')
-  }
   renderLezionePartecipanti()
   if (editId) {
     editingLezioneAllieviIds
@@ -9416,6 +10073,14 @@ function renderLezionePartecipanti() {
     errEl.classList.remove('show')
   }
 
+  if (target === 'campo_libero') {
+    renderFreeLessonSkillWorkspace()
+    renderSpecialGuestPanel()
+    renderPrepBoard()
+    refreshSuggerimentiLuogoSeAperti()
+    return
+  }
+
   const attivi = allieviSelezionabiliLezione()
   if (!attivi.length) {
     renderSpecialGuestPanel()
@@ -9441,6 +10106,10 @@ function renderLezionePartecipanti() {
 
 function currentLessonTargetIsGroup() {
   return document.getElementById('lz-tipo')?.value?.startsWith('gruppo:')
+}
+
+function currentLessonTargetIsFree() {
+  return document.getElementById('lz-tipo')?.value === 'campo_libero'
 }
 
 async function renderLezioneLocationSelect(selectedId = '', selectedLuogo = '') {
@@ -9517,8 +10186,14 @@ function lezioneTargetLabelAllievo(a) {
 function renderLezioneTargetOptions(selected = '') {
   const sel = document.getElementById('lz-tipo')
   if (!sel) return
-  const attivi = ordinaAllieviLista(allieviSelezionabiliLezione())
-  const gruppi = gruppiSelezionabiliLezione()
+  let attivi = []
+  let gruppi = []
+  try {
+    attivi = ordinaAllieviLista(allieviSelezionabiliLezione())
+    gruppi = gruppiSelezionabiliLezione()
+  } catch (error) {
+    console.error('Lista allievi lezione non disponibile', error)
+  }
   sel.innerHTML = `
     <option value="">— Seleziona allievo o gruppo —</option>
     ${attivi.length ? `<optgroup label="Allievi">${attivi.map(a => `<option value="allievo:${a.id}">${esc(lezioneTargetLabelAllievo(a))}</option>`).join('')}</optgroup>` : ''}
@@ -9600,21 +10275,33 @@ function renderGroupLessonPanel(gruppo) {
   panel.innerHTML = `
     <div class="card">
       <p class="form-sec" style="margin-top:0">Presenti</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.35rem .8rem">
+      <div class="group-presence-grid">
         ${membri.map(a => `
-          <label style="display:flex;align-items:center;gap:.55rem;font-size:.9rem">
-            <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? 'checked' : ''} onchange="togglePresenzaGruppoLezione(this)">
-            ${esc(allievoDisplayName(a.id))}
-          </label>`).join('')}
+          <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
+            <label class="group-presence-name">
+              <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? 'checked' : ''} onchange="togglePresenzaGruppoLezione(this)">
+              <span>${esc(allievoDisplayName(a.id))}</span>
+            </label>
+            ${renderGroupStudentFeedbackControls(a.id, selected.has(a.id))}
+          </div>`).join('')}
       </div>
-      ${guests.length ? `<div style="margin-top:.75rem;color:var(--muted);font-size:.86rem">Guest: ${guests.map(a => esc(allievoDisplayName(a.id))).join(', ')}</div>` : ''}
+      ${guests.length ? `<div class="group-presence-guests">
+        <div class="lesson-skill-hint">Guest</div>
+        ${guests.map(a => `
+          <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
+            <div class="group-presence-name"><span>${esc(allievoDisplayName(a.id))}</span></div>
+            ${renderGroupStudentFeedbackControls(a.id, true)}
+          </div>`).join('')}
+      </div>` : ''}
     </div>`
+  syncGroupStudentFeedbackVisibility()
 }
 
 function togglePresenzaGruppoLezione(cb) {
   const hidden = [...document.querySelectorAll('#lz-hidden-checks input')].find(input => input.value === cb.value)
   if (hidden) hidden.checked = cb.checked
   else if (cb.checked) document.getElementById('lz-hidden-checks').insertAdjacentHTML('beforeend', `<input type="checkbox" value="${cb.value}" checked>`)
+  cb.closest('.group-presence-row')?.querySelector('.group-student-feedback')?.classList.toggle('is-unselected', !cb.checked)
   refreshGroupExclusionControls()
   renderGroupIndividualControls()
   renderSpecialGuestPanel()
@@ -9660,40 +10347,34 @@ async function luoghiFrequentatiAllievi(ids) {
     .in('allievo_id', cleanIds)
 
   const stats = new Map()
+  const addStat = (luogo, count = 1, latest = '') => {
+    const clean = String(luogo || '').trim()
+    if (!clean) return
+    const k = normalizeText(clean)
+    const prev = stats.get(k) || { luogo: clean, count: 0, latest: '' }
+    prev.count += count
+    if (String(latest || '') > prev.latest) prev.latest = String(latest || '')
+    stats.set(k, prev)
+  }
   ;(data || []).forEach(row => {
     const luogo = row.lezioni?.luogo?.trim()
     if (!luogo) return
-    const k = normalizeText(luogo)
-    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
-    prev.count += 1
-    if (String(row.lezioni?.data || '') > prev.latest) prev.latest = String(row.lezioni?.data || '')
-    stats.set(k, prev)
+    addStat(luogo, 1, row.lezioni?.data)
+    lessonLocationEntries(luogo, cleanIds).forEach(entry => addStat(entry.nome, 2, row.lezioni?.data))
   })
   ;(await loadLocations()).forEach(loc => {
     const luogo = String(loc.nome || '').trim()
-    if (!luogo) return
-    const k = normalizeText(luogo)
-    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
-    prev.count += loc.tipologia === 'Casa allievo' ? 2 : 1
-    stats.set(k, prev)
+    addStat(luogo, loc.tipologia === 'Casa allievo' ? 2 : 1)
   })
   cleanIds.map(id => allievoById(id)).filter(Boolean).forEach(allievo => {
     const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo)
     const luogo = String(logistica.luogo_incontro || (!allievo.gruppo ? allievo.profilo?.luogo_incontro : '') || '').trim()
-    if (!luogo) return
-    const k = normalizeText(luogo)
-    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
-    prev.count += 4
-    stats.set(k, prev)
+    addStat(luogo, 4)
   })
   const gruppi = [...new Set(cleanIds.map(id => allievoById(id)?.gruppo).filter(Boolean))]
   gruppi.forEach(gruppo => {
     const luogo = String(profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro || '').trim()
-    if (!luogo) return
-    const k = normalizeText(luogo)
-    const prev = stats.get(k) || { luogo, count: 0, latest: '' }
-    prev.count += 5
-    stats.set(k, prev)
+    addStat(luogo, 5)
   })
   const luoghi = [...stats.values()]
     .sort((a, b) => b.count - a.count || b.latest.localeCompare(a.latest) || a.luogo.localeCompare(b.luogo, 'it', { sensitivity: 'base' }))
@@ -9736,17 +10417,20 @@ async function mostraSuggerimentiLuogo() {
     .slice(0, 8)
 
   const manualValue = input.value.trim()
-  const canCreate = manualValue && !locationRecordByName(manualValue)
+  const missingEntries = manualValue ? missingLessonLocationEntries(manualValue, ids) : []
+  const canCreate = missingEntries.length > 0
+  const createLabel = missingEntries.length > 1 ? 'Crea location mancanti' : 'Crea nuova location'
+  const createDetail = missingEntries.map(entry => entry.nome).join(' · ')
 
   if (!luoghi.length) {
-    panel.innerHTML = `<div class="place-suggest-empty">Nessun luogo già registrato per i presenti.</div>${canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>Crea nuova location</strong><span>${esc(manualValue)}</span></button>` : ''}`
+    panel.innerHTML = `<div class="place-suggest-empty">Nessun luogo già registrato per i presenti.</div>${canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>${esc(createLabel)}</strong><span>${esc(createDetail)}</span></button>` : ''}`
     panel.hidden = false
     return
   }
 
   panel.innerHTML = luoghi.map(luogo => `
     <button type="button" class="place-suggest-btn" onmousedown="scegliLuogoSuggerito(${jsArg(luogo)})">${esc(luogo)}</button>
-  `).join('') + (canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>Crea nuova location</strong><span>${esc(manualValue)}</span></button>` : '')
+  `).join('') + (canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>${esc(createLabel)}</strong><span>${esc(createDetail)}</span></button>` : '')
   panel.hidden = false
 }
 
@@ -9764,7 +10448,8 @@ async function creaLocationDaLuogoLezione() {
   const ids = selectedLezioneAllieviIds()
   await ensureLocationDaLezione(nome, ids)
   await renderLezioneLocationSelect('', nome)
-  const record = locationRecordByName(nome)
+  const entries = lessonLocationEntries(nome, ids)
+  const record = entries.length === 1 ? locationRecordByName(entries[0].nome) : null
   const select = document.getElementById('lz-location-id')
   if (select && record?.id) select.value = record.id
   const panel = document.getElementById('lz-luogo-suggest')
@@ -9789,7 +10474,7 @@ function skillWorkKey(row) {
     skillId: row.skillId || '',
     stadio: Number(row.stadio || 1),
     fakie: !!row.fakie,
-    dimensioni: row.dimensioni || {},
+    dimensioni: lessonSkillOnlyDimensions(row.dimensioni || {}),
   })
 }
 
@@ -9811,7 +10496,10 @@ function collapseCommonGroupSkillRows(ids) {
   const commonKeys = [...counts.entries()].filter(([, count]) => count === presentIds.length).map(([key]) => key)
   if (!commonKeys.length) return
   const common = new Set(commonKeys)
-  editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] = commonKeys.map(key => ({ ...rowByKey.get(key), excludeIds: [] }))
+  editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] = commonKeys.map(key => {
+    const row = rowByKey.get(key)
+    return { ...row, dimensioni: lessonSkillOnlyDimensions(row.dimensioni || {}), excludeIds: [] }
+  })
   presentIds.forEach(id => {
     editingLezioneSkillRows[id] = (editingLezioneSkillRows[id] || []).filter(row => !common.has(skillWorkKey(row)))
   })
@@ -9844,6 +10532,22 @@ function renderGroupSkillWorkspace() {
     .filter(([id, rows]) => id !== GROUP_SKILL_ROWS_KEY && rows?.length && selectedLezioneAllieviIds().includes(id))
     .forEach(([id, rows]) => addIndividualSkillWork(id, rows))
   renderGroupIndividualControls()
+}
+
+function renderFreeLessonSkillWorkspace() {
+  const container = document.getElementById('lz-skills-container')
+  const savedRows = editingLezioneSkillRows[FREE_LESSON_SKILL_ROWS_KEY] || []
+  container.innerHTML = `
+    <div class="allievo-block">
+      <h4>Skill da preparare</h4>
+      <div class="lesson-skill-tools">
+        <div class="lesson-skill-hint">Aggiungi skill o esercizi senza collegarli ancora a un allievo.</div>
+        ${renderLessonWorkButtons(FREE_LESSON_SKILL_ROWS_KEY)}
+      </div>
+      <div id="skill-rows-${FREE_LESSON_SKILL_ROWS_KEY}"></div>
+    </div>`
+  if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(FREE_LESSON_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }))
+  else if (lezioneFormMode === 'prep') aggiungiSkillRow(FREE_LESSON_SKILL_ROWS_KEY, '', 1, {}, false, [], { collapseExisting: false })
 }
 
 function renderGroupIndividualControls() {
@@ -9939,8 +10643,11 @@ function creaSpecialGuestDaLezione() {
 
 function collectLezioneDraft() {
   const skillRows = {}
+  const groupFeedback = currentLessonTargetIsGroup() ? collectGroupStudentFeedback() : {}
   const rowOwners = currentLessonTargetIsGroup()
     ? [GROUP_SKILL_ROWS_KEY, ...selectedLezioneAllieviIds()]
+    : currentLessonTargetIsFree()
+      ? [FREE_LESSON_SKILL_ROWS_KEY]
     : selectedLezioneAllieviIds()
   rowOwners.forEach(id => {
     skillRows[id] = [...document.querySelectorAll(`#skill-rows-${id} .skill-row`)]
@@ -9954,6 +10661,8 @@ function collectLezioneDraft() {
       .filter(row => row.skillId)
   })
   return {
+    editingLezioneId: editingLezioneId || null,
+    savedAt: new Date().toISOString(),
     data: document.getElementById('lz-data')?.value || '',
     ora: document.getElementById('lz-ora')?.value || '',
     durata: document.getElementById('lz-durata')?.value || '',
@@ -9968,6 +10677,7 @@ function collectLezioneDraft() {
     target: document.getElementById('lz-tipo')?.value || '',
     selectedIds: selectedLezioneAllieviIds(),
     skillRows,
+    groupFeedback,
     lezioneBackAllievoId,
     lezioneBackGruppoNome,
     formMode: lezioneFormMode,
@@ -9975,8 +10685,13 @@ function collectLezioneDraft() {
 }
 
 function saveLezioneDraft({ keep = false } = {}) {
-  safeStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(collectLezioneDraft()))
-  if (!keep) safeStorage.removeItem(LEZIONE_DRAFT_KEY)
+  if (!keep) {
+    safeStorage.removeItem(LEZIONE_DRAFT_KEY)
+    return null
+  }
+  const draft = collectLezioneDraft()
+  safeStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(draft))
+  return draft
 }
 
 function loadLezioneDraft() {
@@ -9988,7 +10703,7 @@ function loadLezioneDraft() {
 }
 
 function restoreLezioneDraft(draft) {
-  if (draft.formMode) lezioneFormMode = draft.formMode
+  if (draft.formMode) lezioneFormMode = draft.formMode === 'prep' ? 'prep' : 'standard'
   document.getElementById('lz-data').value = draft.data || localDateIso()
   document.getElementById('lz-ora').value = normalizeLessonTime(draft.ora || '')
   document.getElementById('lz-durata').value = draft.durata || ''
@@ -10002,18 +10717,15 @@ function restoreLezioneDraft(draft) {
   document.getElementById('lz-note').value = draft.note || ''
   renderLezioneTargetOptions(draft.target || '')
   editingLezioneSkillRows = draft.skillRows || {}
+  editingLezioneGroupFeedback = draft.groupFeedback || {}
+  if (draft.editingLezioneId) editingLezioneId = draft.editingLezioneId
   lezioneBackAllievoId = draft.lezioneBackAllievoId || lezioneBackAllievoId
   lezioneBackGruppoNome = draft.lezioneBackGruppoNome || lezioneBackGruppoNome
-  safeStorage.removeItem(LEZIONE_DRAFT_KEY)
   return draft.selectedIds || []
 }
 
 function toggleAllievo(cb, nomeCompleto) {
   const container = document.getElementById('lz-skills-container')
-  if (lezioneFormMode === 'prep') {
-    document.getElementById(`block-${cb.value}`)?.remove()
-    return
-  }
   if (cb.checked) {
     const allievo = allieviSelezionabiliLezione().find(x => x.id === cb.value) || allAllievi.find(x => x.id === cb.value)
     const div = document.createElement('div')
@@ -10030,245 +10742,17 @@ function toggleAllievo(cb, nomeCompleto) {
     container.appendChild(div)
     const savedRows = editingLezioneSkillRows[cb.value] || []
     if (savedRows.length) savedRows.forEach(row => aggiungiSkillRow(cb.value, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }))
+    else if (lezioneFormMode === 'prep') aggiungiSkillRow(cb.value, '', 1, {}, false, [], { collapseExisting: false })
   } else {
     document.getElementById(`block-${cb.value}`)?.remove()
   }
 }
 
-async function ultimaLezioneAllievo(allievoId) {
-  if (!allievoId) return null
-  let { data, error } = await sb.from('lezioni_allievi')
-    .select('lezione_id, lezioni(id, data, durata_min, luogo, meteo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
-    .eq('allievo_id', allievoId)
-  if (isMissingLessonMeteoError(error)) {
-    ;({ data, error } = await sb.from('lezioni_allievi')
-      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
-      .eq('allievo_id', allievoId))
-  }
-  if (isMissingLessonStatusError(error)) {
-    ;({ data, error } = await sb.from('lezioni_allievi')
-      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))')
-      .eq('allievo_id', allievoId))
-  }
-  if (isMissingDimensioniError(error)) {
-    ;({ data, error } = await sb.from('lezioni_allievi')
-      .select('lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, skills(nome)))')
-      .eq('allievo_id', allievoId))
-  }
-  if (error) return null
-  const lezioni = (data || [])
-    .map(row => row.lezioni)
-    .filter(Boolean)
-    .filter(l => String(l.id) !== String(editingLezioneId || ''))
-    .sort((a, b) => {
-      const aClosed = lessonStatus(a) === 'chiusa' ? 1 : 0
-      const bClosed = lessonStatus(b) === 'chiusa' ? 1 : 0
-      return bClosed - aClosed || String(b.data || '').localeCompare(String(a.data || '')) || String(b.id).localeCompare(String(a.id))
-    })
-  return lezioni[0] || null
-}
-
-async function renderPrepInsightForAllievo(allievoId) {
-  const panel = document.getElementById(`prep-insight-${allievoId}`)
-  if (!panel) return
-  const lezione = await ultimaLezioneAllievo(allievoId)
-  if (!lezione) {
-    panel.innerHTML = '<div class="lesson-prep-title">Ultima lezione</div><div class="lesson-prep-meta">Nessuna lezione precedente trovata.</div>'
-    return
-  }
-  const rows = (lezione.lezioni_skills || [])
-    .filter(row => String(row.allievo_id || allievoId) === String(allievoId))
-    .filter(row => row.skill_id && row.skills?.nome)
-  const parsed = lessonParsedNotes(lezione)
-  panel.innerHTML = `
-    <div class="lesson-prep-title">Ultima lezione</div>
-    <div class="lesson-prep-meta">${formatLessonDateWithWeekday(lezione)}${lezione.luogo ? ` · ${esc(lezione.luogo)}` : ''}${lezione.note_speciali ? `<br>${esc(lezione.note_speciali)}` : ''}</div>
-    ${rows.length ? `<div class="lesson-prep-skills">${rows.map(row => `<span class="st st${row.stadio_raggiunto || 1}">${esc(row.skills.nome)} · ${esc(lessonStadioLabel(row.stadio_raggiunto || 1))}</span>`).join('')}</div>` : '<div class="ripasso-empty">Nessuna skill registrata nell ultima lezione.</div>'}
-    ${parsed.nonFatto ? `<div class="lesson-prep-meta"><strong>Da riprendere:</strong> ${esc(parsed.nonFatto)}</div>` : ''}
-  `
-  const container = document.getElementById(`skill-rows-${allievoId}`)
-  if (!container || container.querySelector('.skill-row')) return
-  rows.forEach(row => aggiungiSkillRow(allievoId, row.skill_id, row.stadio_raggiunto || 1, row.dimensioni || {}, !!row.fakie, [], { ripassoOnly: true, collapseExisting: false }))
-}
-
-function prepOwnerId() {
-  const ids = selectedLezioneAllieviIds()
-  return ids.length === 1 ? ids[0] : null
-}
-
-function prepSkillItemFromLessonRow(row) {
-  return {
-    skillId: String(row.skill_id || ''),
-    stadio: Number(row.stadio_raggiunto || 1),
-    fakie: !!row.fakie,
-    dimensioni: row.dimensioni || {},
-    skill: row.skills || allSkills.find(skill => String(skill.id) === String(row.skill_id)) || null,
-  }
-}
-
-function prepSkillButtons(ownerId, items, stage, emptyText) {
-  const usable = (items || []).filter(item => item.skillId && item.skill?.nome).slice(0, 8)
-  if (!usable.length) return `<span class="prep-empty">${esc(emptyText)}</span>`
-  return usable.map(item => `
-    <button type="button" class="prep-suggest" onclick="addPrepSkill(${jsArg(ownerId)},${jsArg(item.skillId)},${jsArg(stage)},${Number(item.stadio || 1)},${jsArg(item.dimensioni || {})},${item.fakie ? 'true' : 'false'})">
-      ${esc(item.skill.nome)}
-    </button>`).join('')
-}
-
-function buildPrepPlanDraft(allievo, lastLesson, lastItems, groups) {
-  const lines = []
-  lines.push('Piano operativo')
-  lines.push(`Allievo: ${allievoDisplayName(allievo.id)}`)
-  if (lastLesson?.data) lines.push(`Ultima lezione: ${formatLessonDateWithWeekday(lastLesson)}`)
-  if (lastItems.length) lines.push(`Ripasso iniziale: ${lastItems.map(item => item.skill?.nome).filter(Boolean).join(', ')}`)
-  if (groups.work.length) lines.push(`Focus da lavorare: ${groups.work.slice(0, 3).map(item => item.skill.nome).join(', ')}`)
-  if (groups.done.length) lines.push(`Richiamo breve: ${groups.done.slice(0, 2).map(item => item.skill.nome).join(', ')}`)
-  lines.push('')
-  lines.push('Scaletta')
-  lines.push('1. Ingresso: valutare energia, equilibrio e confidenza.')
-  lines.push('2. Ripasso: riattivare l ultima lezione senza pressione.')
-  lines.push('3. Focus: un solo nodo tecnico, pulito e osservabile.')
-  lines.push('4. Uscita: mini test, gioco o percorso breve.')
-  return lines.join('\n')
-}
-
-function renderPrepSelectedSkills(ownerId = prepOwnerId()) {
-  const target = document.getElementById('prep-selected-skills')
-  if (!target || !ownerId) return
-  target.innerHTML = '<span class="prep-empty">Nessuna skill viene inserita nella lezione. Le proposte aggiungono solo righe al piano.</span>'
-}
-
-function syncPrepPlanToNote() {
-  const text = document.getElementById('prep-plan-text')?.value || ''
-  const note = document.getElementById('lz-note')
-  if (note) note.value = text
-}
-
-function appendPrepPlanLine(line) {
-  const textarea = document.getElementById('prep-plan-text')
-  const note = document.getElementById('lz-note')
-  const current = textarea?.value || note?.value || ''
-  const next = `${current.trim()}${current.trim() ? '\n' : ''}${line}`.trim()
-  if (textarea) textarea.value = next
-  if (note) note.value = next
-}
-
-function setPrepIntent(intent, detail) {
-  document.querySelectorAll('.prep-intent').forEach(btn => btn.classList.toggle('is-on', btn.dataset.intent === intent))
-  const special = document.getElementById('lz-note-speciali')
-  if (special) special.value = `Obiettivo: ${detail}`
-  appendPrepPlanLine(`Intenzione: ${detail}`)
-}
-
-function addPrepSkill(ownerId, skillId, stage = 'Focus', stadio = 1, dimensioni = {}, fakie = false) {
-  const skill = allSkills.find(s => String(s.id) === String(skillId))
-  if (!skill) return
-  appendPrepPlanLine(`${stage}: ${skill.nome}${stadio ? ` (${lessonStadioLabel(stadio)})` : ''}`)
-  renderPrepSelectedSkills(ownerId)
-}
-
-function togglePrepRawEditor(ownerId = prepOwnerId()) {
-  const block = ownerId ? document.getElementById(`block-${ownerId}`) : null
-  if (!block) return
-  block.classList.toggle('is-visible')
-}
-
 async function renderPrepBoard() {
   const board = document.getElementById('lz-prep-board')
   if (!board) return
-  if (lezioneFormMode !== 'prep' || editingLezioneId) {
-    board.hidden = true
-    board.innerHTML = ''
-    return
-  }
-  const ids = selectedLezioneAllieviIds()
-  if (!ids.length) {
-    board.hidden = false
-    board.innerHTML = `<div class="card prep-board"><div class="prep-empty">Scegli un allievo: preparo una scaletta viva partendo dal suo ultimo lavoro.</div></div>`
-    return
-  }
-  if (ids.length !== 1) {
-    board.hidden = false
-    board.innerHTML = `<div class="card prep-board"><div class="prep-empty">La preparazione intelligente per ora ragiona su un allievo alla volta. Per i gruppi resta disponibile la lezione classica/postuma.</div></div>`
-    return
-  }
-
-  const ownerId = ids[0]
-  const allievo = allievoById(ownerId)
-  if (!allievo) return
-  const lastLesson = await ultimaLezioneAllievo(ownerId)
-  if (prepOwnerId() !== ownerId || lezioneFormMode !== 'prep') return
-  const lastItems = (lastLesson?.lezioni_skills || [])
-    .filter(row => String(row.allievo_id || ownerId) === String(ownerId))
-    .map(prepSkillItemFromLessonRow)
-    .filter(item => item.skillId && item.skill)
-  const groups = workedSkillGroupsForOwner(ownerId)
-  const note = document.getElementById('lz-note')
-
-  const parsed = lessonParsedNotes(lastLesson || {})
-  const workItems = groups.work.map(item => ({ ...item, stadio: item.stadio || 1 }))
-  const doneItems = groups.done.map(item => ({ ...item, stadio: 1 }))
-  board.hidden = false
-  board.innerHTML = `
-    <div class="prep-board">
-      <div class="prep-hero">
-        <div class="prep-hero-top">
-          <div>
-            <div class="prep-kicker">Prepara senza fretta</div>
-            <div class="prep-headline">${esc(allievoDisplayName(ownerId))}</div>
-            <div class="prep-subline">Questa e solo una scaletta: non crea una lezione aperta e non inserisce skill. La registrazione si fara dopo, quando la lezione sara svolta.</div>
-          </div>
-          <div class="prep-save-tag">non salva lezioni</div>
-        </div>
-        <div class="prep-radar">
-          <div class="prep-radar-card"><strong>${lastLesson?.data ? formatLessonDate(lastLesson) : '—'}</strong><span>ultima lezione</span><div class="prep-empty">${lastLesson?.luogo ? esc(lastLesson.luogo) : 'nessun luogo'}</div></div>
-          <div class="prep-radar-card"><strong>${workItems.length}</strong><span>richiedono lavoro</span><div class="prep-empty">${workItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'nessuna urgenza'}</div></div>
-          <div class="prep-radar-card"><strong>${doneItems.length}</strong><span>gia completate</span><div class="prep-empty">${doneItems.slice(0, 2).map(item => esc(item.skill.nome)).join(', ') || 'ancora niente'}</div></div>
-          <div class="prep-radar-card"><strong>${parsed.nonFatto ? 'si' : 'no'}</strong><span>da riprendere</span><div class="prep-empty">${parsed.nonFatto ? esc(parsed.nonFatto).slice(0, 80) : 'nessuna nota'}</div></div>
-        </div>
-        <div class="prep-intents">
-          <button type="button" class="prep-intent" data-intent="consolidare" onclick="setPrepIntent('consolidare','consolidare una skill gia accesa')">Consolidare</button>
-          <button type="button" class="prep-intent" data-intent="sbloccare" onclick="setPrepIntent('sbloccare','sbloccare un punto che resiste')">Sbloccare</button>
-          <button type="button" class="prep-intent" data-intent="fiducia" onclick="setPrepIntent('fiducia','costruire fiducia e fluidita')">Fiducia</button>
-          <button type="button" class="prep-intent" data-intent="testare" onclick="setPrepIntent('testare','testare se il gesto regge in autonomia')">Testare</button>
-        </div>
-      </div>
-
-      <div class="prep-stage-grid">
-        <div class="prep-stage">
-          <h4>1. Riaccendi</h4>
-          <p>Parti da qualcosa che il corpo riconosce. L ultima lezione diventa ingresso, non verifica.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, lastItems, 'Riaccendi', 'Nessuna skill nell ultima lezione.')}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>2. Nodo tecnico</h4>
-          <p>Una cosa sola da lavorare bene. Se tutto e importante, niente e davvero osservabile.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, workItems, 'Nodo tecnico', 'Nessuna skill aperta nei progressi.')}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>3. Variazione</h4>
-          <p>Cambia superficie, lato, ritmo o piano. Qui capisci se la skill e solida.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, [...workItems, ...lastItems], 'Variazione', 'Aggiungi prima un ripasso o una skill.')}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>4. Uscita</h4>
-          <p>Chiudi con qualcosa che lascia una sensazione chiara: mini percorso, gioco, test breve.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, doneItems, 'Uscita', 'Nessuna completata da usare come uscita sicura.')}</div>
-        </div>
-      </div>
-
-      <div class="card prep-plan-grid">
-        <div class="field prep-plan-note" style="margin:0">
-          <label>Piano operativo</label>
-          <textarea id="prep-plan-text" placeholder="Scrivi qui la scaletta. Le proposte qui sopra aggiungono solo testo, non skill nella lezione." oninput="syncPrepPlanToNote()">${esc(note?.value || '')}</textarea>
-        </div>
-        <div>
-          <div class="lesson-prep-title" style="margin-bottom:.45rem">Spunti non salvati</div>
-          <div class="prep-selected-list" id="prep-selected-skills"></div>
-        </div>
-      </div>
-    </div>`
-  renderPrepSelectedSkills(ownerId)
+  board.hidden = true
+  board.innerHTML = ''
 }
 
 function sortedSkillsForLesson() {
@@ -10288,13 +10772,34 @@ function lessonSkillHint(allievo) {
 
 function renderLessonWorkButtons(allieviId) {
   const ownerArg = jsArg(allieviId)
+  const allowRipasso = allieviId !== FREE_LESSON_SKILL_ROWS_KEY
   return `
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-      <button type="button" class="btn btn-outline btn-sm" onclick="aggiungiSkillRow(${ownerArg})">+ Nuova skill</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="toggleRipassoPanel(${ownerArg})">Ripasso</button>
+      <button type="button" class="btn btn-outline btn-sm" data-lesson-action="new-skill" data-owner-id="${esc(allieviId)}">+ Nuova skill</button>
+      ${allowRipasso ? `<button type="button" class="btn btn-outline btn-sm" onclick="toggleRipassoPanel(${ownerArg})">Ripasso</button>` : ''}
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo esercizio')">+ Nuovo esercizio</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo percorso')">+ Nuovo percorso</button>
     </div>`
+}
+
+function focusLessonSkillRow(row) {
+  if (!row) return
+  row.classList.remove('is-collapsed')
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  setTimeout(() => row.querySelector('.skill-select')?.focus(), 120)
+}
+
+function addNewLessonSkillRow(ownerId) {
+  const panel = document.getElementById(ripassoPanelId(ownerId))
+  if (panel) panel.hidden = true
+  const row = aggiungiSkillRow(ownerId, '', 1, {}, false, [], { collapseExisting: true, scrollIntoView: true })
+  if (!row) {
+    const err = document.getElementById('lz-err')
+    if (err) {
+      err.textContent = 'Non trovo il blocco dove aggiungere la skill. Ricarica la pagina e riprova.'
+      err.classList.add('show')
+    }
+  }
 }
 
 function lezioneFeatureSoon(label) {
@@ -10343,19 +10848,58 @@ function workedSkillGroupsForOwner(ownerId) {
   const list = [...bySkill.values()]
     .map(item => ({ ...item, skill: allSkills.find(skill => String(skill.id) === item.skillId) }))
     .filter(item => item.skill)
-    .sort((a, b) => a.stadio - b.stadio || String(a.skill.nome || '').localeCompare(String(b.skill.nome || ''), 'it', { sensitivity: 'base' }))
+    .sort(compareRipassoItems)
   return {
     work: list.filter(item => item.stadio < 3),
     done: list.filter(item => item.stadio >= 3),
   }
 }
 
+function compareRipassoItems(a, b) {
+  const branches = lessonSkillBranches()
+  const branchA = a.skill?.ramo || 'Altro'
+  const branchB = b.skill?.ramo || 'Altro'
+  return (branches.indexOf(branchA) === -1 ? 999 : branches.indexOf(branchA)) - (branches.indexOf(branchB) === -1 ? 999 : branches.indexOf(branchB))
+    || Number(a.skill?.livello || 0) - Number(b.skill?.livello || 0)
+    || a.stadio - b.stadio
+    || String(a.skill?.nome || '').localeCompare(String(b.skill?.nome || ''), 'it', { sensitivity: 'base' })
+}
+
+function ripassoRowsByBranch(rows = []) {
+  const grouped = new Map()
+  rows.forEach(item => {
+    const branch = item.skill?.ramo || 'Altro'
+    if (!grouped.has(branch)) grouped.set(branch, [])
+    grouped.get(branch).push(item)
+  })
+  const branches = lessonSkillBranches()
+  return [...grouped.entries()]
+    .sort(([a], [b]) => (branches.indexOf(a) === -1 ? 999 : branches.indexOf(a)) - (branches.indexOf(b) === -1 ? 999 : branches.indexOf(b)) || a.localeCompare(b, 'it', { sensitivity: 'base' }))
+}
+
+function renderRipassoSkillButton(ownerId, item) {
+  const meta = [item.skill?.blocco, item.skill?.livello ? `Lv.${item.skill.livello}` : ''].filter(Boolean).join(' · ')
+  const stadio = Number(item.stadio) || 1
+  return `<button type="button" class="skill-suggest ripasso-skill" onclick="aggiungiRipassoSkill(${jsArg(ownerId)},${jsArg(item.skillId)})" title="${esc(skillMetaLabel(item.skill))}">
+    <span class="ripasso-skill-name">${esc(item.skill.nome)}</span>
+    ${meta ? `<span class="ripasso-skill-meta">${esc(meta)}</span>` : ''}
+    <span class="ripasso-skill-stage st${stadio}">${esc(lessonStadioLabel(stadio))}</span>
+  </button>`
+}
+
 function renderRipassoGroup(ownerId, title, rows) {
   return `<div class="ripasso-group">
     <div class="ripasso-title">${esc(title)}</div>
-    <div class="lesson-skill-suggestions">
-      ${rows.length ? rows.map(item => `<button type="button" class="skill-suggest" onclick="aggiungiRipassoSkill(${jsArg(ownerId)},${jsArg(item.skillId)})">${esc(item.skill.nome)} · ${esc(lessonStadioLabel(item.stadio))}</button>`).join('') : '<span class="ripasso-empty">Nessuna skill in questo gruppo.</span>'}
-    </div>
+    ${rows.length ? ripassoRowsByBranch(rows).map(([branch, items]) => `
+      <section class="ripasso-branch">
+        <div class="ripasso-branch-title">
+          <span>${esc(branch)}</span>
+          <span>${items.length} skill</span>
+        </div>
+        <div class="lesson-skill-suggestions ripasso-skill-grid">
+          ${items.map(item => renderRipassoSkillButton(ownerId, item)).join('')}
+        </div>
+      </section>`).join('') : '<span class="ripasso-empty">Nessuna skill in questo gruppo.</span>'}
   </div>`
 }
 
@@ -10622,8 +11166,8 @@ function lessonStadioLabel(stadio) {
 
 const LESSON_STADIO_COLORS = {
   1: { border: 'rgba(251,191,36,.5)', color: '#facc15', background: 'rgba(251,191,36,.08)' },
-  2: { border: 'rgba(56,189,248,.55)', color: '#67e8f9', background: 'rgba(56,189,248,.1)' },
-  3: { border: 'rgba(52,211,153,.65)', color: 'var(--success)', background: 'rgba(52,211,153,.12)' },
+  2: { border: 'rgba(52,211,153,.65)', color: 'var(--success)', background: 'rgba(52,211,153,.12)' },
+  3: { border: 'rgba(56,189,248,.55)', color: '#67e8f9', background: 'rgba(56,189,248,.1)' },
 }
 
 function lessonStadioInlineStyle(stadio) {
@@ -10667,7 +11211,9 @@ const LESSON_SIDE_FEEDBACK_OPTIONS = [
 ]
 
 function normalizedLessonResult(value) {
-  return LESSON_RESULT_OPTIONS.some(option => option.value === value) ? value : 'bene'
+  const aliases = { da_rifare: 'da_rivedere', da_rivedere: 'da_rivedere', buono: 'bene', bene: 'bene', ottimo: 'ottimo' }
+  const normalized = aliases[value] || value
+  return LESSON_RESULT_OPTIONS.some(option => option.value === normalized) ? normalized : 'bene'
 }
 
 function normalizedLessonSideFeedback(value) {
@@ -10678,35 +11224,91 @@ function lessonOption(options, value) {
   return options.find(option => option.value === value) || options[0]
 }
 
-function renderLessonResultToggle(value = 'bene') {
-  const option = lessonOption(LESSON_RESULT_OPTIONS, normalizedLessonResult(value))
-  return `<button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className}" data-result="${esc(option.value)}" onclick="toggleLessonResult(this)">${esc(option.label)}</button>`
+function renderLessonResultButtons(value = 'bene') {
+  const selected = normalizedLessonResult(value)
+  const option = lessonOption(LESSON_RESULT_OPTIONS, selected)
+  return `<div class="lesson-result-choice" role="group" aria-label="Valutazione" data-result="${esc(selected)}">
+    <button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className} is-selected" data-result="${esc(option.value)}" data-selected="on" aria-pressed="true" onclick="toggleLessonResult(this)">${esc(option.label)}</button>
+  </div>`
 }
 
 function lessonFormIsOpen() {
   return document.getElementById('lz-stato')?.value !== 'chiusa'
 }
 
+function lessonFeedbackHiddenByState() {
+  return lezioneFormMode !== 'prep' && lessonFormIsOpen()
+}
+
 function renderLessonFeedbackControls(result = 'bene', sideFeedback = 'bilaterale') {
-  return `<div class="lesson-feedback-controls" ${lessonFormIsOpen() ? 'hidden' : ''}>
-    ${renderLessonResultToggle(result)}
+  return `<div class="lesson-feedback-controls" ${lessonFeedbackHiddenByState() ? 'hidden' : ''}>
+    ${renderLessonResultButtons(result)}
     ${renderLessonSideFeedbackToggle(sideFeedback)}
   </div>`
 }
 
 function syncLessonFeedbackVisibility() {
-  const hidden = lessonFormIsOpen()
+  const hidden = lessonFeedbackHiddenByState()
   document.querySelectorAll('.lesson-feedback-controls').forEach(el => { el.hidden = hidden })
 }
 
+function renderGroupStudentFeedbackControls(allievoId, selected = true) {
+  const result = editingLezioneGroupFeedback?.[allievoId]?.esito || 'bene'
+  return `<div class="group-student-feedback lesson-feedback-controls${selected ? '' : ' is-unselected'}" data-allievo-id="${esc(allievoId)}" ${lessonFeedbackHiddenByState() ? 'hidden' : ''}>
+    ${renderLessonResultButtons(result)}
+  </div>`
+}
+
+function syncGroupStudentFeedbackVisibility() {
+  const hidden = lessonFeedbackHiddenByState()
+  document.querySelectorAll('.group-student-feedback').forEach(el => {
+    const row = el.closest('.group-presence-row')
+    const checked = row?.querySelector('input[type=checkbox]')?.checked
+    el.hidden = hidden
+    el.classList.toggle('is-unselected', checked === false)
+  })
+}
+
+function collectGroupStudentFeedback() {
+  const feedback = {}
+  if (lessonFeedbackHiddenByState()) return feedback
+  document.querySelectorAll('.group-student-feedback[data-allievo-id]').forEach(el => {
+    if (el.classList.contains('is-unselected')) return
+    const result = normalizedLessonResult(el.querySelector('.lesson-result-toggle[data-selected="on"]')?.dataset.result)
+    feedback[el.dataset.allievoId] = { esito: result }
+  })
+  return feedback
+}
+
+function groupStudentFeedbackDimensions(allievoId, feedback = collectGroupStudentFeedback()) {
+  const result = feedback?.[allievoId]?.esito
+  return result ? { esito: normalizedLessonResult(result) } : {}
+}
+
 function toggleLessonResult(btn) {
-  const current = normalizedLessonResult(btn.dataset.result)
-  const index = LESSON_RESULT_OPTIONS.findIndex(option => option.value === current)
-  const next = LESSON_RESULT_OPTIONS[(index + 1) % LESSON_RESULT_OPTIONS.length]
-  btn.dataset.result = next.value
-  btn.textContent = next.label
-  btn.classList.remove(...LESSON_RESULT_OPTIONS.map(option => option.className).filter(Boolean))
-  btn.classList.add(next.className)
+  const choice = btn.closest('.lesson-result-choice')
+  if (!choice) return
+  const buttons = [...choice.querySelectorAll('.lesson-result-toggle')]
+  if (buttons.length === 1) {
+    const current = normalizedLessonResult(btn.dataset.result)
+    const index = LESSON_RESULT_OPTIONS.findIndex(option => option.value === current)
+    const next = LESSON_RESULT_OPTIONS[(index + 1) % LESSON_RESULT_OPTIONS.length]
+    btn.dataset.result = next.value
+    btn.dataset.selected = 'on'
+    btn.setAttribute('aria-pressed', 'true')
+    btn.textContent = next.label
+    btn.classList.remove(...LESSON_RESULT_OPTIONS.map(option => option.className))
+    btn.classList.add(next.className, 'is-selected')
+    choice.dataset.result = next.value
+    return
+  }
+  choice.dataset.result = normalizedLessonResult(btn.dataset.result)
+  buttons.forEach(option => {
+    const active = option === btn
+    option.dataset.selected = active ? 'on' : 'off'
+    option.setAttribute('aria-pressed', active ? 'true' : 'false')
+    option.classList.toggle('is-selected', active)
+  })
 }
 
 function renderLessonSideFeedbackToggle(value = 'bilaterale') {
@@ -10726,7 +11328,7 @@ function toggleLessonSideFeedback(btn) {
 
 function skillRowResult(row) {
   if (row?.querySelector('.lesson-feedback-controls')?.hidden) return ''
-  return normalizedLessonResult(row?.querySelector('.lesson-result-toggle')?.dataset.result)
+  return normalizedLessonResult(row?.querySelector('.lesson-result-toggle[data-selected="on"]')?.dataset.result)
 }
 
 function skillRowSideFeedback(row) {
@@ -10887,6 +11489,19 @@ function skillRowDimensions(row) {
   return dimensioni
 }
 
+function lessonSkillOnlyDimensions(dimensioni = {}) {
+  const clean = { ...(dimensioni || {}) }
+  delete clean.esito
+  delete clean.lato_feedback
+  return clean
+}
+
+function rememberGroupStudentFeedback(allievoId, dimensioni = {}) {
+  const esito = dimensioni?.esito
+  if (!allievoId || !esito || editingLezioneGroupFeedback[allievoId]?.esito) return
+  editingLezioneGroupFeedback[allievoId] = { esito: normalizedLessonResult(esito) }
+}
+
 function mergeDimensionValue(a, b) {
   const values = []
   ;[a, b].forEach(value => {
@@ -11005,6 +11620,7 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
   const exercisesActive = selectedExercises.length > 0
   const selectedResult = normalizedLessonResult(selectedDimensioni?.esito)
   const selectedSideFeedback = normalizedLessonSideFeedback(selectedDimensioni?.lato_feedback)
+  const useSkillFeedback = !currentLessonTargetIsGroup()
 
   row.innerHTML = `
     <button type="button" class="btn btn-outline btn-sm skill-row-summary" onclick="expandSkillRow(this)">Skill</button>
@@ -11018,7 +11634,7 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
     ${renderFakieToggle(fakieActive)}
     ${renderDimensionToggle(dimensionsActive)}
     ${renderExerciseToggle(exercisesActive, selectedExercises.length)}
-    ${renderLessonFeedbackControls(selectedResult, selectedSideFeedback)}
+    ${useSkillFeedback ? renderLessonFeedbackControls(selectedResult, selectedSideFeedback) : ''}
     ${renderLessonStadioToggle(selectedStadio)}
     <button class="btn btn-ghost btn-sm" onclick="removeSkillRow(this)">✕</button>
     ${allieviId === GROUP_SKILL_ROWS_KEY ? renderGroupExclusionChips(selectedExcludedIds) : ''}
@@ -11026,6 +11642,8 @@ function aggiungiSkillRow(allieviId, selectedSkillId = '', selectedStadio = 1, s
     ${renderSkillExercises(selectedExercises, exercisesActive)}`
   container.appendChild(row)
   compactSelectedSkillOption(row.querySelector('.skill-select'))
+  if (options.scrollIntoView) focusLessonSkillRow(row)
+  return row
 }
 
 async function snapshotLezioneRelazioni(lezioneId) {
@@ -11116,14 +11734,6 @@ async function ripristinaRelazioniLezione(lezioneId, snapshot) {
 }
 
 async function salvaLezione() {
-  if (lezioneFormMode === 'prep' && !editingLezioneId) {
-    const errEl = document.getElementById('lz-err')
-    if (errEl) {
-      errEl.textContent = 'La preparazione non crea lezioni ne skill. Registra la lezione dopo averla svolta.'
-      errEl.classList.add('show')
-    }
-    return
-  }
   const data   = document.getElementById('lz-data').value
   const ora = normalizeLessonTime(document.getElementById('lz-ora')?.value || '')
   const durata = parseInt(document.getElementById('lz-durata').value) || null
@@ -11139,14 +11749,16 @@ async function salvaLezione() {
   const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
   const checkNonFatto = document.getElementById('lz-check-non-fatto')?.value.trim() || ''
   const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato, meteo || '', ora)
-  const errEl  = document.getElementById('lz-err')
-  errEl.classList.remove('show')
+  clearLezioneFormMessage()
 
-  if (!data) { errEl.textContent = 'Inserisci la data.'; errEl.classList.add('show'); return }
-  if (!target) { errEl.textContent = 'Seleziona allievo, gruppo o campo libero.'; errEl.classList.add('show'); return }
+  if (!data) { setLezioneFormMessage('Inserisci la data.'); return }
+  if (!target) { setLezioneFormMessage('Seleziona allievo, gruppo o campo libero.'); return }
 
   const checkedAllievi = [...document.querySelectorAll('#lz-hidden-checks input[type=checkbox]:checked')]
-  if (!checkedAllievi.length) { errEl.textContent = 'Seleziona almeno un allievo.'; errEl.classList.add('show'); return }
+  if (!checkedAllievi.length && tipo !== 'campo_libero') { setLezioneFormMessage('Seleziona almeno un allievo.'); return }
+  const lezioneAllieviIds = checkedAllievi.map(cb => cb.value)
+  const locationEntries = lessonLocationEntries(luogo, lezioneAllieviIds)
+  const effectiveLocationId = locationEntries.length === 1 ? selectedLocationId : null
 
   const buttons = [document.getElementById('btn-salva-lz'), document.getElementById('btn-salva-lz-top')].filter(Boolean)
   const saveText = lezioneFormSaveLabel(!!editingLezioneId)
@@ -11164,7 +11776,7 @@ async function salvaLezione() {
 
     // 1 — crea o aggiorna lezione
     let e1
-    const payloadLezione = { data, durata_min: durata, tipo, luogo, location_id: selectedLocationId || null, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
+    const payloadLezione = { data, durata_min: durata, tipo, luogo, location_id: effectiveLocationId || null, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null }
     const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note }
     const payloadLezioneNuova = { ...payloadLezione, maestro_id: currentUid || null }
     const payloadLezioneNuovaCompat = { ...payloadLezioneCompat, maestro_id: currentUid || null }
@@ -11242,10 +11854,11 @@ async function salvaLezione() {
     }
 
     const pendingSkillsByAllievo = new Map()
-    const queueSkillForAllievo = (aid, row) => {
+    const groupFeedback = tipo === 'gruppo' ? collectGroupStudentFeedback() : {}
+    const queueSkillForAllievo = (aid, row, extraDimensioni = {}) => {
       const skillId = row.querySelector('.skill-select')?.value
       const stadio  = parseInt(row.querySelector('.stadio-toggle')?.dataset.stadio || '1', 10)
-      const dimensioni = skillRowDimensions(row)
+      const dimensioni = mergeLessonDimensions(skillRowDimensions(row), extraDimensioni)
       const fakie = skillRowFakie(row)
       if (!skillId) return
       if (!pendingSkillsByAllievo.has(aid)) pendingSkillsByAllievo.set(aid, new Map())
@@ -11259,9 +11872,9 @@ async function salvaLezione() {
     const flushSkills = async () => {
       for (const [aid, skillMap] of pendingSkillsByAllievo.entries()) {
         for (const item of skillMap.values()) {
-          const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni })
+          const { error: skillError } = await insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid || null, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni })
           if (skillError) throw skillError
-          if (stato === 'chiusa') {
+          if (stato === 'chiusa' && aid) {
             try {
               await aggiornaProgressiDaLezione(aid, item.skillId, item.stadio, { fakie: item.fakie })
             } catch (progressError) {
@@ -11278,26 +11891,31 @@ async function salvaLezione() {
       const { error: allievoInsertError } = await sb.from('lezioni_allievi').insert({ lezione_id: lz.id, allievo_id: aid })
       if (allievoInsertError) throw allievoInsertError
     }
-    await ensureLocationDaLezione(luogo, checkedAllievi.map(cb => cb.value))
+    await ensureLocationDaLezione(luogo, lezioneAllieviIds)
 
     if (tipo === 'gruppo') {
       const checkedIds = checkedAllievi.map(cb => cb.value)
       for (const row of document.querySelectorAll(`#skill-rows-${GROUP_SKILL_ROWS_KEY} .skill-row`)) {
         const excluded = new Set(skillRowExcludedIds(row))
         for (const aid of checkedIds.filter(id => !excluded.has(id))) {
-          queueSkillForAllievo(aid, row)
+          queueSkillForAllievo(aid, row, groupStudentFeedbackDimensions(aid, groupFeedback))
         }
       }
       for (const aid of checkedIds) {
         const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
-        for (const row of rows) queueSkillForAllievo(aid, row)
+        for (const row of rows) queueSkillForAllievo(aid, row, groupStudentFeedbackDimensions(aid, groupFeedback))
       }
     } else {
-      for (const cb of checkedAllievi) {
-        const aid = cb.value
-        const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
-      for (const row of rows) {
-          queueSkillForAllievo(aid, row)
+      if (tipo === 'campo_libero') {
+        const rows = document.querySelectorAll(`#skill-rows-${FREE_LESSON_SKILL_ROWS_KEY} .skill-row`)
+        for (const row of rows) queueSkillForAllievo(null, row)
+      } else {
+        for (const cb of checkedAllievi) {
+          const aid = cb.value
+          const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`)
+          for (const row of rows) {
+            queueSkillForAllievo(aid, row)
+          }
         }
       }
     }
@@ -11326,8 +11944,13 @@ async function salvaLezione() {
         console.error('Ripristino relazioni lezione fallito', restoreError)
       }
     }
-    errEl.textContent = e.message || 'Errore nel salvataggio della lezione. Le presenze precedenti sono state mantenute quando possibile.'
-    errEl.classList.add('show')
+    saveLezioneDraft({ keep: true })
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+    const reason = e.message || 'Errore nel salvataggio della lezione. Le presenze precedenti sono state mantenute quando possibile.'
+    const localNote = offline
+      ? 'Bozza salvata localmente su questo dispositivo: sei offline. Riprova il salvataggio quando torna la connessione.'
+      : 'Bozza salvata localmente su questo dispositivo. Riprova il salvataggio quando il servizio online risponde.'
+    setLezioneFormMessage(`${reason} ${localNote}`)
   } finally {
     buttons.forEach(btn => { btn.disabled = false; btn.textContent = saveText })
   }
