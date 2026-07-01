@@ -1287,19 +1287,30 @@ var _a, _b;
 })();
 const SUPA_URL = "https://mhioneawefsvagbccsum.supabase.co";
 const SUPA_KEY = "sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH";
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = "", currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroLezioni = "all", filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, gruppiEspansi = /* @__PURE__ */ new Set(), lezioniAnniEspansi = /* @__PURE__ */ new Set(), schedaLezioniAnniEspansi = /* @__PURE__ */ new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = /* @__PURE__ */ new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false;
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = "", currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = "all", filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = /* @__PURE__ */ new Set(), lezioniAnniEspansi = /* @__PURE__ */ new Set(), schedaLezioniAnniEspansi = /* @__PURE__ */ new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = /* @__PURE__ */ new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false;
 let luoghiLezioneCache = /* @__PURE__ */ new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = "standard";
-let mappaTipoFiltro = "all", mappaSelectedLocationName = null;
+let mappaTipoFiltro = "all", mappaSelectedLocationName = null, mappaSingleFocusName = null, mappaPuntiEspansi = false, mappaPuntiEspansiLoaded = false;
+let calendarioSuggestTimer = null;
 const lezioniColumnState = { data: false, luogo: false, note: false };
 const LEZIONE_DRAFT_KEY = "lezioneDraftInCorso";
 const GROUP_SKILL_ROWS_KEY = "__group__";
+const FREE_LESSON_SKILL_ROWS_KEY = "__free__";
 const APP_NOTES_KEY = "bladingManagerAppNotes";
 const APP_NOTES_REMOTE_KEY = "gestionale";
 const LOCATION_MAP_COORDS_KEY = "bladingManagerLocationMapCoords";
+const LOCATION_BACK_TARGET_KEY = "bladingManagerLocationBackTarget";
 const MILANO_MAP_BOUNDS = Object.freeze({ north: 45.5433822361299, south: 45.38158101556157, west: 9.034115819444445, east: 9.286647969771241 });
 const MILANO_MAP_VIEWBOX = Object.freeze({ width: 1114, height: 993 });
 const MILANO_MAP_IMAGE = "./mappa-milano-quartieri-dark@2x.png";
 const LOCATION_CATEGORIES = ["Location", "Parco", "Ciclabile", "Piazza", "Pista di pattinaggio", "Skatepark", "Strada", "Campi da basket", "Palestra", "Casa allievo", "Altro"];
+const LOCATION_NORMALIZATION_GROUPS = [
+  { nome: "Sant'Agostino", tipo: "street", tipologia: "Piazza", aliases: ["S.Agostino", "S. Agostino", "Piazza Sant'Agostino", "Piazza Sant'Agostino, 20123 Milano MI, Italia", "Sant'Agostino - casa"] },
+  { nome: "Tolstoj / Skatepark Tolstoj", tipo: "skatepark", tipologia: "Skatepark", aliases: ["Giardini di via Tolstoj Savona", "Giardini di via Tolstoj Savona, 20144 Milano MI, Italia", "Casa - skatepark Tolstoj"] },
+  { nome: "Barrio's / Parco Barona", tipo: "spot", tipologia: "Parco", aliases: ["Casa - Barrio's", "Barrio's - parco Barona"] },
+  { nome: "Naviglio Pavese", tipo: "street", tipologia: "Ciclabile", aliases: ["Casa - naviglio Pavese", "Ciclabile naviglio pavese"] },
+  { nome: "Castelletto / Robecco", tipo: "spot", tipologia: "Location", aliases: ["parco castelletto", "cimitero castelletto"] },
+  { nome: "Casa", tipo: "privato", tipologia: "Casa allievo", private: true, aliases: ["Casa"] }
+];
 const MILANO_COORD_HINTS = [
   { match: ["centro"], x: 675, y: 478, label: "Centro" },
   { match: ["arco della pace", "arena", "pagano"], x: 599, y: 431, label: "Arco della Pace / Arena" },
@@ -1339,7 +1350,15 @@ const MILANO_COORD_HINTS = [
   { match: ["istituto leopardi", "leopardi"], x: 599, y: 431, label: "Centro ovest" }
 ];
 const MAESTRO_AVAILABILITY_METADATA_KEY = "disponibilita_maestro_slots";
+const MAESTRO_EXCLUDED_METADATA_KEY = "disponibilita_maestro_escluse_slots";
 const MAESTRO_AVAILABILITY_STORAGE_PREFIX = "bladingManagerMaestroAvailability";
+const MAESTRO_EXCLUDED_STORAGE_PREFIX = "bladingManagerMaestroExcluded";
+const CALENDARIO_METADATA_KEY = "calendario_settimanale_items";
+const CALENDARIO_STORAGE_PREFIX = "bladingManagerCalendarioSettimanale";
+const MAP_POINTS_EXPANDED_STORAGE_KEY = "bladingManagerMappaPuntiEspansi";
+const APPOINTMENT_SELECTION_STORAGE_KEY = "bladingManagerAppointmentSelection";
+const APPOINTMENT_PRIORITY_STORAGE_KEY = "bladingManagerAppointmentPriorityModes";
+const APPOINTMENT_TRAVEL_STORAGE_KEY = "bladingManagerAppointmentTravelTimes";
 const AVAILABILITY_DAYS = [
   { value: 1, label: "Lunedi", short: "Lun" },
   { value: 2, label: "Martedi", short: "Mar" },
@@ -1352,11 +1371,28 @@ const AVAILABILITY_DAYS = [
 const AVAILABILITY_START_MIN = 7 * 60;
 const AVAILABILITY_END_MIN = 23 * 60;
 const AVAILABILITY_STEP_MIN = 15;
-const AVAILABILITY_HOUR_PX = 44;
+const AVAILABILITY_HOUR_PX = 30;
 const APPOINTMENT_BUFFER_MIN = 15;
 const APPOINTMENT_MIN_LESSON_MIN = 60;
-let maestroAvailabilitySlots = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = "", appuntamentiGruppoFiltro = "all";
+const APPOINTMENT_DEFAULT_WEEKLY_COUNT = 1;
+const APPOINTMENT_MAX_WEEKLY_COUNT = 7;
+const APPOINTMENT_GROUP_TARGET_PREFIX = "gruppo:";
+const APPOINTMENT_HEAT_START_MIN = 13 * 60;
+const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30;
+const APPOINTMENT_CONSECUTIVE_PREFER = "prefer";
+const APPOINTMENT_CONSECUTIVE_STRICT = "strict";
+let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = "", appuntamentiGruppoFiltro = "all";
 let availabilityDragState = null;
+let calendarioDragId = null;
+let appointmentSelectedAllieviIds = null;
+let appointmentPriorityModes = /* @__PURE__ */ new Map();
+let appointmentCurrentVariant = null;
+let appointmentGenerationNonce = 0;
+let appointmentPreviewDragId = null;
+const availabilityUndoStacks = /* @__PURE__ */ new Map();
+const availabilityEditModes = /* @__PURE__ */ new Map();
+let lastAppointmentScheduleVariants = [];
+const importedAppointmentVariantIds = /* @__PURE__ */ new Set();
 let godMode = false, godScope = "all", shareContext = null;
 let appNotesTimer = null, appNotesRemoteAvailable = null;
 let appNotesReturnView = null;
@@ -1428,13 +1464,57 @@ function getCurrentAuthUser() {
   return __async(this, null, function* () {
     if (!(sb == null ? void 0 : sb.auth)) return null;
     if (typeof sb.auth.getUser === "function") {
-      const { data: { user } } = yield sb.auth.getUser();
-      return user || null;
+      try {
+        const { data: { user }, error } = yield sb.auth.getUser();
+        if (user && !error) return user;
+      } catch (_e) {
+      }
     }
     if (typeof sb.auth.user === "function") return sb.auth.user();
     const session = yield getCurrentAuthSession();
     return (session == null ? void 0 : session.user) || null;
   });
+}
+function refreshCurrentAuthIdentity() {
+  return __async(this, null, function* () {
+    const user = yield getCurrentAuthUser();
+    currentUid = (user == null ? void 0 : user.id) || null;
+    currentEmail = ((user == null ? void 0 : user.email) || "").toLowerCase();
+    currentUserMetadata = (user == null ? void 0 : user.user_metadata) || {};
+    return currentUid;
+  });
+}
+function requireCurrentUidForWrite(errEl = null) {
+  return __async(this, null, function* () {
+    let uid = null;
+    try {
+      uid = yield refreshCurrentAuthIdentity();
+    } catch (_e) {
+    }
+    uid = uid || currentUid;
+    if (uid) return uid;
+    const message = "Sessione maestro non pronta: esci, rientra e riprova a salvare.";
+    if (errEl) {
+      errEl.textContent = message;
+      errEl.classList.add("show");
+    }
+    throw new Error(message);
+  });
+}
+function supabaseErrorText(error) {
+  if (!error) return "";
+  return [error.message, error.details, error.hint, error.code].filter(Boolean).join(" \xB7 ");
+}
+function saveBlockedByPolicy(error) {
+  const text = supabaseErrorText(error);
+  return /row-level security|violates.*policy|permission denied|42501/i.test(text);
+}
+function saveErrorMessage(error, fallback = "Errore di rete. Riprova.") {
+  const detail = supabaseErrorText(error);
+  if (saveBlockedByPolicy(error)) {
+    return `Salvataggio bloccato dal database: la sessione non ha permesso di scrittura. Dettaglio: ${detail || "policy RLS"}`;
+  }
+  return detail || (error == null ? void 0 : error.message) || fallback;
 }
 function signInWithPasswordCompat(email, password) {
   return __async(this, null, function* () {
@@ -1555,6 +1635,12 @@ document.addEventListener("pointerdown", (e) => {
   const target = e.target.closest(".btn, .chip, nav button, .scheda-tab");
   motion.press(target);
 });
+document.addEventListener("click", (e) => {
+  const newSkillBtn = e.target.closest('[data-lesson-action="new-skill"]');
+  if (!newSkillBtn || newSkillBtn.dataset.handledInline === "1") return;
+  e.preventDefault();
+  addNewLessonSkillRow(newSkillBtn.dataset.ownerId);
+});
 function handleAuthSession(session) {
   return __async(this, null, function* () {
     if (session) {
@@ -1562,11 +1648,14 @@ function handleAuthSession(session) {
       document.getElementById("screen-app").hidden = false;
       if (!appInited) {
         appInited = true;
-        initApp();
+        yield initApp();
       }
     } else {
       appInited = false;
       appHistoryStarted = false;
+      currentUid = null;
+      currentEmail = "";
+      currentUserMetadata = {};
       document.getElementById("screen-login").hidden = false;
       document.getElementById("screen-app").hidden = true;
     }
@@ -1619,7 +1708,7 @@ function initialRouteFromHash(hashValue = window.location.hash) {
   } catch (e) {
     return { name: "allievi", id: null };
   }
-  const allowed = ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"];
+  const allowed = ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"];
   if (!allowed.includes(name)) return { name: "allievi", id: null };
   if (routeNeedsId(name) && !id) return { name: "allievi", id: null };
   return { name, id };
@@ -1636,6 +1725,8 @@ function initApp() {
     currentEmail = ((user == null ? void 0 : user.email) || "").toLowerCase();
     currentUserMetadata = (user == null ? void 0 : user.user_metadata) || {};
     maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata);
+    maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata);
+    calendarioItems = loadCalendarioItems(currentUserMetadata);
     const [{ data: a }, { data: s }, { data: p }, { data: pr }] = yield Promise.all([
       sb.from("allievi").select("*").eq("stato", "attivo").order("nome"),
       sb.from("skills").select("*").order("livello"),
@@ -1647,11 +1738,12 @@ function initApp() {
     allPrereqs = p || [];
     allProgressi = pr || [];
     skillDefinitions = yield loadSkillDefinitions();
-    yield loadLocations();
+    loadLocations().catch((error) => console.warn("locations non precaricate", error));
     renderGodPanel();
     renderAllievi();
     const initialRoute = consumeInitialRoute();
     showView(initialRoute.name, initialRoute.id || void 0);
+    scheduleNuovaLezioneRouteRepair();
     refreshDashboardData();
   });
 }
@@ -1669,6 +1761,18 @@ function loadSkillDefinitions() {
 function isOwnedByCurrentMaestro(record = {}) {
   return !(record == null ? void 0 : record.maestro_id) || String(record.maestro_id) === String(currentUid || "") || godMode && isSuperMaestro();
 }
+function canShareAllievo(allievo = null) {
+  if (!allievo || !currentUid) return false;
+  return isSuperMaestro() || !allievo.maestro_id || String(allievo.maestro_id) === String(currentUid);
+}
+function shareableGruppoMembri(gruppo) {
+  const membri = gruppoMembri(gruppo);
+  if (!membri.length || !membri.every(canShareAllievo)) return [];
+  return membri;
+}
+function canShareGruppo(gruppo) {
+  return !!gruppo && shareableGruppoMembri(gruppo).length > 0;
+}
 function canEditAllievoAddress(allievo = null) {
   return !allievo || isOwnedByCurrentMaestro(allievo);
 }
@@ -1679,17 +1783,74 @@ function canViewAllievoAddress(allievo = null) {
   return !!((_a2 = allievo.profilo) == null ? void 0 : _a2.indirizzo_condiviso);
 }
 function visibleAllievoAddress(allievo = {}) {
+  var _a2, _b2, _c, _d, _e;
   const profilo = (allievo == null ? void 0 : allievo.profilo) || {};
   if (!canViewAllievoAddress(allievo)) return { indirizzo: "", casa: "" };
   return {
     indirizzo: profilo.indirizzo || "",
-    casa: profilo.casa || ""
+    casa: profilo.casa || "",
+    casa_latitudine: (_b2 = (_a2 = profilo.casa_latitudine) != null ? _a2 : profilo.casa_lat) != null ? _b2 : null,
+    casa_longitudine: (_e = (_d = (_c = profilo.casa_longitudine) != null ? _c : profilo.casa_lng) != null ? _d : profilo.casa_lon) != null ? _e : null
   };
 }
 function locationCategoryOptions(selected = "Location") {
   const value = selected && LOCATION_CATEGORIES.includes(selected) ? selected : selected || "Location";
   const options = LOCATION_CATEGORIES.includes(value) ? LOCATION_CATEGORIES : [...LOCATION_CATEGORIES, value];
   return options.map((t) => `<option value="${esc(t)}" ${t === value ? "selected" : ""}>${esc(t)}</option>`).join("");
+}
+function locationAliasKey(value) {
+  return normalizeText(value || "").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function normalizedLocationGroupForName(nome = "") {
+  const key = locationAliasKey(nome);
+  if (!key) return null;
+  return LOCATION_NORMALIZATION_GROUPS.find(
+    (group) => locationAliasKey(group.nome) === key || (group.aliases || []).some((alias) => locationAliasKey(alias) === key)
+  ) || null;
+}
+function normalizedLocationName(nome = "") {
+  var _a2;
+  return ((_a2 = normalizedLocationGroupForName(nome)) == null ? void 0 : _a2.nome) || String(nome || "").trim();
+}
+function locationDbId(record = {}) {
+  return (record == null ? void 0 : record.id) || (record == null ? void 0 : record.location_id) || null;
+}
+function locationRecordMatchesName(record = {}, nome = "") {
+  if (!record || !nome) return false;
+  const direct = normalizeText(record.nome || "") === normalizeText(nome || "");
+  if (direct) return true;
+  return normalizeText(normalizedLocationName(record.nome || "")) === normalizeText(normalizedLocationName(nome || ""));
+}
+function locationRecordById(id) {
+  if (!id) return null;
+  return allLocations.find((location) => String(location.id || "") === String(id)) || null;
+}
+function locationType(record = {}) {
+  const group = normalizedLocationGroupForName(record.nome || "");
+  return record.tipo || (group == null ? void 0 : group.tipo) || record.tipologia || "Location";
+}
+function locationTipologia(record = {}) {
+  const group = normalizedLocationGroupForName(record.nome || "");
+  return record.tipologia || (group == null ? void 0 : group.tipologia) || record.tipo || "Location";
+}
+function isPrivateLocation(record = {}) {
+  var _a2;
+  const typeText = normalizeText([record.tipo, record.tipologia, record.nome, record.note, ...record.tags || []].filter(Boolean).join(" "));
+  return ((_a2 = normalizedLocationGroupForName(record.nome || "")) == null ? void 0 : _a2.private) || /\b(casa|home|abitazione|privato)\b/.test(typeText);
+}
+function locationGoogleMapsUrl(record = {}) {
+  if (record.google_maps_url) return record.google_maps_url;
+  if (isPrivateLocation(record) && !record.maps_confermato) return "";
+  const coords = locationCoordinatesFromRecord(record);
+  if (coords) return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+  const query = String(record.indirizzo || record.nome || "").trim();
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
+}
+function openLocationMaps(nomeOrId) {
+  const record = locationRecordById(nomeOrId) || locationRecordByName(nomeOrId) || { nome: nomeOrId };
+  const url = locationGoogleMapsUrl(record);
+  if (!url) return;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 function canEditLocation(record = null) {
   if (!record) return true;
@@ -1905,22 +2066,63 @@ function loadLocations(force = false) {
 }
 function locationRecordByName(nome) {
   const key = normalizeText(nome || "");
-  const matches = allLocations.filter((l) => normalizeText(l.nome || "") === key);
+  const normalizedKey = normalizeText(normalizedLocationName(nome || ""));
+  const matches = allLocations.filter(
+    (l) => normalizeText(l.nome || "") === key || normalizeText(normalizedLocationName(l.nome || "")) === normalizedKey || normalizeText(l.nome_normalizzato || "") === normalizedKey
+  );
   return matches.find((l) => String(l.maestro_id || "") === String(currentUid || "")) || matches.find((l) => !!l.condivisa) || matches[0] || null;
+}
+function lessonParticipantsFromLesson(lezione = {}) {
+  return (lezione.lezioni_allievi || []).map((row) => {
+    var _a2;
+    return ((_a2 = row.allievi) == null ? void 0 : _a2.id) ? allAllievi.find((a) => String(a.id) === String(row.allievi.id)) || row.allievi : null;
+  }).filter(Boolean);
+}
+function addLocationNameCandidate(map, nome) {
+  const clean = normalizedLocationName(nome);
+  if (!clean) return;
+  const key = normalizeText(clean);
+  if (key && !map.has(key)) map.set(key, clean);
+}
+function addLessonLocationCandidates(map, lezione = {}) {
+  const luogo = String(lezione.luogo || "").trim();
+  if (!luogo) return;
+  const participants = lessonParticipantsFromLesson(lezione);
+  lessonLocationEntries(luogo, participants.map((a) => a.id).filter(Boolean)).forEach((entry) => addLocationNameCandidate(map, entry.nome));
+}
+function addDefaultMeetingLocationCandidates(map) {
+  allieviVisibiliGod().filter((a) => a.stato !== "archiviato").forEach((allievo) => {
+    var _a2;
+    const individuale = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo);
+    addLocationNameCandidate(map, individuale.luogo_incontro || (!allievo.gruppo ? (_a2 = allievo.profilo) == null ? void 0 : _a2.luogo_incontro : ""));
+  });
+  gruppiEsistenti().forEach((gruppo) => {
+    const luogo = profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro;
+    addLocationNameCandidate(map, luogo);
+  });
 }
 function locationNamesFromLessons() {
   const map = /* @__PURE__ */ new Map();
-  (lezioniCache || []).forEach((l) => {
-    const nome = String(l.luogo || "").trim();
-    if (!nome) return;
-    const key = normalizeText(nome);
-    if (!map.has(key)) map.set(key, nome);
-  });
+  (lezioniCache || []).forEach((l) => addLessonLocationCandidates(map, l));
+  addDefaultMeetingLocationCandidates(map);
   allLocations.forEach((l) => {
     const nome = String(l.nome || "").trim();
     if (nome && !map.has(normalizeText(nome))) map.set(normalizeText(nome), nome);
   });
   return [...map.values()].sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }));
+}
+function lessonLocationUsesName(lezione = {}, nome = "") {
+  const target = normalizeText(nome);
+  if (!target) return false;
+  if (lezione.location_id) {
+    const rec = locationRecordById(lezione.location_id);
+    if (rec && locationRecordMatchesName(rec, nome)) return true;
+  }
+  const candidates = /* @__PURE__ */ new Map();
+  addLessonLocationCandidates(candidates, lezione);
+  return [...candidates.values()].some(
+    (candidate) => normalizeText(candidate) === target || normalizeText(normalizedLocationName(candidate)) === normalizeText(normalizedLocationName(nome))
+  );
 }
 function renderDashboard() {
   const el = document.getElementById("dashboard-content");
@@ -2006,29 +2208,78 @@ window.addEventListener("popstate", (event) => {
   showView(route.name || "allievi", route.id || null);
   appHistoryApplying = false;
 });
+window.addEventListener("hashchange", () => {
+  scheduleNuovaLezioneRouteRepair();
+});
 function visibleViewName() {
-  return ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].find((v) => {
+  return ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].find((v) => {
     var _a2;
     return !((_a2 = document.getElementById(`view-${v}`)) == null ? void 0 : _a2.hidden);
   }) || null;
 }
 function syncNavActive(name) {
+  const locationFromMap = name === "location" && (locationBackTarget == null ? void 0 : locationBackTarget.name) === "mappa";
   document.getElementById("nav-allievi").classList.toggle("active", ["allievi", "scheda", "gruppo", "nuovo-allievo", "nuovo-gruppo"].includes(name));
-  document.getElementById("nav-lezioni").classList.toggle("active", ["lezioni", "location", "lezione", "nuova-lezione"].includes(name));
+  document.getElementById("nav-lezioni").classList.toggle("active", ["lezioni", "lezione", "nuova-lezione"].includes(name) || name === "location" && !locationFromMap);
   document.getElementById("nav-percorsi").classList.toggle("active", name === "percorsi");
-  document.getElementById("nav-calendar").classList.toggle("active", name === "appuntamenti");
-  document.getElementById("nav-mappa").classList.toggle("active", name === "mappa");
+  document.getElementById("nav-calendar").classList.toggle("active", name === "calendario");
+  document.getElementById("nav-auto-orari").classList.toggle("active", name === "appuntamenti");
+  document.getElementById("nav-mappa").classList.toggle("active", name === "mappa" || locationFromMap);
   document.getElementById("nav-skills").classList.toggle("active", name === "skills");
   document.getElementById("nav-tuning").classList.toggle("active", name === "tuning");
   document.getElementById("nav-app-notes").classList.toggle("active", name === "app-notes");
+}
+function isValidLocationBackTarget(target) {
+  if (!target || target.name === "location") return false;
+  if (target.name === "scheda" || target.name === "gruppo" || target.name === "lezione") return !!target.id;
+  return ["allievi", "lezioni", "percorsi", "calendario", "appuntamenti", "mappa", "skills", "tuning", "app-notes"].includes(target.name);
+}
+function readLocationBackTarget() {
+  try {
+    const target = JSON.parse(safeStorage.getItem(LOCATION_BACK_TARGET_KEY) || "null");
+    return isValidLocationBackTarget(target) ? target : null;
+  } catch (e) {
+    return null;
+  }
+}
+function setLocationBackTarget(target) {
+  locationBackTarget = isValidLocationBackTarget(target) ? { name: target.name, id: target.id || null } : null;
+  if (locationBackTarget) safeStorage.setItem(LOCATION_BACK_TARGET_KEY, JSON.stringify(locationBackTarget));
+  else safeStorage.removeItem(LOCATION_BACK_TARGET_KEY);
+}
+function locationBackLabel(target = locationBackTarget) {
+  const labels = {
+    allievi: "Allievi",
+    lezioni: "Lezioni",
+    percorsi: "Percorsi",
+    calendario: "Calendario",
+    appuntamenti: "Appuntamenti",
+    mappa: "Mappa",
+    skills: "Skills",
+    tuning: "Tuning",
+    "app-notes": "Note",
+    scheda: "Scheda allievo",
+    gruppo: "Scheda gruppo",
+    lezione: "Lezione"
+  };
+  return labels[target == null ? void 0 : target.name] || "Lezioni";
+}
+function locationBackButtonHtml() {
+  const target = locationBackTarget || readLocationBackTarget() || { name: "lezioni", id: null };
+  locationBackTarget = target;
+  return `<button class="back-btn" onclick="tornaDaLocation()">\u2190 ${esc(locationBackLabel(target))}</button>`;
+}
+function tornaDaLocation() {
+  const target = locationBackTarget || readLocationBackTarget();
+  goToReturnTarget(target, { name: "lezioni", id: null });
 }
 function currentReturnTarget() {
   const view = visibleViewName();
   if (view === "scheda" && currentSchedaId) return { name: "scheda", id: currentSchedaId };
   if (view === "gruppo" && currentGruppoNome) return { name: "gruppo", id: currentGruppoNome };
   if (view === "lezione" && currentLezioneId) return { name: "lezione", id: currentLezioneId };
-  if (view === "location") return { name: "lezioni", id: null };
-  if (view === "allievi" || view === "lezioni" || view === "percorsi" || view === "appuntamenti" || view === "mappa" || view === "skills" || view === "tuning" || view === "app-notes") return { name: view, id: null };
+  if (view === "location") return locationBackTarget || readLocationBackTarget() || { name: "lezioni", id: null };
+  if (view === "allievi" || view === "lezioni" || view === "percorsi" || view === "calendario" || view === "appuntamenti" || view === "mappa" || view === "skills" || view === "tuning" || view === "app-notes") return { name: view, id: null };
   return null;
 }
 function goToReturnTarget(target, fallback) {
@@ -2052,23 +2303,37 @@ function goToReturnTarget(target, fallback) {
 }
 function showView(name, id) {
   if ((name === "tuning" || name === "app-notes") && !godMode) name = "allievi";
+  const previousReturnTarget = currentReturnTarget();
+  if (name === "location") {
+    const storedTarget = readLocationBackTarget();
+    const target = !appHistoryStarted && storedTarget ? storedTarget : previousReturnTarget;
+    if (!appHistoryApplying && isValidLocationBackTarget(target)) setLocationBackTarget(target);
+    else if (!locationBackTarget && storedTarget) locationBackTarget = storedTarget;
+  }
+  document.body.dataset.view = name;
   document.body.classList.toggle("route-builder-active", name === "percorsi");
   if (["nuovo-allievo", "nuovo-gruppo", "nuova-lezione"].includes(name)) {
-    const returnTarget = currentReturnTarget();
+    const returnTarget = previousReturnTarget;
     if (returnTarget) editReturnTarget = returnTarget;
   }
-  ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].forEach((v) => {
+  ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].forEach((v) => {
     document.getElementById(`view-${v}`).hidden = v !== name;
   });
   syncNavActive(name);
   if (name === "lezioni" && id) filtroLezioni = `allievo:${id}`;
   if (name === "lezioni") loadLezioni();
   if (name === "percorsi") ensureRouteBuilderMounted();
+  if (name === "calendario") renderCalendario();
   if (name === "appuntamenti") renderAppuntamenti();
   if (name === "mappa") renderMappa(id || null);
   if (name === "location" && id) loadLocation(id);
   if (name === "lezione" && id) loadLezione(id);
-  if (name === "nuova-lezione") initNuovaLezione(id || null);
+  if (name === "nuova-lezione") {
+    initNuovaLezione(id || null).catch((error) => {
+      console.error("Inizializzazione nuova lezione non riuscita", error);
+      fallbackNuovaLezioneForm(id || null);
+    });
+  }
   if (name === "nuovo-allievo") initNuovoAllievo(id || null);
   if (name === "nuovo-gruppo") initNuovoGruppo(id || null);
   if (name === "gruppo" && id) loadGruppo(id);
@@ -2078,6 +2343,50 @@ function showView(name, id) {
   if (name === "app-notes") initAppNotes();
   requestAnimationFrame(() => motion.view(name));
   recordAppHistory(name, id || null);
+}
+function lezioneTargetStillLoading() {
+  var _a2;
+  const select = document.getElementById("lz-tipo");
+  return !!select && select.options.length === 1 && /Caricamento/i.test(((_a2 = select.options[0]) == null ? void 0 : _a2.textContent) || "");
+}
+function ensurePrepFallbackTarget(routeId = null) {
+  const select = document.getElementById("lz-tipo");
+  if (!select) return;
+  const isPrep = String(routeId || "").startsWith("modo:prep") || lezioneFormMode === "prep";
+  if (!isPrep || select.value) return;
+  if (![...select.options].some((option) => option.value === "campo_libero")) {
+    select.insertAdjacentHTML("beforeend", '<option value="campo_libero">Campo libero</option>');
+  }
+  select.value = "campo_libero";
+}
+function fallbackNuovaLezioneForm(routeId = null) {
+  var _a2;
+  try {
+    if (String(routeId || "").startsWith("modo:prep")) lezioneFormMode = "prep";
+    renderLezioneTargetOptions(((_a2 = document.getElementById("lz-tipo")) == null ? void 0 : _a2.value) || "");
+    ensurePrepFallbackTarget(routeId);
+    syncLezioneFormLabels(!!editingLezioneId);
+    renderLezionePartecipanti();
+  } catch (fallbackError) {
+    console.error("Fallback nuova lezione non riuscito", fallbackError);
+  }
+}
+function repairNuovaLezioneRouteIfNeeded() {
+  var _a2;
+  if ((_a2 = document.getElementById("screen-app")) == null ? void 0 : _a2.hidden) return;
+  const route = initialRouteFromHash(window.location.hash);
+  if (route.name !== "nuova-lezione") return;
+  const select = document.getElementById("lz-tipo");
+  const needsPrepOption = String(route.id || "").startsWith("modo:prep") && ![...(select == null ? void 0 : select.options) || []].some((option) => option.value === "campo_libero");
+  if (!lezioneTargetStillLoading() && !needsPrepOption) return;
+  initNuovaLezione(route.id || null).catch((error) => {
+    console.error("Inizializzazione nuova lezione non riuscita", error);
+    fallbackNuovaLezioneForm(route.id || null);
+  });
+}
+function scheduleNuovaLezioneRouteRepair() {
+  ;
+  [250, 1e3, 2500].forEach((delay) => setTimeout(repairNuovaLezioneRouteIfNeeded, delay));
 }
 function ensureRouteBuilderMounted() {
   const view = document.getElementById("view-percorsi");
@@ -2125,14 +2434,412 @@ function closeAppNotes() {
     section.hidden = true;
   });
   targetEl.hidden = false;
+  document.body.dataset.view = target;
+  document.body.classList.toggle("route-builder-active", target === "percorsi");
   syncNavActive(target);
   requestAnimationFrame(() => motion.view(target));
 }
 function showCalendarFromHeader() {
-  showView("appuntamenti");
+  showView("calendario");
+}
+function calendarioStorageKey() {
+  return `${CALENDARIO_STORAGE_PREFIX}:${currentUid || currentEmail || "local"}`;
+}
+function newCalendarItemId() {
+  return `cal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+function normalizeCalendarioItems(items = []) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => {
+    var _a2, _b2;
+    const day = Number((_b2 = (_a2 = item.day) != null ? _a2 : item.giorno) != null ? _b2 : item.weekday);
+    const start = String(item.start || item.inizio || "").slice(0, 5);
+    const end = String(item.end || item.fine || "").slice(0, 5);
+    const startMin = timeToMinutes(start);
+    const endMin = timeToMinutes(end);
+    if (!AVAILABILITY_DAYS.some((d) => d.value === day) || startMin === null || endMin === null || endMin <= startMin) return null;
+    return {
+      id: String(item.id || newCalendarItemId()),
+      day,
+      start,
+      end,
+      title: String(item.title || item.titolo || item.targetName || "Lezione").trim() || "Lezione",
+      location: String(item.location || item.luogo || "").trim(),
+      note: String(item.note || "").trim(),
+      source: String(item.source || "manuale"),
+      targetId: item.targetId || null,
+      variantId: item.variantId || null,
+      locked: item.locked === true || item.locked === "true" || item.locked === 1 || item.locked === "1",
+      created_at: item.created_at || (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }).filter(Boolean).sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start) || String(a.title).localeCompare(String(b.title), "it", { sensitivity: "base" }));
+}
+function loadCalendarioItems(metadata = {}) {
+  var _a2;
+  let local = [];
+  try {
+    local = JSON.parse(safeStorage.getItem(calendarioStorageKey()) || "[]") || [];
+  } catch (e) {
+    local = [];
+  }
+  const remote = normalizeCalendarioItems((metadata == null ? void 0 : metadata[CALENDARIO_METADATA_KEY]) || ((_a2 = metadata == null ? void 0 : metadata.calendario_settimanale) == null ? void 0 : _a2.items) || []);
+  const items = remote.length ? remote : normalizeCalendarioItems(local);
+  safeStorage.setItem(calendarioStorageKey(), JSON.stringify(items));
+  return items;
+}
+function saveCalendarioItems(items) {
+  return __async(this, null, function* () {
+    calendarioItems = normalizeCalendarioItems(items);
+    safeStorage.setItem(calendarioStorageKey(), JSON.stringify(calendarioItems));
+    if (!(sb == null ? void 0 : sb.auth)) return { remote: false };
+    const payload = __spreadProps(__spreadValues({}, currentUserMetadata), {
+      [CALENDARIO_METADATA_KEY]: calendarioItems,
+      calendario_settimanale_updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    const { user, error } = yield updateCurrentUserMetadata(payload);
+    if (error) return { remote: false, error };
+    currentUserMetadata = (user == null ? void 0 : user.user_metadata) || payload;
+    return { remote: true };
+  });
+}
+function calendarioDayOptions(selected = 1) {
+  return AVAILABILITY_DAYS.map((day) => `<option value="${day.value}" ${Number(selected) === Number(day.value) ? "selected" : ""}>${esc(day.label)}</option>`).join("");
+}
+function calendarioSetStatus(text, cls = "") {
+  const el = document.getElementById("calendario-status");
+  if (!el) return;
+  el.className = `calendar-status ${cls}`.trim();
+  el.textContent = text || "";
+}
+function calendarioItemById(id) {
+  return calendarioItems.find((item) => String(item.id) === String(id)) || null;
+}
+function calendarioHourLabelsHtml() {
+  const labels = [];
+  for (let min = AVAILABILITY_START_MIN; min <= AVAILABILITY_END_MIN; min += 60) {
+    labels.push(`<span class="calendar-hour-label" style="${appointmentPreviewPointStyle(min)}">${minutesToTime(min)}</span>`);
+  }
+  return `
+    <div class="calendar-day calendar-time-rail" aria-hidden="true">
+      <div class="calendar-time-title"></div>
+      <div class="calendar-day-body calendar-time-lane">
+        ${labels.join("")}
+      </div>
+    </div>`;
+}
+function calendarioItemDuration(item = {}) {
+  const startMin = timeToMinutes(item.start);
+  const endMin = timeToMinutes(item.end);
+  if (startMin === null || endMin === null || endMin <= startMin) return AVAILABILITY_STEP_MIN;
+  return endMin - startMin;
+}
+function calendarioItemBlockHtml(item) {
+  const startMin = timeToMinutes(item.start);
+  const endMin = timeToMinutes(item.end);
+  const meta = [item.location, item.note].filter(Boolean).join(" \xB7 ");
+  const source = item.source === "appuntamenti" ? "auto" : "manuale";
+  const title = [item.title, `${item.start}-${item.end}`, source, meta].filter(Boolean).join(" \xB7 ");
+  return `
+    <div class="calendar-event-block${item.locked ? " is-locked" : ""}" draggable="true" data-calendar-id="${esc(item.id)}" style="${appointmentPreviewRangeStyle(startMin, endMin)}" title="${esc(title)}" ondragstart="startCalendarioDrag(event,${jsArg(item.id)})">
+      <strong>${esc(item.title)}</strong>
+      <span>${esc(item.start)}-${esc(item.end)}</span>
+      ${meta ? `<small>${esc(meta)}</small>` : ""}
+      <div class="calendar-event-tools">
+        <button type="button" onclick="event.stopPropagation(); toggleCalendarioItemLock(${jsArg(item.id)})" title="${item.locked ? "Sblocca voce" : "Blocca voce"}">${item.locked ? "Fissa" : "Blocca"}</button>
+        <button type="button" onclick="event.stopPropagation(); deleteCalendarioItem(${jsArg(item.id)})" title="Elimina voce" aria-label="Elimina voce">\xD7</button>
+      </div>
+    </div>`;
+}
+function calendarioItemHtml(item) {
+  const meta = [item.location, item.note].filter(Boolean).join(" \xB7 ");
+  const source = item.source === "appuntamenti" ? "auto" : "manuale";
+  return `
+    <details class="calendar-event">
+      <summary>
+        <span class="calendar-event-main">
+          <span class="calendar-event-time">${esc(item.start)}-${esc(item.end)} \xB7 ${esc(source)}</span>
+          <span class="calendar-event-title">${esc(item.title)}</span>
+          ${meta ? `<span class="calendar-event-meta">${esc(meta)}</span>` : ""}
+        </span>
+        <button type="button" class="calendar-event-delete" onclick="event.preventDefault(); event.stopPropagation(); deleteCalendarioItem(${jsArg(item.id)})" title="Elimina voce" aria-label="Elimina voce">\xD7</button>
+      </summary>
+      <div class="calendar-event-edit">
+        <div class="calendar-edit-grid">
+          <input type="time" value="${esc(item.start)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'start', this.value)" aria-label="Ora inizio">
+          <input type="time" value="${esc(item.end)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'end', this.value)" aria-label="Ora fine">
+        </div>
+        <input type="text" value="${esc(item.title)}" onchange="updateCalendarioItem(${jsArg(item.id)}, 'title', this.value)" aria-label="Titolo">
+        <select onchange="updateCalendarioItem(${jsArg(item.id)}, 'day', this.value)" aria-label="Giorno">${calendarioDayOptions(item.day)}</select>
+        <input type="text" value="${esc(item.location)}" placeholder="Luogo" onchange="updateCalendarioItem(${jsArg(item.id)}, 'location', this.value)" aria-label="Luogo">
+        <input type="text" value="${esc(item.note)}" placeholder="Note" onchange="updateCalendarioItem(${jsArg(item.id)}, 'note', this.value)" aria-label="Note">
+        <div class="calendar-edit-actions">
+          <button type="button" class="btn btn-outline btn-sm" onclick="deleteCalendarioItem(${jsArg(item.id)})">Elimina</button>
+        </div>
+      </div>
+    </details>`;
+}
+function calendarioBoardHtml() {
+  const normalized = normalizeCalendarioItems(calendarioItems);
+  return `<div class="calendar-board-wrap"><div class="calendar-board">
+    ${calendarioHourLabelsHtml()}
+    ${AVAILABILITY_DAYS.map((day) => {
+    const items = normalized.filter((item) => Number(item.day) === Number(day.value));
+    return `
+      <div class="calendar-day" data-day="${day.value}" ondragover="event.preventDefault()" ondrop="dropCalendarioItem(event,${day.value})">
+        <div class="calendar-day-head"><strong>${esc(day.label)}</strong><span>${items.length} voc${items.length === 1 ? "e" : "i"}</span></div>
+        <div class="calendar-day-body">
+          ${items.map(calendarioItemBlockHtml).join("")}
+        </div>
+      </div>`;
+  }).join("")}</div></div>`;
+}
+function renderCalendario() {
+  const el = document.getElementById("calendario-content");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="card calendar-shell">
+      <div class="calendar-shell-head">
+        <div class="calendar-quick-title">Nuova voce</div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="clearCalendario()" ${calendarioItems.length ? "" : "disabled"}>Cancella tutto</button>
+      </div>
+      <div class="calendar-form">
+        <div class="field">
+          <label>Giorno</label>
+          <select id="cal-new-day">${calendarioDayOptions(1)}</select>
+        </div>
+        <div class="field place-suggest-wrap">
+          <label>Titolo</label>
+          <input type="text" id="cal-new-title" placeholder="Es. Lezione Marco" autocomplete="off" oninput="mostraSuggerimentiCalendarioTitolo()" onfocus="mostraSuggerimentiCalendarioTitolo()" onblur="nascondiSuggerimentiCalendarioSoon('cal-title-suggest')">
+          <div id="cal-title-suggest" class="place-suggest-panel calendar-title-suggest-panel" hidden></div>
+        </div>
+        <div class="field">
+          <label>Inizio</label>
+          <input type="time" id="cal-new-start" value="09:00">
+        </div>
+        <div class="field">
+          <label>Fine</label>
+          <input type="time" id="cal-new-end" value="10:00">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="addCalendarioManualItem()">Aggiungi</button>
+      </div>
+      <div class="calendar-extra-row">
+        <div class="field place-suggest-wrap">
+          <label>Luogo</label>
+          <input type="text" id="cal-new-location" placeholder="Location" autocomplete="off" oninput="mostraSuggerimentiCalendarioLuogo()" onfocus="mostraSuggerimentiCalendarioLuogo()" onblur="nascondiSuggerimentiCalendarioSoon('cal-location-suggest')">
+          <div id="cal-location-suggest" class="place-suggest-panel" hidden></div>
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <input type="text" id="cal-new-note" placeholder="Promemoria">
+        </div>
+      </div>
+      <div id="calendario-status" class="calendar-status"></div>
+    </div>
+    ${calendarioBoardHtml()}`;
+}
+function calendarioTitleSuggestions(queryText = "") {
+  const query = normalizeText(queryText);
+  const rows = [];
+  const allievi = activeAppointmentAllievi().filter((allievo) => !allievo.gruppo || appointmentIndividualLessonsActiveForAllievo(allievo));
+  ordinaAllieviLista(allievi).forEach((allievo) => {
+    var _a2;
+    const name = allievoDisplayName(allievo.id);
+    const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo);
+    const location = logistica.luogo_incontro || (!allievo.gruppo ? (_a2 = allievo.profilo) == null ? void 0 : _a2.luogo_incontro : "") || "";
+    const haystack = normalizeText([name, allievo.nome, allievo.cognome, allievo.nickname, allievo.gruppo, location].filter(Boolean).join(" "));
+    if (!query || haystack.includes(query)) rows.push({ type: "Allievo", title: name, location, detail: allievo.gruppo || location || "" });
+  });
+  appointmentGroups().forEach((gruppo) => {
+    const members = appointmentGroupMembers(gruppo);
+    if (!members.length) return;
+    const profilo = profiloComuneGruppo(members);
+    const location = profilo.luogo_incontro || "";
+    const haystack = normalizeText([gruppo, location].filter(Boolean).join(" "));
+    if (!query || haystack.includes(query)) rows.push({ type: "Gruppo", title: gruppo, location, detail: `${members.length} allievi${location ? " \xB7 " + location : ""}` });
+  });
+  return rows;
+}
+function mostraSuggerimentiCalendarioTitolo() {
+  const input = document.getElementById("cal-new-title");
+  const panel = document.getElementById("cal-title-suggest");
+  if (!input || !panel) return;
+  const rows = calendarioTitleSuggestions(input.value);
+  panel.innerHTML = rows.length ? rows.map((row) => `<button type="button" class="place-suggest-btn" onmousedown="scegliSuggerimentoCalendarioTitolo(${jsArg(row.title)},${jsArg(row.location)})"><strong>${esc(row.title)}</strong><br><span style="color:var(--muted);font-size:.74rem">${esc(row.type)}${row.detail ? ` \xB7 ${esc(row.detail)}` : ""}</span></button>`).join("") : '<div class="place-suggest-empty">Nessun allievo o gruppo trovato.</div>';
+  panel.hidden = false;
+}
+function scegliSuggerimentoCalendarioTitolo(title, location = "") {
+  const titleInput = document.getElementById("cal-new-title");
+  const locationInput = document.getElementById("cal-new-location");
+  if (titleInput) titleInput.value = title || "";
+  if (locationInput && location && !locationInput.value.trim()) locationInput.value = location;
+  const panel = document.getElementById("cal-title-suggest");
+  if (panel) panel.hidden = true;
+}
+function mostraSuggerimentiCalendarioLuogo() {
+  return __async(this, null, function* () {
+    const input = document.getElementById("cal-new-location");
+    const panel = document.getElementById("cal-location-suggest");
+    if (!input || !panel) return;
+    if (!locationsLoaded) yield loadLocations();
+    const query = normalizeText(input.value || "");
+    const names = locationNamesFromLessons().filter((nome) => !query || normalizeText(nome).includes(query)).slice(0, 10);
+    panel.innerHTML = names.length ? names.map((nome) => `<button type="button" class="place-suggest-btn" onmousedown="scegliSuggerimentoCalendarioLuogo(${jsArg(nome)})">${esc(nome)}</button>`).join("") : '<div class="place-suggest-empty">Nessuna location trovata.</div>';
+    panel.hidden = false;
+  });
+}
+function scegliSuggerimentoCalendarioLuogo(location) {
+  const input = document.getElementById("cal-new-location");
+  if (input) input.value = location || "";
+  const panel = document.getElementById("cal-location-suggest");
+  if (panel) panel.hidden = true;
+}
+function nascondiSuggerimentiCalendarioSoon(panelId) {
+  clearTimeout(calendarioSuggestTimer);
+  calendarioSuggestTimer = setTimeout(() => {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.hidden = true;
+  }, 160);
+}
+function addCalendarioManualItem() {
+  return __async(this, null, function* () {
+    var _a2, _b2, _c, _d, _e, _f;
+    const item = {
+      id: newCalendarItemId(),
+      day: Number(((_a2 = document.getElementById("cal-new-day")) == null ? void 0 : _a2.value) || 1),
+      title: ((_b2 = document.getElementById("cal-new-title")) == null ? void 0 : _b2.value) || "Impegno",
+      start: ((_c = document.getElementById("cal-new-start")) == null ? void 0 : _c.value) || "",
+      end: ((_d = document.getElementById("cal-new-end")) == null ? void 0 : _d.value) || "",
+      location: ((_e = document.getElementById("cal-new-location")) == null ? void 0 : _e.value) || "",
+      note: ((_f = document.getElementById("cal-new-note")) == null ? void 0 : _f.value) || "",
+      source: "manuale"
+    };
+    const normalized = normalizeCalendarioItems([item])[0];
+    if (!normalized) {
+      calendarioSetStatus("Controlla giorno e orari: la fine deve essere dopo l inizio.", "err");
+      return;
+    }
+    const saved = yield saveCalendarioItems([...calendarioItems, normalized]);
+    renderCalendario();
+    calendarioSetStatus(saved.remote ? "Voce aggiunta al calendario." : "Voce aggiunta localmente.", saved.remote ? "ok" : "");
+  });
+}
+function updateCalendarioItem(id, field, value) {
+  return __async(this, null, function* () {
+    const allowed = ["day", "start", "end", "title", "location", "note"];
+    if (!allowed.includes(field)) return;
+    const next = calendarioItems.map((item) => String(item.id) === String(id) ? __spreadProps(__spreadValues({}, item), { [field]: field === "day" ? Number(value) : value }) : item);
+    const normalized = normalizeCalendarioItems(next);
+    if (normalized.length !== next.length) {
+      calendarioSetStatus("Modifica non valida: controlla giorno e orari.", "err");
+      renderCalendario();
+      return;
+    }
+    const saved = yield saveCalendarioItems(normalized);
+    renderCalendario();
+    calendarioSetStatus(saved.remote ? "Calendario aggiornato." : "Calendario aggiornato localmente.", saved.remote ? "ok" : "");
+  });
+}
+function startCalendarioDrag(event, id) {
+  var _a2, _b2, _c;
+  calendarioDragId = String(id);
+  (_a2 = event.dataTransfer) == null ? void 0 : _a2.setData("text/plain", calendarioDragId);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  (_c = (_b2 = event.dataTransfer) == null ? void 0 : _b2.setDragImage) == null ? void 0 : _c.call(_b2, event.currentTarget, 12, 12);
+}
+function dropCalendarioItem(event, day) {
+  return __async(this, null, function* () {
+    var _a2;
+    event.preventDefault();
+    const id = ((_a2 = event.dataTransfer) == null ? void 0 : _a2.getData("text/plain")) || calendarioDragId;
+    const item = calendarioItemById(id);
+    const lane = event.currentTarget.querySelector(".calendar-day-body");
+    if (!item || !lane) return;
+    const rect = lane.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)));
+    const duration = calendarioItemDuration(item);
+    const rawStart = AVAILABILITY_START_MIN + ratio * (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN);
+    const startMin = availabilityClampStart(availabilitySnap(rawStart), duration);
+    const next = calendarioItems.map((entry) => String(entry.id) === String(id) ? __spreadProps(__spreadValues({}, entry), { day: Number(day), start: minutesToTime(startMin), end: minutesToTime(startMin + duration) }) : entry);
+    const saved = yield saveCalendarioItems(next);
+    renderCalendario();
+    calendarioSetStatus(saved.remote ? "Voce spostata." : "Voce spostata localmente.", saved.remote ? "ok" : "");
+  });
+}
+function toggleCalendarioItemLock(id) {
+  return __async(this, null, function* () {
+    const item = calendarioItemById(id);
+    if (!item) return;
+    const next = calendarioItems.map((entry) => String(entry.id) === String(id) ? __spreadProps(__spreadValues({}, entry), { locked: !entry.locked }) : entry);
+    const saved = yield saveCalendarioItems(next);
+    renderCalendario();
+    calendarioSetStatus(`${item.locked ? "Voce sbloccata" : "Voce bloccata"}${saved.remote ? "." : " localmente."}`, saved.remote ? "ok" : "");
+  });
+}
+function deleteCalendarioItem(id) {
+  return __async(this, null, function* () {
+    const saved = yield saveCalendarioItems(calendarioItems.filter((item) => String(item.id) !== String(id)));
+    renderCalendario();
+    calendarioSetStatus(saved.remote ? "Voce eliminata." : "Voce eliminata localmente.", saved.remote ? "ok" : "");
+  });
+}
+function clearCalendario() {
+  return __async(this, null, function* () {
+    if (!calendarioItems.length) {
+      calendarioSetStatus("Calendario gia vuoto.");
+      return;
+    }
+    const locked = calendarioItems.filter((item) => item.locked);
+    const unlocked = calendarioItems.filter((item) => !item.locked);
+    if (!unlocked.length) {
+      calendarioSetStatus("Tutte le voci sono bloccate: non cancello nulla.");
+      return;
+    }
+    const message = locked.length ? `Cancellare ${unlocked.length} voc${unlocked.length === 1 ? "e non bloccata" : "i non bloccate"}? ${locked.length} voc${locked.length === 1 ? "e bloccata restera" : "i bloccate resteranno"} nel calendario.` : "Cancellare tutte le voci del calendario?";
+    if (!confirm(message)) return;
+    const saved = yield saveCalendarioItems(locked);
+    renderCalendario();
+    calendarioSetStatus(locked.length ? `${unlocked.length} voc${unlocked.length === 1 ? "e cancellata" : "i cancellate"}; ${locked.length} bloccat${locked.length === 1 ? "a conservata" : "e conservate"}.` : saved.remote ? "Calendario svuotato." : "Calendario svuotato localmente.", saved.remote ? "ok" : "");
+  });
+}
+function addAppointmentVariantToCalendar(variantId) {
+  return __async(this, null, function* () {
+    var _a2;
+    const variant = lastAppointmentScheduleVariants.find((item) => item.id === variantId);
+    if (!variant || !((_a2 = variant.scheduled) == null ? void 0 : _a2.length)) {
+      setAppointmentCalendarStatus("Nessuna lezione piazzata da importare.", "err");
+      return;
+    }
+    const imported = variant.scheduled.map((item) => ({
+      id: newCalendarItemId(),
+      day: item.day,
+      start: item.start,
+      end: item.lessonEnd,
+      title: item.targetName,
+      location: item.location || "",
+      note: [variant.title, item.heatOverlap ? "fascia calda" : "", item.routeIsItinerary ? `${item.routeStartLabel || ""} -> ${item.routeEndLabel || ""}` : ""].filter(Boolean).join(" \xB7 "),
+      source: "appuntamenti",
+      targetId: item.targetId,
+      variantId
+    }));
+    const saved = yield saveCalendarioItems([...calendarioItems, ...imported]);
+    importedAppointmentVariantIds.add(String(variantId));
+    document.querySelectorAll(".appointment-schedule-variant[data-appointment-variant-id]").forEach((card) => {
+      if (card.dataset.appointmentVariantId === String(variantId)) card.classList.add("is-in-calendar");
+    });
+    setAppointmentCalendarStatus(`${imported.length} lezion${imported.length === 1 ? "e aggiunta" : "i aggiunte"} al calendario${saved.remote ? "." : " localmente."}`, saved.remote ? "ok" : "");
+  });
+}
+function setAppointmentCalendarStatus(text, cls = "") {
+  const el = document.getElementById("appointments-calendar-status");
+  if (!el) return;
+  el.className = `appointments-status ${cls}`.trim();
+  el.textContent = text || "";
 }
 function maestroAvailabilityStorageKey() {
   return `${MAESTRO_AVAILABILITY_STORAGE_PREFIX}:${currentUid || currentEmail || "local"}`;
+}
+function maestroExcludedStorageKey() {
+  return `${MAESTRO_EXCLUDED_STORAGE_PREFIX}:${currentUid || currentEmail || "local"}`;
 }
 function availabilityDayOrder(day) {
   return (Number(day) + 6) % 7;
@@ -2224,22 +2931,252 @@ function loadMaestroAvailabilitySlots(metadata = {}) {
   safeStorage.setItem(maestroAvailabilityStorageKey(), JSON.stringify(slots));
   return slots;
 }
+function loadMaestroExcludedSlots(metadata = {}) {
+  var _a2, _b2;
+  let local = [];
+  try {
+    local = JSON.parse(safeStorage.getItem(maestroExcludedStorageKey()) || "[]") || [];
+  } catch (e) {
+    local = [];
+  }
+  const remote = normalizeAvailabilitySlots(
+    (metadata == null ? void 0 : metadata[MAESTRO_EXCLUDED_METADATA_KEY]) || ((_a2 = metadata == null ? void 0 : metadata.disponibilita_maestro) == null ? void 0 : _a2.excluded_slots) || ((_b2 = metadata == null ? void 0 : metadata.disponibilita_maestro) == null ? void 0 : _b2.fasce_escluse) || []
+  );
+  const slots = remote.length ? remote : normalizeAvailabilitySlots(local);
+  safeStorage.setItem(maestroExcludedStorageKey(), JSON.stringify(slots));
+  return slots;
+}
 function setAvailabilityStatus(owner, text, cls = "") {
-  const el = document.getElementById(`${owner}-availability-status`);
+  const el = document.getElementById(`${availabilityBaseOwner(owner)}-availability-status`);
   if (!el) return;
   el.textContent = text || "";
   el.style.color = cls === "err" ? "var(--danger)" : cls === "ok" ? "var(--success)" : "var(--muted)";
 }
 function activeAppointmentAllievi() {
-  return ordinaAllieviLista(allieviVisibiliGod().filter((a) => a.stato !== "archiviato"));
+  return ordinaAllieviLista(allieviVisibiliGod().filter((a) => a.stato !== "archiviato" && !allievoInVacanza(a)));
 }
-function availabilityAllievoOptions(selected = "") {
+function normalizeAllievoTier(value, vip = false) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (raw === "VIP" || vip === true) return "VIP";
+  if (["A", "B", "C"].includes(raw)) return raw;
+  return "C";
+}
+function allievoTier(allievo = {}) {
+  var _a2;
+  return normalizeAllievoTier(allievo.tier || ((_a2 = allievo.profilo) == null ? void 0 : _a2.tier), allievo.vip);
+}
+function allievoTierRank(allievo = {}) {
+  var _a2;
+  return (_a2 = { VIP: 0, A: 1, B: 2, C: 3 }[allievoTier(allievo)]) != null ? _a2 : 3;
+}
+function appointmentSelectableAllievi() {
+  return activeAppointmentAllievi();
+}
+function appointmentSelectionEntries(allievi = appointmentSelectableAllievi()) {
+  const entries = [];
+  const grouped = /* @__PURE__ */ new Set();
+  allievi.forEach((allievo) => {
+    if (allievo.gruppo) {
+      if (!grouped.has(allievo.gruppo)) {
+        grouped.add(allievo.gruppo);
+        const members = appointmentGroupMembers(allievo.gruppo);
+        if (members.length) {
+          entries.push({
+            type: "gruppo",
+            id: appointmentGroupTargetValue(allievo.gruppo),
+            gruppo: allievo.gruppo,
+            label: allievo.gruppo,
+            memberIds: members.map((member) => String(member.id)),
+            meta: `${members.length} alliev${members.length === 1 ? "o" : "i"} del gruppo`
+          });
+        }
+      }
+      if (!appointmentIndividualLessonsActiveForAllievo(allievo)) return;
+    }
+    entries.push({
+      type: "allievo",
+      id: String(allievo.id),
+      allievo,
+      label: lezioneTargetLabelAllievo(allievo),
+      memberIds: [String(allievo.id)],
+      meta: [allievoTier(allievo), allievo.gruppo ? "individuale" : "", allievo.gruppo, vacationLabel(allievo)].filter(Boolean).join(" \xB7 ")
+    });
+  });
+  return entries;
+}
+function appointmentSelectionEntryIsSelected(entry) {
+  const selected = appointmentSelectedAllieviIds || /* @__PURE__ */ new Set();
+  return (entry.memberIds || []).length && entry.memberIds.every((id) => selected.has(String(id)));
+}
+function appointmentSelectionEntryMode(entry) {
+  if (entry.type === "gruppo") return appointmentTargetPriorityMode({ memberIds: entry.memberIds || [] });
+  return appointmentAllievoMode(entry.id);
+}
+function latestIsoDateValue(values = []) {
+  let latest = "";
+  let latestTime = -Infinity;
+  (values || []).forEach((value) => {
+    if (!value) return;
+    const raw = String(value);
+    const parsed = Date.parse(raw);
+    const fallback = Date.parse(`${raw.slice(0, 10)}T12:00:00`);
+    const time = Number.isNaN(parsed) ? fallback : parsed;
+    if (!Number.isNaN(time) && time > latestTime) {
+      latest = raw;
+      latestTime = time;
+    }
+  });
+  return latest;
+}
+function appointmentAvailabilityUpdatedAtForAllievo(allievo = {}, mode = "individuale") {
+  const profilo = (allievo == null ? void 0 : allievo.profilo) || {};
+  if (mode === "gruppo") {
+    return latestIsoDateValue([
+      profilo.disponibilita_gruppo_updated_at,
+      profilo.disponibilita_gruppo_escluse_updated_at
+    ]);
+  }
+  return latestIsoDateValue([
+    profilo.disponibilita_updated_at,
+    profilo.disponibilita_escluse_updated_at
+  ]);
+}
+function appointmentAvailabilityUpdatedAtForTarget(target) {
+  if (!target) return "";
+  if (target.type === "gruppo") {
+    return latestIsoDateValue((target.members || []).flatMap((member) => [
+      appointmentAvailabilityUpdatedAtForAllievo(member, "gruppo")
+    ]));
+  }
+  return appointmentAvailabilityUpdatedAtForAllievo(target.allievo, "individuale");
+}
+function appointmentAvailabilityUpdatedHtml(target) {
+  if (!target) return "";
+  const updatedAt = appointmentAvailabilityUpdatedAtForTarget(target);
+  const label = updatedAt ? formatDateWithWeekday(updatedAt) : "non disponibile";
+  return `<div class="appointments-availability-updated">Ultima modifica disponibilita: <strong>${esc(label)}</strong></div>`;
+}
+function readAppointmentSelectedIds() {
+  try {
+    const raw = safeStorage.getItem(APPOINTMENT_SELECTION_STORAGE_KEY);
+    if (raw === null) return null;
+    const ids = JSON.parse(raw || "[]");
+    return Array.isArray(ids) ? ids.map(String) : [];
+  } catch (e) {
+    return null;
+  }
+}
+function writeAppointmentSelectedIds() {
+  safeStorage.setItem(APPOINTMENT_SELECTION_STORAGE_KEY, JSON.stringify([...appointmentSelectedAllieviIds || /* @__PURE__ */ new Set()]));
+}
+function ensureAppointmentSelectionDefaults() {
+  const activeIds = new Set(appointmentSelectableAllievi().map((a) => String(a.id)));
+  if (!appointmentSelectedAllieviIds) {
+    const stored = readAppointmentSelectedIds();
+    appointmentSelectedAllieviIds = new Set(stored === null ? [...activeIds] : stored.filter((id) => activeIds.has(String(id))));
+  }
+  ;
+  [...appointmentSelectedAllieviIds].forEach((id) => {
+    if (!activeIds.has(String(id))) appointmentSelectedAllieviIds.delete(id);
+  });
+  writeAppointmentSelectedIds();
+}
+function readAppointmentPriorityModes() {
+  try {
+    const rows = JSON.parse(safeStorage.getItem(APPOINTMENT_PRIORITY_STORAGE_KEY) || "{}");
+    return new Map(Object.entries(rows || {}).filter(([, value]) => ["priority", "flex"].includes(value)));
+  } catch (e) {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeAppointmentPriorityModes() {
+  safeStorage.setItem(APPOINTMENT_PRIORITY_STORAGE_KEY, JSON.stringify(Object.fromEntries(appointmentPriorityModes)));
+}
+function ensureAppointmentPriorityModes() {
+  if (!(appointmentPriorityModes instanceof Map) || !appointmentPriorityModes.size) appointmentPriorityModes = readAppointmentPriorityModes();
+}
+function appointmentAllievoMode(allievoId) {
+  ensureAppointmentPriorityModes();
+  return appointmentPriorityModes.get(String(allievoId)) || "normal";
+}
+function appointmentTargetPriorityMode(target = {}) {
+  const modes = (target.memberIds || []).map((id) => appointmentAllievoMode(id));
+  if (modes.includes("priority")) return "priority";
+  if (modes.length && modes.every((mode) => mode === "flex")) return "flex";
+  if (modes.includes("flex")) return "flex";
+  return "normal";
+}
+function appointmentSelectionStats() {
+  ensureAppointmentSelectionDefaults();
+  const entries = appointmentSelectionEntries();
+  const total = entries.length;
+  const selected = entries.filter(appointmentSelectionEntryIsSelected).length;
+  return { selected, total };
+}
+function appointmentSelectedAllievi() {
+  ensureAppointmentSelectionDefaults();
+  const selected = appointmentSelectedAllieviIds || /* @__PURE__ */ new Set();
+  return activeAppointmentAllievi().filter((a) => selected.has(String(a.id)));
+}
+function appointmentGroups() {
+  return [...new Set(activeAppointmentAllievi().map((a) => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+function appointmentGroupTargetValue(gruppo) {
+  return `${APPOINTMENT_GROUP_TARGET_PREFIX}${gruppo}`;
+}
+function appointmentTargetIsGroup(value) {
+  return String(value || "").startsWith(APPOINTMENT_GROUP_TARGET_PREFIX);
+}
+function appointmentGroupFromTarget(value) {
+  return appointmentTargetIsGroup(value) ? String(value).slice(APPOINTMENT_GROUP_TARGET_PREFIX.length) : "";
+}
+function appointmentGroupMembers(gruppo) {
+  return activeAppointmentAllievi().filter((a) => a.gruppo === gruppo);
+}
+function appointmentTargetExists(value) {
+  if (!value) return false;
+  if (appointmentTargetIsGroup(value)) return appointmentGroupMembers(appointmentGroupFromTarget(value)).length > 0;
+  return activeAppointmentAllievi().some((a) => String(a.id) === String(value));
+}
+function selectedAppointmentTarget() {
+  const selected = appuntamentiSelectedAllievoId;
+  if (!selected) return null;
+  if (appointmentTargetIsGroup(selected)) {
+    const gruppo = appointmentGroupFromTarget(selected);
+    const members = appointmentGroupMembers(gruppo);
+    if (!members.length) return null;
+    return {
+      type: "gruppo",
+      value: selected,
+      gruppo,
+      label: gruppo,
+      members
+    };
+  }
+  const allievo = allievoById(selected);
+  return allievo ? {
+    type: "allievo",
+    value: String(allievo.id),
+    allievo,
+    label: lezioneTargetLabelAllievo(allievo),
+    members: [allievo]
+  } : null;
+}
+function availabilityTargetOptions(selected = "") {
   const attivi = activeAppointmentAllievi();
-  const gruppi = [...new Set(attivi.map((a) => a.gruppo).filter(Boolean))].sort();
+  const gruppi = appointmentGroups();
   return `
-    <option value="">\u2014 Scegli allievo \u2014</option>
+    <option value="">\u2014 Scegli allievo o gruppo \u2014</option>
+    ${gruppi.length ? `
+      <optgroup label="Gruppi">
+        ${gruppi.map((gruppo) => {
+    const value = appointmentGroupTargetValue(gruppo);
+    const count = appointmentGroupMembers(gruppo).length;
+    return `<option value="${esc(value)}" ${String(value) === String(selected) ? "selected" : ""}>${esc(gruppo)} (${count})</option>`;
+  }).join("")}
+      </optgroup>` : ""}
     ${gruppi.map((gruppo) => `
-      <optgroup label="${esc(gruppo)}">
+      <optgroup label="Allievi \xB7 ${esc(gruppo)}">
         ${attivi.filter((a) => a.gruppo === gruppo).map((a) => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? "selected" : ""}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join("")}
       </optgroup>`).join("")}
     ${attivi.some((a) => !a.gruppo) ? `
@@ -2248,15 +3185,247 @@ function availabilityAllievoOptions(selected = "") {
       </optgroup>` : ""}`;
 }
 function selectedAppointmentAllievo() {
-  return appuntamentiSelectedAllievoId ? allievoById(appuntamentiSelectedAllievoId) : null;
+  const target = selectedAppointmentTarget();
+  return (target == null ? void 0 : target.type) === "allievo" ? target.allievo : null;
 }
 function availabilitySlotsForAllievo(allievo) {
   var _a2, _b2;
   return normalizeAvailabilitySlots(((_a2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _a2.disponibilita_slots) || ((_b2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _b2.availability_slots) || []);
 }
+function availabilityExcludedSlotsForAllievo(allievo) {
+  var _a2, _b2;
+  return normalizeAvailabilitySlots(((_a2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _a2.disponibilita_escluse_slots) || ((_b2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _b2.availability_excluded_slots) || []);
+}
+function availabilitySlotsSignature(slots = []) {
+  return JSON.stringify(normalizeAvailabilitySlots(slots).map((slot) => ({
+    day: Number(slot.day),
+    start: slot.start,
+    end: slot.end,
+    note: slot.note || ""
+  })));
+}
+function availabilityGroupDedicatedSlotsForMember(member) {
+  var _a2, _b2;
+  return normalizeAvailabilitySlots(((_a2 = member == null ? void 0 : member.profilo) == null ? void 0 : _a2.disponibilita_gruppo_slots) || ((_b2 = member == null ? void 0 : member.profilo) == null ? void 0 : _b2.group_availability_slots) || []);
+}
+function availabilityGroupDedicatedExcludedSlotsForMember(member) {
+  var _a2, _b2;
+  return normalizeAvailabilitySlots(((_a2 = member == null ? void 0 : member.profilo) == null ? void 0 : _a2.disponibilita_gruppo_escluse_slots) || ((_b2 = member == null ? void 0 : member.profilo) == null ? void 0 : _b2.group_availability_excluded_slots) || []);
+}
+function availabilitySlotsForGroup(gruppo) {
+  const members = appointmentGroupMembers(gruppo);
+  const source = members.find((member) => availabilityGroupDedicatedSlotsForMember(member).length);
+  if (source) return availabilityGroupDedicatedSlotsForMember(source);
+  const legacySource = members.find((member) => availabilitySlotsForAllievo(member).length);
+  return legacySource ? availabilitySlotsForAllievo(legacySource) : [];
+}
+function availabilityExcludedSlotsForGroup(gruppo) {
+  const members = appointmentGroupMembers(gruppo);
+  const source = members.find((member) => availabilityGroupDedicatedExcludedSlotsForMember(member).length);
+  if (source) return availabilityGroupDedicatedExcludedSlotsForMember(source);
+  const legacySource = members.find((member) => availabilityExcludedSlotsForAllievo(member).length);
+  return legacySource ? availabilityExcludedSlotsForAllievo(legacySource) : [];
+}
+function availabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return [];
+  if (target.type === "gruppo") return availabilitySlotsForGroup(target.gruppo);
+  return availabilitySlotsForAllievo(target.allievo);
+}
+function availabilityExcludedSlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return [];
+  if (target.type === "gruppo") return availabilityExcludedSlotsForGroup(target.gruppo);
+  return availabilityExcludedSlotsForAllievo(target.allievo);
+}
+function availabilityNoteForAppointmentTarget(target = selectedAppointmentTarget()) {
+  var _a2, _b2;
+  if (!target) return "";
+  if (target.type === "gruppo") {
+    const dedicatedNotes = mergeAvailabilityNotes(...target.members.map((member) => {
+      var _a3;
+      return (_a3 = member.profilo) == null ? void 0 : _a3.disponibilita_gruppo;
+    }));
+    return dedicatedNotes || mergeAvailabilityNotes(...target.members.map((member) => {
+      var _a3;
+      return (_a3 = member.profilo) == null ? void 0 : _a3.disponibilita;
+    }));
+  }
+  return ((_b2 = (_a2 = target.allievo) == null ? void 0 : _a2.profilo) == null ? void 0 : _b2.disponibilita) || "";
+}
+function normalizeAppointmentWeeklyCount(value) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return APPOINTMENT_DEFAULT_WEEKLY_COUNT;
+  return Math.max(APPOINTMENT_DEFAULT_WEEKLY_COUNT, Math.min(APPOINTMENT_MAX_WEEKLY_COUNT, parsed));
+}
+function appointmentWeeklyCountForAllievo(allievo) {
+  var _a2, _b2;
+  return normalizeAppointmentWeeklyCount(((_a2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _a2.appuntamenti_settimanali) || ((_b2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _b2.lezioni_settimanali) || APPOINTMENT_DEFAULT_WEEKLY_COUNT);
+}
+function appointmentWeeklyCountForTarget(target = selectedAppointmentTarget()) {
+  if (!target) return APPOINTMENT_DEFAULT_WEEKLY_COUNT;
+  if (target.type === "gruppo") {
+    const source = target.members.find((member) => {
+      var _a2, _b2;
+      return ((_a2 = member.profilo) == null ? void 0 : _a2.appuntamenti_settimanali) || ((_b2 = member.profilo) == null ? void 0 : _b2.lezioni_settimanali);
+    });
+    return appointmentWeeklyCountForAllievo(source || target.members[0]);
+  }
+  return appointmentWeeklyCountForAllievo(target.allievo);
+}
+function appointmentIndividualLessonsActiveForAllievo(allievo) {
+  if (!(allievo == null ? void 0 : allievo.gruppo)) return true;
+  const profilo = allievo.profilo || {};
+  if (profilo.appuntamenti_individuali_attivi === false) return false;
+  if (profilo.appuntamenti_individuali_attivi || profilo.disponibilita_individuale_attiva) return true;
+  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, true);
+  if (logisticaHaValori(logisticaIndividuale)) return true;
+  const personalSlots = availabilitySlotsForAllievo(allievo);
+  const groupSlots = appointmentGroupMembers(allievo.gruppo).map((member) => availabilityGroupDedicatedSlotsForMember(member)).find((slots) => slots.length) || [];
+  return !!(personalSlots.length && groupSlots.length && availabilitySlotsSignature(personalSlots) !== availabilitySlotsSignature(groupSlots));
+}
+function normalizeAppointmentConsecutiveMode(value, legacyAvoid = void 0) {
+  const raw = String(value || "").toLowerCase();
+  if (["prefer", "preferibilmente", "soft", "preference"].includes(raw)) return APPOINTMENT_CONSECUTIVE_PREFER;
+  if (["strict", "assolutamente", "hard", "absolute", "assoluto"].includes(raw)) return APPOINTMENT_CONSECUTIVE_STRICT;
+  if (legacyAvoid === false) return APPOINTMENT_CONSECUTIVE_PREFER;
+  return APPOINTMENT_CONSECUTIVE_STRICT;
+}
+function appointmentAvoidConsecutiveForAllievo(allievo) {
+  return true;
+}
+function appointmentConsecutiveModeForAllievo(allievo) {
+  const profilo = (allievo == null ? void 0 : allievo.profilo) || {};
+  return normalizeAppointmentConsecutiveMode(profilo.appuntamenti_giorni_consecutivi, profilo.appuntamenti_evita_giorni_consecutivi);
+}
+function appointmentAvoidConsecutiveForTarget(target = selectedAppointmentTarget()) {
+  return true;
+}
+function appointmentConsecutiveModeForTarget(target = selectedAppointmentTarget()) {
+  if (!target) return APPOINTMENT_CONSECUTIVE_STRICT;
+  if (target.type === "gruppo") {
+    const source = target.members.find((member) => member.profilo && (Object.prototype.hasOwnProperty.call(member.profilo, "appuntamenti_giorni_consecutivi") || Object.prototype.hasOwnProperty.call(member.profilo, "appuntamenti_evita_giorni_consecutivi")));
+    return appointmentConsecutiveModeForAllievo(source || target.members[0]);
+  }
+  return appointmentConsecutiveModeForAllievo(target.allievo);
+}
+function appointmentConsecutiveModeLabel(mode) {
+  return normalizeAppointmentConsecutiveMode(mode) === APPOINTMENT_CONSECUTIVE_STRICT ? "Assolutamente non giorni consecutivi" : "Preferibilmente non giorni consecutivi";
+}
+function appointmentConsecutiveModeIsStrict(mode) {
+  return normalizeAppointmentConsecutiveMode(mode) === APPOINTMENT_CONSECUTIVE_STRICT;
+}
+function normalizeAppointmentLessonDuration(value, fallback = APPOINTMENT_MIN_LESSON_MIN) {
+  const parsed = parseInt(value, 10);
+  const fallbackValue = Number.isFinite(Number(fallback)) ? Number(fallback) : APPOINTMENT_MIN_LESSON_MIN;
+  if (!Number.isFinite(parsed) || parsed <= 0) return Math.max(AVAILABILITY_STEP_MIN, fallbackValue);
+  return Math.max(AVAILABILITY_STEP_MIN, availabilitySnap(parsed));
+}
+function appointmentLessonDurationForTarget(target = selectedAppointmentTarget(), fallback = APPOINTMENT_MIN_LESSON_MIN) {
+  var _a2;
+  if (!target) return normalizeAppointmentLessonDuration(null, fallback);
+  if (target.type === "gruppo") {
+    const duration = profiloComuneGruppo(target.members).durata_lezione;
+    return normalizeAppointmentLessonDuration(duration, fallback);
+  }
+  const allievo = target.allievo;
+  const logistica = logisticaIndividualeProfilo((allievo == null ? void 0 : allievo.profilo) || {}, !!(allievo == null ? void 0 : allievo.gruppo));
+  return normalizeAppointmentLessonDuration(logistica.durata_lezione || ((_a2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _a2.durata_lezione), fallback);
+}
 function availabilitySlotsForOwner(owner) {
   if (owner === "maestro") return normalizeAvailabilitySlots(maestroAvailabilitySlots);
-  return availabilitySlotsForAllievo(selectedAppointmentAllievo());
+  if (owner === "maestro-excluded") return normalizeAvailabilitySlots(maestroExcludedSlots);
+  if (owner === "allievo-excluded") return availabilityExcludedSlotsForAppointmentTarget();
+  return availabilitySlotsForAppointmentTarget();
+}
+function availabilityBaseOwner(owner) {
+  return availabilityOwnerIsExcluded(owner) ? String(owner).replace(/-excluded$/, "") : owner;
+}
+function availabilityTargetUndoKey(target = selectedAppointmentTarget()) {
+  var _a2;
+  if (!target) return "allievo:none";
+  if (target.type === "gruppo") return `gruppo:${target.gruppo}`;
+  return `allievo:${((_a2 = target.allievo) == null ? void 0 : _a2.id) || "none"}`;
+}
+function availabilityOwnerKey(owner, target = selectedAppointmentTarget()) {
+  if (owner === "maestro") return "maestro";
+  if (owner === "maestro-excluded") return "maestro-excluded";
+  if (owner === "allievo-excluded") return `${availabilityTargetUndoKey(target)}:excluded`;
+  return availabilityTargetUndoKey(target);
+}
+function availabilityCanUndo(owner, target = selectedAppointmentTarget()) {
+  return (availabilityUndoStacks.get(availabilityOwnerKey(owner, target)) || []).length > 0;
+}
+function availabilityOwnerIsExcluded(owner) {
+  return String(owner || "").endsWith("-excluded");
+}
+function availabilityModeKey(owner, target = selectedAppointmentTarget()) {
+  return availabilityOwnerKey(availabilityBaseOwner(owner), target);
+}
+function availabilityPlannerMode(owner, target = selectedAppointmentTarget()) {
+  return availabilityEditModes.get(availabilityModeKey(owner, target)) || "";
+}
+function availabilityPlannerIsEditable(owner, target = selectedAppointmentTarget()) {
+  const mode = availabilityPlannerMode(owner, target);
+  if (!mode) return false;
+  return availabilityOwnerIsExcluded(owner) ? mode === "excluded" : mode === "available";
+}
+function availabilityUndoSnapshot(slots = []) {
+  return normalizeAvailabilitySlots(slots).map((slot) => __spreadValues({}, slot));
+}
+function pushAvailabilityUndo(owner, previousSlots, target = selectedAppointmentTarget()) {
+  const key = availabilityOwnerKey(owner, target);
+  const stack = availabilityUndoStacks.get(key) || [];
+  stack.push(availabilityUndoSnapshot(previousSlots));
+  if (stack.length > 20) stack.shift();
+  availabilityUndoStacks.set(key, stack);
+}
+function setAvailabilityPlannerMode(owner, mode) {
+  const baseOwner = availabilityBaseOwner(owner);
+  const key = availabilityModeKey(baseOwner);
+  const normalizedMode = mode === "excluded" ? "excluded" : mode === "available" ? "available" : "";
+  const currentMode = availabilityEditModes.get(key) || "";
+  if (!normalizedMode || currentMode === normalizedMode) availabilityEditModes.delete(key);
+  else availabilityEditModes.set(key, normalizedMode);
+  renderAppuntamenti();
+  const nextMode = availabilityEditModes.get(key) || "";
+  setAvailabilityStatus(
+    baseOwner,
+    nextMode === "excluded" ? "Inserimento fasce escluse attivo." : nextMode === "available" ? "Inserimento disponibilita attivo." : "Inserimento disattivato.",
+    nextMode ? "ok" : ""
+  );
+}
+function availabilityModeControlsHtml(owner) {
+  const mode = availabilityPlannerMode(owner);
+  const availableActive = mode === "available";
+  const excludedActive = mode === "excluded";
+  const excludedOwner = `${owner}-excluded`;
+  return `
+    <div class="availability-card-actions">
+      <button type="button" class="btn ${availableActive ? "btn-primary" : "btn-outline"} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','available')">Inserisci disponibilita</button>
+      <button type="button" class="btn ${excludedActive ? "btn-primary" : "btn-outline"} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','excluded')">Inserisci fasce escluse</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? "" : "disabled"}>Undo disp.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? "" : "disabled"}>Undo escl.</button>
+    </div>`;
+}
+function undoAvailability(owner) {
+  return __async(this, null, function* () {
+    const target = availabilityBaseOwner(owner) === "maestro" ? null : selectedAppointmentTarget();
+    if (availabilityBaseOwner(owner) !== "maestro" && !target) return;
+    const key = availabilityOwnerKey(owner, target);
+    const stack = availabilityUndoStacks.get(key) || [];
+    const previousSlots = stack.pop();
+    if (!previousSlots) {
+      setAvailabilityStatus(owner, "Nessuna modifica da annullare.");
+      return;
+    }
+    availabilityUndoStacks.set(key, stack);
+    try {
+      yield saveAvailabilitySlotsForOwner(owner, previousSlots, "Ultima modifica annullata.", { skipUndo: true });
+    } catch (e) {
+      stack.push(previousSlots);
+      availabilityUndoStacks.set(key, stack);
+      setAvailabilityStatus(owner, e.message || "Errore annullamento disponibilita.", "err");
+    }
+  });
 }
 function availabilityGridHeight() {
   return (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN) / 60 * AVAILABILITY_HOUR_PX;
@@ -2288,27 +3457,37 @@ function availabilitySlotStyle(slot) {
   return `top:${top}px;height:${height}px`;
 }
 function availabilitySlotBlockHtml(owner, slot, preview = false) {
-  const cls = preview ? "availability-drag-preview" : "availability-slot-block";
-  const title = `${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` \xB7 ${slot.note}` : ""}`;
-  const handlers = preview ? "" : `onpointerdown="startAvailabilityMove(event,'${owner}',${jsArg(slot.id)})" ondblclick="editAvailabilitySlotNote('${owner}',${jsArg(slot.id)})"`;
+  const excluded = availabilityOwnerIsExcluded(owner);
+  const editable = !preview && availabilityPlannerIsEditable(owner);
+  const cls = `${preview ? "availability-drag-preview" : "availability-slot-block"}${excluded ? " is-excluded" : ""}${!preview && !editable ? " is-inactive" : ""}${editable ? " is-editable" : ""}`;
+  const title = `${excluded ? "Esclusa \xB7 " : ""}${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` \xB7 ${slot.note}` : ""}`;
+  const handlers = preview || !editable ? "" : `onpointerdown="startAvailabilityMove(event,'${owner}',${jsArg(slot.id)})" ondblclick="editAvailabilitySlotNote('${owner}',${jsArg(slot.id)})"`;
   return `
     <div class="${cls}" style="${availabilitySlotStyle(slot)}" title="${esc(title)}" ${handlers}>
-      <span class="availability-slot-time">${esc(slot.start)}-${esc(slot.end)}</span>
+      <span class="availability-slot-time"><span>${esc(slot.start)}</span><span>${esc(slot.end)}</span></span>
       ${slot.note ? `<span class="availability-slot-note">${esc(slot.note)}</span>` : ""}
-      ${preview ? "" : `<button type="button" class="availability-slot-delete" onclick="event.stopPropagation(); removeAvailabilitySlot('${owner}',${jsArg(slot.id)})" title="Elimina fascia">\xD7</button><div class="availability-slot-resize" onpointerdown="startAvailabilityResize(event,'${owner}',${jsArg(slot.id)})"></div>`}
+      ${editable ? `<button type="button" class="availability-slot-delete" onclick="event.stopPropagation(); removeAvailabilitySlot('${owner}',${jsArg(slot.id)})" title="Elimina fascia">\xD7</button><div class="availability-slot-resize" onpointerdown="startAvailabilityResize(event,'${owner}',${jsArg(slot.id)})"></div>` : ""}
     </div>`;
 }
-function availabilityPlannerHtml(owner, slots) {
+function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
   const normalized = normalizeAvailabilitySlots(slots);
+  const normalizedExcluded = normalizeAvailabilitySlots(excludedSlots);
   const byDay = new Map(AVAILABILITY_DAYS.map((day) => [day.value, []]));
   normalized.forEach((slot) => {
     var _a2;
-    return (_a2 = byDay.get(Number(slot.day))) == null ? void 0 : _a2.push(slot);
+    return (_a2 = byDay.get(Number(slot.day))) == null ? void 0 : _a2.push({ owner, slot });
   });
+  normalizedExcluded.forEach((slot) => {
+    var _a2;
+    return (_a2 = byDay.get(Number(slot.day))) == null ? void 0 : _a2.push({ owner: `${owner}-excluded`, slot });
+  });
+  byDay.forEach((items) => items.sort((a, b) => timeToMinutes(a.slot.start) - timeToMinutes(b.slot.start) || timeToMinutes(a.slot.end) - timeToMinutes(b.slot.end) || (availabilityOwnerIsExcluded(a.owner) ? 1 : 0) - (availabilityOwnerIsExcluded(b.owner) ? 1 : 0)));
   const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`;
+  const mode = availabilityPlannerMode(owner);
+  const editable = !!mode;
   return `
-    <div class="availability-planner" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
-      <div class="availability-planner-help">Trascina in verticale per scegliere l orario e in orizzontale per coprire piu giorni. Trascina un blocco per spostarlo, usa il bordo basso per allungarlo o accorciarlo, doppio click per aggiungere una nota.</div>
+    <div class="availability-planner ${editable ? "is-editing" : "is-locked"}${mode === "excluded" ? " is-excluded-planner" : ""}" id="${owner}-availability-planner" data-owner="${owner}" style="${style}">
+      <div class="availability-planner-help">${mode === "excluded" ? "Modalita fasce escluse: trascina per creare blocchi da sottrarre al planner." : mode === "available" ? "Modalita disponibilita: trascina per creare orari utili al planner. Trascina un blocco per spostarlo, usa il bordo basso per ridimensionarlo, doppio click per una nota." : "Scegli Inserisci disponibilita o Inserisci fasce escluse prima di modificare la griglia."}</div>
       <div class="availability-grid-wrap">
         <div class="availability-week-head">
           <div></div>
@@ -2320,11 +3499,58 @@ function availabilityPlannerHtml(owner, slots) {
           </div>
           ${AVAILABILITY_DAYS.map((day) => `
             <div class="availability-day-col" data-owner="${owner}" data-day="${day.value}" onpointerdown="startAvailabilityCreate(event,'${owner}',${day.value})">
-              ${(byDay.get(day.value) || []).map((slot) => availabilitySlotBlockHtml(owner, slot)).join("")}
+              ${(byDay.get(day.value) || []).map((item) => availabilitySlotBlockHtml(item.owner, item.slot)).join("")}
             </div>`).join("")}
         </div>
       </div>
-      ${normalized.length ? `<div class="appointments-status">${normalized.length} fasc${normalized.length === 1 ? "ia" : "e"} inserit${normalized.length === 1 ? "a" : "e"}.</div>` : '<div class="availability-empty">Nessuna fascia inserita: trascina dentro la griglia per crearne una.</div>'}
+      <div class="appointments-status">${normalized.length} disponibilita \xB7 ${normalizedExcluded.length} fasc${normalizedExcluded.length === 1 ? "ia esclusa" : "e escluse"}.</div>
+    </div>`;
+}
+function appointmentSelectionPanelHtml(allievi = []) {
+  ensureAppointmentSelectionDefaults();
+  ensureAppointmentPriorityModes();
+  const stats = appointmentSelectionStats();
+  const entries = appointmentSelectionEntries(allievi);
+  return `
+    <div class="appointment-selector-panel">
+      <div class="appointment-selector-head">
+        <strong>Elementi negli incroci</strong>
+        <span>${stats.selected}/${stats.total} selezionati</span>
+        <div class="appointment-selector-actions">
+          <button type="button" class="btn btn-outline btn-xs" onclick="setAllAppointmentSelection(true)">Tutti</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="setAllAppointmentSelection(false)">Nessuno</button>
+        </div>
+      </div>
+      <div class="appointment-selector-list">
+        ${entries.length ? entries.map((entry) => {
+    const checked = appointmentSelectionEntryIsSelected(entry);
+    const mode = appointmentSelectionEntryMode(entry);
+    const toggleCall = entry.type === "gruppo" ? `toggleAppointmentGroupSelection(${jsArg(entry.gruppo)}, this.checked)` : `toggleAppointmentAllievoSelection(${jsArg(entry.id)}, this.checked)`;
+    const modeCall = entry.type === "gruppo" ? `setAppointmentGroupPriorityMode(${jsArg(entry.gruppo)}, this.value)` : `setAppointmentPriorityMode(${jsArg(entry.id)}, this.value)`;
+    return `
+            <label class="appointment-selector-row${checked ? " is-selected" : ""}">
+              <input type="checkbox" ${checked ? "checked" : ""} onchange="${toggleCall}">
+              <span class="appointment-selector-name">
+                <strong>${entry.type === "gruppo" ? "Gruppo " : ""}${esc(entry.label)}</strong>
+                <small>${esc(entry.meta)}</small>
+              </span>
+              <select onchange="${modeCall}" ${checked ? "" : "disabled"}>
+                <option value="normal" ${mode === "normal" ? "selected" : ""}>Normale</option>
+                <option value="priority" ${mode === "priority" ? "selected" : ""}>Priorita</option>
+                <option value="flex" ${mode === "flex" ? "selected" : ""}>Flessibilita</option>
+              </select>
+            </label>`;
+  }).join("") : '<div class="availability-empty">Nessun elemento attivo disponibile.</div>'}
+      </div>
+    </div>`;
+}
+function appointmentAgendaTypesHtml() {
+  return `
+    <div class="appointment-agenda-types">
+      ${appointmentScheduleVariantDefinitions().map((variant) => `
+        <button type="button" class="btn ${(appointmentCurrentVariant == null ? void 0 : appointmentCurrentVariant.id) === variant.id ? "btn-primary" : "btn-outline"} btn-sm" onclick="generateAppointmentAgenda(${jsArg(variant.id)})">
+          ${esc(variant.title)}
+        </button>`).join("")}
     </div>`;
 }
 function renderAppuntamenti() {
@@ -2332,47 +3558,79 @@ function renderAppuntamenti() {
   const el = document.getElementById("appuntamenti-content");
   if (!el) return;
   const attivi = activeAppointmentAllievi();
-  if (appuntamentiSelectedAllievoId && !attivi.some((a) => String(a.id) === String(appuntamentiSelectedAllievoId))) appuntamentiSelectedAllievoId = null;
+  ensureAppointmentSelectionDefaults();
+  if (appuntamentiSelectedAllievoId && !appointmentTargetExists(appuntamentiSelectedAllievoId)) appuntamentiSelectedAllievoId = null;
   if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id;
-  const selectedAllievo = selectedAppointmentAllievo();
-  const selectedSlots = availabilitySlotsForAllievo(selectedAllievo);
-  const selectedNote = ((_a2 = selectedAllievo == null ? void 0 : selectedAllievo.profilo) == null ? void 0 : _a2.disponibilita) || "";
-  const gruppi = [...new Set(attivi.map((a) => a.gruppo).filter(Boolean))].sort();
+  const selectedTarget = selectedAppointmentTarget();
+  const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget);
+  const selectedExcludedSlots = availabilityExcludedSlotsForAppointmentTarget(selectedTarget);
+  const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget);
+  const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget);
+  const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget);
+  const selectedIndividualToggle = (selectedTarget == null ? void 0 : selectedTarget.type) === "allievo" && !!((_a2 = selectedTarget.allievo) == null ? void 0 : _a2.gruppo);
+  const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false;
+  const gruppi = appointmentGroups();
   const filteredAllievi = filteredAppointmentAllievi();
+  const selectedStats = appointmentSelectionStats();
   el.innerHTML = `
     <div class="appointments-grid">
       <div class="card">
         <div class="appointments-card-head">
           <div class="appointments-card-title">
             <h3>Disponibilita maestro</h3>
-            <span>Fasce settimanali ricorrenti. Salvate localmente e, se possibile, nei dati utente.</span>
+            <span>Unica griglia: inserisci disponibilita o fasce escluse scegliendo la modalita.</span>
           </div>
+          ${availabilityModeControlsHtml("maestro")}
         </div>
-        ${availabilityPlannerHtml("maestro", maestroAvailabilitySlots)}
+        ${availabilityPlannerHtml("maestro", maestroAvailabilitySlots, maestroExcludedSlots)}
         <div class="appointments-status" id="maestro-availability-status"></div>
       </div>
 
       <div class="card">
         <div class="appointments-card-head">
           <div class="appointments-card-title">
-            <h3>Disponibilita allievo</h3>
-            <span>Le fasce vengono salvate nel profilo dell allievo selezionato.</span>
+            <h3>Disponibilita ${(selectedTarget == null ? void 0 : selectedTarget.type) === "gruppo" ? "gruppo" : "allievo"}</h3>
+            <span>${(selectedTarget == null ? void 0 : selectedTarget.type) === "gruppo" ? "Le fasce vengono salvate su tutti i membri attivi del gruppo selezionato." : "Le fasce vengono salvate nel profilo dell allievo selezionato."}</span>
           </div>
+          ${selectedTarget ? `
+            ${availabilityModeControlsHtml("allievo")}` : ""}
         </div>
         <div class="field">
-          <label>Allievo</label>
+          <label>Allievo o gruppo</label>
           <select id="appointments-allievo-select" onchange="setAppuntamentiAllievo(this.value)">
-            ${availabilityAllievoOptions(appuntamentiSelectedAllievoId)}
+            ${availabilityTargetOptions(appuntamentiSelectedAllievoId)}
           </select>
         </div>
-        ${selectedAllievo ? `
-          ${availabilityPlannerHtml("allievo", selectedSlots)}
+        ${appointmentAvailabilityUpdatedHtml(selectedTarget)}
+        ${selectedTarget ? `
+          <div class="appointments-preferences">
+            <div class="field">
+              <label>Appuntamenti a settimana</label>
+              <input type="number" id="appointments-weekly-count" min="${APPOINTMENT_DEFAULT_WEEKLY_COUNT}" max="${APPOINTMENT_MAX_WEEKLY_COUNT}" step="1" value="${selectedWeeklyCount}" onchange="saveSelectedAppointmentPreferences()">
+            </div>
+            ${selectedIndividualToggle ? `
+              <label class="appointments-check">
+                <input type="checkbox" id="appointments-individual-active" ${selectedIndividualActive ? "checked" : ""} onchange="saveSelectedAppointmentPreferences()">
+                <span>Includi anche lezioni individuali</span>
+              </label>` : ""}
+            <div class="appointments-consecutive-mode" role="radiogroup" aria-label="Giorni consecutivi">
+              <label class="appointments-check">
+                <input type="radio" name="appointments-consecutive-mode" value="${APPOINTMENT_CONSECUTIVE_PREFER}" ${selectedConsecutiveMode === APPOINTMENT_CONSECUTIVE_PREFER ? "checked" : ""} onchange="saveSelectedAppointmentPreferences()">
+                <span>Preferibilmente non giorni consecutivi</span>
+              </label>
+              <label class="appointments-check">
+                <input type="radio" name="appointments-consecutive-mode" value="${APPOINTMENT_CONSECUTIVE_STRICT}" ${selectedConsecutiveMode === APPOINTMENT_CONSECUTIVE_STRICT ? "checked" : ""} onchange="saveSelectedAppointmentPreferences()">
+                <span>Assolutamente non giorni consecutivi</span>
+              </label>
+            </div>
+          </div>
+          ${availabilityPlannerHtml("allievo", selectedSlots, selectedExcludedSlots)}
           <div class="field" style="margin-top:.75rem">
             <label>Note disponibilita</label>
             <textarea id="appointments-allievo-note" placeholder="Testo libero, vincoli dei genitori, preferenze...">${esc(selectedNote)}</textarea>
           </div>
           <button type="button" class="btn btn-outline btn-sm" onclick="saveSelectedAllievoAvailabilityNote()">Salva note</button>
-        ` : '<div class="availability-empty">Nessun allievo attivo disponibile.</div>'}
+        ` : '<div class="availability-empty">Nessun allievo o gruppo attivo disponibile.</div>'}
         <div class="appointments-status" id="allievo-availability-status"></div>
       </div>
 
@@ -2380,7 +3638,7 @@ function renderAppuntamenti() {
         <div class="appointments-card-head">
           <div class="appointments-card-title">
             <h3>Incroci maestro-allievo</h3>
-            <span>Mostra le finestre in cui tu e ogni allievo filtrato siete entrambi disponibili.</span>
+            <span>Seleziona chi entra nella proposta e scegli il tipo di agenda da generare.</span>
           </div>
         </div>
         <div class="appointments-toolbar">
@@ -2397,15 +3655,21 @@ function renderAppuntamenti() {
             </select>
           </div>
           <div class="field">
-            <label>Durata lezione min.</label>
-            <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="renderAppointmentIntersections()">
+            <label>Durata fallback</label>
+            <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="clearAppointmentAgendaPreview()">
           </div>
         </div>
-        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? "o" : "i"} nel filtro corrente.</div>
+        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? "o" : "i"} nel filtro corrente \xB7 ${selectedStats.selected} selezionat${selectedStats.selected === 1 ? "o" : "i"} per il planner.</div>
+        ${appointmentSelectionPanelHtml(filteredAllievi)}
+        <div class="appointments-explainer">
+          <strong>Generazione agenda</strong>
+          <span>Clicca una tipologia per generare una proposta. Ogni click sulla stessa tipologia prova un'alternativa diversa; le lezioni bloccate restano ferme.</span>
+        </div>
+        ${appointmentAgendaTypesHtml()}
         <div id="appointments-intersections"></div>
       </div>
     </div>`;
-  renderAppointmentIntersections();
+  renderAppointmentAgendaPreview();
   requestAnimationFrame(() => motion.cards(el));
 }
 function setAppuntamentiAllievo(id) {
@@ -2415,12 +3679,68 @@ function setAppuntamentiAllievo(id) {
 function setAppuntamentiQuery(value) {
   var _a2;
   appuntamentiAllieviQuery = value || "";
+  appointmentCurrentVariant = null;
   renderAppuntamenti();
   (_a2 = document.getElementById("appointments-search")) == null ? void 0 : _a2.focus();
 }
 function setAppuntamentiGroupFilter(value) {
   appuntamentiGruppoFiltro = value || "all";
+  appointmentCurrentVariant = null;
   renderAppuntamenti();
+}
+function toggleAppointmentAllievoSelection(allievoId, checked) {
+  ensureAppointmentSelectionDefaults();
+  const id = String(allievoId);
+  if (checked) appointmentSelectedAllieviIds.add(id);
+  else appointmentSelectedAllieviIds.delete(id);
+  writeAppointmentSelectedIds();
+  appointmentCurrentVariant = null;
+  renderAppuntamenti();
+}
+function toggleAppointmentGroupSelection(gruppo, checked) {
+  ensureAppointmentSelectionDefaults();
+  appointmentGroupMembers(gruppo).forEach((member) => {
+    const id = String(member.id);
+    if (checked) appointmentSelectedAllieviIds.add(id);
+    else appointmentSelectedAllieviIds.delete(id);
+  });
+  writeAppointmentSelectedIds();
+  appointmentCurrentVariant = null;
+  renderAppuntamenti();
+}
+function setAllAppointmentSelection(checked) {
+  ensureAppointmentSelectionDefaults();
+  const visibleIds = /* @__PURE__ */ new Set();
+  appointmentSelectionEntries(filteredAppointmentAllievi()).forEach((entry) => {
+    ;
+    (entry.memberIds || []).forEach((id) => visibleIds.add(String(id)));
+  });
+  visibleIds.forEach((id) => {
+    if (checked) appointmentSelectedAllieviIds.add(id);
+    else appointmentSelectedAllieviIds.delete(id);
+  });
+  writeAppointmentSelectedIds();
+  appointmentCurrentVariant = null;
+  renderAppuntamenti();
+}
+function setAppointmentPriorityMode(allievoId, mode, options = {}) {
+  ensureAppointmentPriorityModes();
+  const id = String(allievoId);
+  if (mode === "priority" || mode === "flex") appointmentPriorityModes.set(id, mode);
+  else appointmentPriorityModes.delete(id);
+  writeAppointmentPriorityModes();
+  appointmentCurrentVariant = null;
+  if (options.skipRender) return;
+  renderAppuntamenti();
+}
+function setAppointmentGroupPriorityMode(gruppo, mode) {
+  appointmentGroupMembers(gruppo).forEach((member) => setAppointmentPriorityMode(member.id, mode, { skipRender: true }));
+  appointmentCurrentVariant = null;
+  renderAppuntamenti();
+}
+function clearAppointmentAgendaPreview() {
+  appointmentCurrentVariant = null;
+  renderAppointmentAgendaPreview();
 }
 function filteredAppointmentAllievi() {
   const query = normalizeText(appuntamentiAllieviQuery);
@@ -2435,26 +3755,58 @@ function filteredAppointmentAllievi() {
     return haystack.includes(query);
   });
 }
-function saveAvailabilitySlotsForOwner(owner, slots, message = "Disponibilita salvata.") {
-  return __async(this, null, function* () {
+function saveAvailabilitySlotsForOwner(_0, _1) {
+  return __async(this, arguments, function* (owner, slots, message = "Disponibilita salvata.", options = {}) {
+    const baseOwner = availabilityBaseOwner(owner);
+    const target = baseOwner === "maestro" ? null : selectedAppointmentTarget();
+    const previousSlots = availabilityUndoSnapshot(availabilitySlotsForOwner(owner));
+    if (!options.skipUndo && availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
+      pushAvailabilityUndo(owner, previousSlots, target);
+    }
+    if (availabilitySlotsSignature(previousSlots) !== availabilitySlotsSignature(slots)) {
+      appointmentCurrentVariant = null;
+    }
     if (owner === "maestro") {
       const saved = yield saveMaestroAvailabilitySlots(slots);
       renderAppuntamenti();
       setAvailabilityStatus("maestro", saved.remote ? message : "Salvata localmente. Sync online non disponibile.", saved.remote ? "ok" : "");
       return;
     }
-    const allievo = selectedAppointmentAllievo();
-    if (!allievo) return;
-    yield saveAllievoAvailability(allievo.id, slots);
+    if (owner === "maestro-excluded") {
+      const saved = yield saveMaestroExcludedSlots(slots);
+      renderAppuntamenti();
+      setAvailabilityStatus("maestro-excluded", saved.remote ? message : "Salvata localmente. Sync online non disponibile.", saved.remote ? "ok" : "");
+      return;
+    }
+    if (!target) return;
+    if (owner === "allievo-excluded") {
+      if (target.type === "gruppo") {
+        yield saveGroupAvailabilityExclusions(target.gruppo, slots);
+        renderAppuntamenti();
+        setAvailabilityStatus("allievo", `${message} Salvata su ${target.members.length} sched${target.members.length === 1 ? "a" : "e"} del gruppo.`, "ok");
+        return;
+      }
+      yield saveAllievoAvailabilityExclusions(target.allievo.id, slots, { individualTarget: true });
+      renderAppuntamenti();
+      setAvailabilityStatus("allievo", message, "ok");
+      return;
+    }
+    if (target.type === "gruppo") {
+      yield saveGroupAvailability(target.gruppo, slots);
+      renderAppuntamenti();
+      setAvailabilityStatus("allievo", `${message} Salvata su ${target.members.length} sched${target.members.length === 1 ? "a" : "e"} del gruppo.`, "ok");
+      return;
+    }
+    yield saveAllievoAvailability(target.allievo.id, slots, void 0, { individualTarget: true });
     renderAppuntamenti();
     setAvailabilityStatus("allievo", message, "ok");
   });
 }
 function availabilityDayColumn(owner, day) {
-  return document.querySelector(`.availability-day-col[data-owner="${owner}"][data-day="${day}"]`);
+  return document.querySelector(`.availability-day-col[data-owner="${availabilityBaseOwner(owner)}"][data-day="${day}"]`);
 }
 function availabilityDayFromPointer(owner, event) {
-  const cols = [...document.querySelectorAll(`.availability-day-col[data-owner="${owner}"]`)];
+  const cols = [...document.querySelectorAll(`.availability-day-col[data-owner="${availabilityBaseOwner(owner)}"]`)];
   return cols.find((col) => {
     const rect = col.getBoundingClientRect();
     return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
@@ -2479,13 +3831,20 @@ function bindAvailabilityDragEnd() {
   document.body.classList.add("availability-dragging");
 }
 function startAvailabilityCreate(event, owner, day) {
+  const mode = availabilityPlannerMode(owner);
+  if (!mode) {
+    setAvailabilityStatus(owner, "Scegli prima cosa inserire: disponibilita o fasce escluse.");
+    return;
+  }
+  const targetOwner = mode === "excluded" ? `${owner}-excluded` : owner;
+  if (!availabilityPlannerIsEditable(targetOwner)) return;
   if (event.button !== void 0 && event.button !== 0) return;
   if (event.target.closest(".availability-slot-block")) return;
   const col = event.currentTarget;
   const startMin = availabilityClampStart(availabilityMinutesFromEvent(event, col), AVAILABILITY_STEP_MIN);
   availabilityDragState = {
     mode: "create",
-    owner,
+    owner: targetOwner,
     startDay: day,
     endDay: day,
     startMin,
@@ -2496,6 +3855,7 @@ function startAvailabilityCreate(event, owner, day) {
   renderAvailabilityDragPreview();
 }
 function startAvailabilityMove(event, owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) return;
   if (event.button !== void 0 && event.button !== 0) return;
   if (event.target.closest(".availability-slot-delete, .availability-slot-resize")) return;
   const slot = availabilitySlotsForOwner(owner).find((item) => String(item.id) === String(slotId));
@@ -2514,6 +3874,7 @@ function startAvailabilityMove(event, owner, slotId) {
   bindAvailabilityDragEnd();
 }
 function startAvailabilityResize(event, owner, slotId) {
+  if (!availabilityPlannerIsEditable(owner)) return;
   if (event.button !== void 0 && event.button !== 0) return;
   const slot = availabilitySlotsForOwner(owner).find((item) => String(item.id) === String(slotId));
   if (!slot) return;
@@ -2573,7 +3934,8 @@ function finishAvailabilityPointerDrag() {
     const slots = availabilitySlotsForOwner(state.owner);
     const next = state.mode === "create" ? [...slots, ...dragSlots.map((slot) => __spreadProps(__spreadValues({}, slot), { id: newAvailabilityId() }))] : slots.map((item) => String(item.id) === String(state.slotId) ? __spreadProps(__spreadValues({}, dragSlots[0]), { id: item.id }) : item);
     try {
-      yield saveAvailabilitySlotsForOwner(state.owner, next, state.mode === "create" ? dragSlots.length > 1 ? "Fasce create." : "Fascia creata." : "Fascia aggiornata.");
+      const excluded = availabilityOwnerIsExcluded(state.owner);
+      yield saveAvailabilitySlotsForOwner(state.owner, next, state.mode === "create" ? dragSlots.length > 1 ? excluded ? "Fasce escluse create." : "Fasce create." : excluded ? "Fascia esclusa creata." : "Fascia creata." : excluded ? "Fascia esclusa aggiornata." : "Fascia aggiornata.");
     } catch (e) {
       setAvailabilityStatus(state.owner, e.message || "Errore salvataggio fascia.", "err");
     }
@@ -2596,6 +3958,10 @@ function availabilityCurrentDragSlotsFromState(state) {
 }
 function editAvailabilitySlotNote(owner, slotId) {
   return __async(this, null, function* () {
+    if (!availabilityPlannerIsEditable(owner)) {
+      setAvailabilityStatus(owner, "Attiva la modalita corretta prima di cambiare questa fascia.");
+      return;
+    }
     const slots = availabilitySlotsForOwner(owner);
     const slot = slots.find((item) => String(item.id) === String(slotId));
     if (!slot) return;
@@ -2611,18 +3977,13 @@ function editAvailabilitySlotNote(owner, slotId) {
 }
 function removeAvailabilitySlot(owner, slotId) {
   return __async(this, null, function* () {
+    if (!availabilityPlannerIsEditable(owner)) {
+      setAvailabilityStatus(owner, "Attiva la modalita corretta prima di cambiare questa fascia.");
+      return;
+    }
     try {
-      if (owner === "maestro") {
-        const saved = yield saveMaestroAvailabilitySlots(maestroAvailabilitySlots.filter((slot) => String(slot.id) !== String(slotId)));
-        renderAppuntamenti();
-        setAvailabilityStatus("maestro", saved.remote ? "Fascia rimossa." : "Fascia rimossa localmente.", saved.remote ? "ok" : "");
-        return;
-      }
-      const allievo = selectedAppointmentAllievo();
-      if (!allievo) return;
-      yield saveAllievoAvailability(allievo.id, availabilitySlotsForAllievo(allievo).filter((slot) => String(slot.id) !== String(slotId)));
-      renderAppuntamenti();
-      setAvailabilityStatus("allievo", "Fascia rimossa.", "ok");
+      const next = availabilitySlotsForOwner(owner).filter((slot) => String(slot.id) !== String(slotId));
+      yield saveAvailabilitySlotsForOwner(owner, next, availabilityOwnerIsExcluded(owner) ? "Fascia esclusa rimossa." : "Fascia rimossa.");
     } catch (e) {
       setAvailabilityStatus(owner, e.message || "Errore rimozione fascia.", "err");
     }
@@ -2643,15 +4004,42 @@ function saveMaestroAvailabilitySlots(slots) {
     return { remote: true };
   });
 }
-function saveAllievoAvailability(allievoId, slots, noteValue = void 0) {
+function saveMaestroExcludedSlots(slots) {
   return __async(this, null, function* () {
+    maestroExcludedSlots = normalizeAvailabilitySlots(slots);
+    safeStorage.setItem(maestroExcludedStorageKey(), JSON.stringify(maestroExcludedSlots));
+    if (!(sb == null ? void 0 : sb.auth)) return { remote: false };
+    const payload = __spreadProps(__spreadValues({}, currentUserMetadata), {
+      [MAESTRO_EXCLUDED_METADATA_KEY]: maestroExcludedSlots,
+      disponibilita_maestro_escluse_updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    const { user, error } = yield updateCurrentUserMetadata(payload);
+    if (error) return { remote: false, error };
+    currentUserMetadata = (user == null ? void 0 : user.user_metadata) || payload;
+    return { remote: true };
+  });
+}
+function saveAllievoAvailability(_0, _1) {
+  return __async(this, arguments, function* (allievoId, slots, noteValue = void 0, options = {}) {
     const allievo = allievoById(allievoId);
     if (!allievo) throw new Error("Allievo non trovato.");
+    const normalizedSlots = normalizeAvailabilitySlots(slots);
     const profilo = __spreadProps(__spreadValues({}, allievo.profilo || {}), {
-      disponibilita_slots: normalizeAvailabilitySlots(slots),
       disponibilita_updated_at: (/* @__PURE__ */ new Date()).toISOString()
     });
-    if (noteValue !== void 0) profilo.disponibilita = noteValue.trim() || null;
+    if (options.groupTarget) {
+      profilo.disponibilita_gruppo_slots = normalizedSlots;
+      profilo.disponibilita_gruppo_updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      if (noteValue !== void 0) profilo.disponibilita_gruppo = noteValue.trim() || null;
+      if (!appointmentIndividualLessonsActiveForAllievo(allievo)) {
+        profilo.disponibilita_slots = normalizedSlots;
+        if (noteValue !== void 0) profilo.disponibilita = noteValue.trim() || null;
+      }
+    } else {
+      profilo.disponibilita_slots = normalizedSlots;
+      if (allievo.gruppo && options.individualTarget) profilo.disponibilita_individuale_attiva = true;
+      if (noteValue !== void 0) profilo.disponibilita = noteValue.trim() || null;
+    }
     let payload = { profilo, aggiornato_il: (/* @__PURE__ */ new Date()).toISOString() };
     let { data, error } = yield sb.from("allievi").update(payload).eq("id", allievoId).select().single();
     if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
@@ -2663,14 +4051,125 @@ function saveAllievoAvailability(allievoId, slots, noteValue = void 0) {
     logModificaLocale("allievo", allievoId, "Aggiornate disponibilita");
   });
 }
+function saveAllievoAvailabilityExclusions(_0, _1) {
+  return __async(this, arguments, function* (allievoId, slots, options = {}) {
+    const allievo = allievoById(allievoId);
+    if (!allievo) throw new Error("Allievo non trovato.");
+    const normalizedSlots = normalizeAvailabilitySlots(slots);
+    const profilo = __spreadProps(__spreadValues({}, allievo.profilo || {}), {
+      disponibilita_escluse_updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (options.groupTarget) {
+      profilo.disponibilita_gruppo_escluse_slots = normalizedSlots;
+      profilo.disponibilita_gruppo_escluse_updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      if (!appointmentIndividualLessonsActiveForAllievo(allievo)) profilo.disponibilita_escluse_slots = normalizedSlots;
+    } else {
+      profilo.disponibilita_escluse_slots = normalizedSlots;
+      if (allievo.gruppo && options.individualTarget) profilo.disponibilita_individuale_attiva = true;
+    }
+    let payload = { profilo, aggiornato_il: (/* @__PURE__ */ new Date()).toISOString() };
+    let { data, error } = yield sb.from("allievi").update(payload).eq("id", allievoId).select().single();
+    if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
+      payload = { profilo };
+      ({ data, error } = yield sb.from("allievi").update(payload).eq("id", allievoId).select().single());
+    }
+    if (error) throw error;
+    allAllievi = allAllievi.map((a) => String(a.id) === String(allievoId) ? data || __spreadValues(__spreadValues({}, a), payload) : a);
+    logModificaLocale("allievo", allievoId, "Aggiornate fasce escluse disponibilita");
+  });
+}
+function saveAllievoAppointmentPreferences(allievoId, preferences) {
+  return __async(this, null, function* () {
+    const allievo = allievoById(allievoId);
+    if (!allievo) throw new Error("Allievo non trovato.");
+    const consecutiveMode = normalizeAppointmentConsecutiveMode(preferences.consecutiveMode, preferences.avoidConsecutive);
+    const profilo = __spreadProps(__spreadValues({}, allievo.profilo || {}), {
+      appuntamenti_settimanali: normalizeAppointmentWeeklyCount(preferences.weeklyCount),
+      appuntamenti_giorni_consecutivi: consecutiveMode,
+      appuntamenti_evita_giorni_consecutivi: true,
+      appuntamenti_preferenze_updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (allievo.gruppo && Object.prototype.hasOwnProperty.call(preferences, "individualActive")) {
+      profilo.appuntamenti_individuali_attivi = !!preferences.individualActive;
+    }
+    let payload = { profilo, aggiornato_il: (/* @__PURE__ */ new Date()).toISOString() };
+    let { data, error } = yield sb.from("allievi").update(payload).eq("id", allievoId).select().single();
+    if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
+      payload = { profilo };
+      ({ data, error } = yield sb.from("allievi").update(payload).eq("id", allievoId).select().single());
+    }
+    if (error) throw error;
+    allAllievi = allAllievi.map((a) => String(a.id) === String(allievoId) ? data || __spreadValues(__spreadValues({}, a), payload) : a);
+    logModificaLocale("allievo", allievoId, "Aggiornate preferenze appuntamenti");
+  });
+}
+function saveGroupAvailability(gruppo, slots, noteValue = void 0) {
+  return __async(this, null, function* () {
+    const members = appointmentGroupMembers(gruppo);
+    if (!members.length) throw new Error("Gruppo non trovato.");
+    for (const member of members) {
+      yield saveAllievoAvailability(member.id, slots, noteValue, { groupTarget: true });
+    }
+  });
+}
+function saveGroupAvailabilityExclusions(gruppo, slots) {
+  return __async(this, null, function* () {
+    const members = appointmentGroupMembers(gruppo);
+    if (!members.length) throw new Error("Gruppo non trovato.");
+    for (const member of members) {
+      yield saveAllievoAvailabilityExclusions(member.id, slots, { groupTarget: true });
+    }
+  });
+}
+function saveGroupAppointmentPreferences(gruppo, preferences) {
+  return __async(this, null, function* () {
+    const members = appointmentGroupMembers(gruppo);
+    if (!members.length) throw new Error("Gruppo non trovato.");
+    for (const member of members) {
+      yield saveAllievoAppointmentPreferences(member.id, preferences);
+    }
+  });
+}
+function saveSelectedAppointmentPreferences() {
+  return __async(this, null, function* () {
+    var _a2, _b2;
+    const target = selectedAppointmentTarget();
+    if (!target) return;
+    const weeklyCount = normalizeAppointmentWeeklyCount((_a2 = document.getElementById("appointments-weekly-count")) == null ? void 0 : _a2.value);
+    const consecutiveMode = normalizeAppointmentConsecutiveMode((_b2 = document.querySelector('input[name="appointments-consecutive-mode"]:checked')) == null ? void 0 : _b2.value);
+    const individualCheckbox = document.getElementById("appointments-individual-active");
+    const individualActive = individualCheckbox ? individualCheckbox.checked : void 0;
+    try {
+      if (target.type === "gruppo") {
+        yield saveGroupAppointmentPreferences(target.gruppo, { weeklyCount, consecutiveMode });
+        document.getElementById("appointments-weekly-count").value = String(weeklyCount);
+        setAvailabilityStatus("allievo", `Preferenze salvate su ${target.members.length} sched${target.members.length === 1 ? "a" : "e"} del gruppo.`, "ok");
+        clearAppointmentAgendaPreview();
+        return;
+      }
+      yield saveAllievoAppointmentPreferences(target.allievo.id, { weeklyCount, consecutiveMode, individualActive });
+      document.getElementById("appointments-weekly-count").value = String(weeklyCount);
+      setAvailabilityStatus("allievo", "Preferenze appuntamenti salvate.", "ok");
+      clearAppointmentAgendaPreview();
+    } catch (e) {
+      setAvailabilityStatus("allievo", e.message || "Errore salvataggio preferenze.", "err");
+    }
+  });
+}
 function saveSelectedAllievoAvailabilityNote() {
   return __async(this, null, function* () {
     var _a2;
-    const allievo = selectedAppointmentAllievo();
-    if (!allievo) return;
+    const target = selectedAppointmentTarget();
+    if (!target) return;
     const note = ((_a2 = document.getElementById("appointments-allievo-note")) == null ? void 0 : _a2.value) || "";
     try {
-      yield saveAllievoAvailability(allievo.id, availabilitySlotsForAllievo(allievo), note);
+      if (target.type === "gruppo") {
+        yield saveGroupAvailability(target.gruppo, availabilitySlotsForAppointmentTarget(target), note);
+        renderAppuntamenti();
+        setAvailabilityStatus("allievo", `Note disponibilita salvate su ${target.members.length} sched${target.members.length === 1 ? "a" : "e"} del gruppo.`, "ok");
+        return;
+      }
+      yield saveAllievoAvailability(target.allievo.id, availabilitySlotsForAppointmentTarget(target), note, { individualTarget: true });
       renderAppuntamenti();
       setAvailabilityStatus("allievo", "Note disponibilita salvate.", "ok");
     } catch (e) {
@@ -2681,16 +4180,66 @@ function saveSelectedAllievoAvailabilityNote() {
 function slotsForDay(slots, day) {
   return normalizeAvailabilitySlots(slots).filter((slot) => Number(slot.day) === Number(day)).map((slot) => __spreadProps(__spreadValues({}, slot), { startMin: timeToMinutes(slot.start), endMin: timeToMinutes(slot.end) }));
 }
-function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
-  const ids = (allievoIds || []).filter(Boolean);
-  if (!ids.length) return [];
+function subtractAvailabilityExclusions(slots, exclusions) {
+  const excludedByDay = /* @__PURE__ */ new Map();
+  normalizeAvailabilitySlots(exclusions).forEach((slot) => {
+    const day = Number(slot.day);
+    if (!excludedByDay.has(day)) excludedByDay.set(day, []);
+    excludedByDay.get(day).push({
+      startMin: timeToMinutes(slot.start),
+      endMin: timeToMinutes(slot.end)
+    });
+  });
+  excludedByDay.forEach((items) => items.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin));
+  const output = [];
+  normalizeAvailabilitySlots(slots).forEach((slot) => {
+    let segments = [{
+      startMin: timeToMinutes(slot.start),
+      endMin: timeToMinutes(slot.end)
+    }];
+    (excludedByDay.get(Number(slot.day)) || []).forEach((excluded) => {
+      const nextSegments = [];
+      segments.forEach((segment) => {
+        const overlapStart = Math.max(segment.startMin, excluded.startMin);
+        const overlapEnd = Math.min(segment.endMin, excluded.endMin);
+        if (overlapEnd <= overlapStart) {
+          nextSegments.push(segment);
+          return;
+        }
+        if (segment.startMin < overlapStart) nextSegments.push({ startMin: segment.startMin, endMin: overlapStart });
+        if (overlapEnd < segment.endMin) nextSegments.push({ startMin: overlapEnd, endMin: segment.endMin });
+      });
+      segments = nextSegments;
+    });
+    segments.filter((segment) => segment.endMin - segment.startMin >= AVAILABILITY_STEP_MIN).forEach((segment) => output.push(__spreadProps(__spreadValues({}, slot), {
+      id: `${slot.id}:${segment.startMin}-${segment.endMin}`,
+      start: minutesToTime(segment.startMin),
+      end: minutesToTime(segment.endMin)
+    })));
+  });
+  return normalizeAvailabilitySlots(output);
+}
+function effectiveMaestroAvailabilitySlots() {
+  return subtractAvailabilityExclusions(maestroAvailabilitySlots, maestroExcludedSlots);
+}
+function effectiveAvailabilitySlotsForAllievo(allievo) {
+  return subtractAvailabilityExclusions(availabilitySlotsForAllievo(allievo), availabilityExcludedSlotsForAllievo(allievo));
+}
+function effectiveAvailabilitySlotsForGroup(gruppo) {
+  return subtractAvailabilityExclusions(availabilitySlotsForGroup(gruppo), availabilityExcludedSlotsForGroup(gruppo));
+}
+function effectiveAvailabilitySlotsForAppointmentTarget(target = selectedAppointmentTarget()) {
+  if (!target) return [];
+  if (target.type === "gruppo") return effectiveAvailabilitySlotsForGroup(target.gruppo);
+  return effectiveAvailabilitySlotsForAllievo(target.allievo);
+}
+function computeAvailabilityIntersectionsFromSources(appointmentSourcesInput, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  const appointmentSources = (appointmentSourcesInput || []).filter(Boolean);
+  if (!appointmentSources.length) return [];
   const requiredDuration = minDuration + bufferMin;
   const sources = [
-    { id: "maestro", label: "Maestro", slots: maestroAvailabilitySlots },
-    ...ids.map((id) => {
-      const allievo = allievoById(id);
-      return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: availabilitySlotsForAllievo(allievo) };
-    })
+    { id: "maestro", label: "Maestro", slots: effectiveMaestroAvailabilitySlots() },
+    ...appointmentSources
   ];
   if (sources.some((source) => !normalizeAvailabilitySlots(source.slots).length)) return [];
   const results = [];
@@ -2733,52 +4282,865 @@ function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_
     bufferMin
   })).sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || a.endMin - b.endMin);
 }
-function computePairwiseAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
-  return (allievoIds || []).flatMap((id) => {
+function computeAvailabilityIntersections(allievoIds, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  const ids = (allievoIds || []).filter(Boolean);
+  return computeAvailabilityIntersectionsFromSources(ids.map((id) => {
     const allievo = allievoById(id);
-    return computeAvailabilityIntersections([id], minDuration, bufferMin).map((window2) => __spreadProps(__spreadValues({}, window2), {
-      allievoId: id,
-      allievoName: allievo ? lezioneTargetLabelAllievo(allievo) : id
-    }));
-  }).sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.allievoName).localeCompare(String(b.allievoName), "it", { sensitivity: "base" }));
+    return { id, label: allievo ? lezioneTargetLabelAllievo(allievo) : id, slots: effectiveAvailabilitySlotsForAllievo(allievo) };
+  }), minDuration, bufferMin);
 }
-function appointmentResultHtml(window2, detail = "") {
+function computeAvailabilityIntersectionsForTarget(target, minDuration = APPOINTMENT_MIN_LESSON_MIN, bufferMin = APPOINTMENT_BUFFER_MIN) {
+  if (!target) return [];
+  if (target.type === "gruppo") {
+    return computeAvailabilityIntersectionsFromSources([{
+      id: target.id,
+      label: target.label,
+      slots: effectiveAvailabilitySlotsForGroup(target.gruppo)
+    }], minDuration, bufferMin);
+  }
+  return computeAvailabilityIntersections(target.memberIds, minDuration, bufferMin);
+}
+function availabilitySlotsForAppointmentScheduleTarget(target) {
+  if (!target) return [];
+  return effectiveAvailabilitySlotsForAppointmentTarget(target);
+}
+function appointmentDayCombinations(days, count) {
+  const results = [];
+  function visit(start, combo) {
+    if (combo.length === count) {
+      results.push(combo.slice());
+      return;
+    }
+    for (let index = start; index < days.length; index += 1) {
+      combo.push(days[index]);
+      visit(index + 1, combo);
+      combo.pop();
+    }
+  }
+  visit(0, []);
+  return results;
+}
+function appointmentConsecutiveDayPairs(days) {
+  const orders = days.map((day) => availabilityDayOrder(day)).sort((a, b) => a - b);
+  let pairs = 0;
+  for (let index = 1; index < orders.length; index += 1) {
+    if (orders[index] - orders[index - 1] === 1) pairs += 1;
+  }
+  if (orders.includes(0) && orders.includes(6)) pairs += 1;
+  return pairs;
+}
+function appointmentDaySpreadScore(days) {
+  const orders = days.map((day) => availabilityDayOrder(day));
+  let score = 0;
+  for (let i = 0; i < orders.length; i += 1) {
+    for (let j = i + 1; j < orders.length; j += 1) {
+      const distance = Math.abs(orders[i] - orders[j]);
+      score += Math.min(distance, 7 - distance);
+    }
+  }
+  return score;
+}
+function appointmentMaxNonConsecutiveDayCount(days = []) {
+  const orderedDays = [...new Set(days)].sort((a, b) => availabilityDayOrder(a) - availabilityDayOrder(b));
+  for (let size = orderedDays.length; size >= 1; size -= 1) {
+    if (appointmentDayCombinations(orderedDays, size).some((combo) => appointmentConsecutiveDayPairs(combo) === 0)) return size;
+  }
+  return 0;
+}
+function chooseAppointmentWeeklyPlan(windows, weeklyCount, consecutiveMode = APPOINTMENT_CONSECUTIVE_STRICT) {
   var _a2;
-  const tail = detail ? "" : ((_a2 = window2.labels) == null ? void 0 : _a2.slice(1).join(", ")) || "";
-  const bufferText = window2.bufferMin ? ` \xB7 max lezione ${window2.lessonDuration} min + pausa ${window2.bufferMin} min` : "";
+  const needed = normalizeAppointmentWeeklyCount(weeklyCount);
+  const byDay = /* @__PURE__ */ new Map();
+  normalizeAvailabilitySlots(windows).forEach((window2) => {
+    if (!byDay.has(window2.day)) byDay.set(window2.day, []);
+    byDay.get(window2.day).push(window2);
+  });
+  byDay.forEach((items) => items.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start) || timeToMinutes(b.end) - timeToMinutes(a.end)));
+  const days = [...byDay.keys()].sort((a, b) => availabilityDayOrder(a) - availabilityDayOrder(b));
+  const planSize = Math.min(needed, days.length);
+  if (!planSize) return [];
+  const strictMode = appointmentConsecutiveModeIsStrict(consecutiveMode);
+  let combinations = appointmentDayCombinations(days, planSize);
+  if (strictMode) {
+    for (let size = planSize; size >= 1; size -= 1) {
+      const strictCombinations = appointmentDayCombinations(days, size).filter((combo) => appointmentConsecutiveDayPairs(combo) === 0);
+      if (strictCombinations.length) {
+        combinations = strictCombinations;
+        break;
+      }
+    }
+  }
+  const ranked = combinations.map((combo) => ({
+    days: combo,
+    consecutivePairs: appointmentConsecutiveDayPairs(combo),
+    spreadScore: appointmentDaySpreadScore(combo),
+    startSum: combo.reduce((sum, day) => sum + timeToMinutes(byDay.get(day)[0].start), 0)
+  })).sort((a, b) => {
+    if (!strictMode && a.consecutivePairs !== b.consecutivePairs) return a.consecutivePairs - b.consecutivePairs;
+    if (a.spreadScore !== b.spreadScore) return b.spreadScore - a.spreadScore;
+    return a.startSum - b.startSum;
+  });
+  const best = ((_a2 = ranked[0]) == null ? void 0 : _a2.days) || [];
+  return best.map((day) => byDay.get(day)[0]).sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start));
+}
+function appointmentLocationForTarget(target) {
+  var _a2;
+  if (!target) return "";
+  if (target.type === "gruppo") return profiloComuneGruppo(target.members).luogo_incontro || target.gruppo || "";
+  const allievo = target.allievo;
+  const logistica = logisticaIndividualeProfilo((allievo == null ? void 0 : allievo.profilo) || {}, !!(allievo == null ? void 0 : allievo.gruppo));
+  return logistica.luogo_incontro || ((_a2 = allievo == null ? void 0 : allievo.profilo) == null ? void 0 : _a2.luogo_incontro) || visibleAllievoAddress(allievo).indirizzo || "";
+}
+function appointmentLocationRouteParts(location) {
+  const text = String(location || "").trim();
+  if (!text) return [];
+  return text.split(/\s*(?:->|→|–|—|\s-\s)\s*/g).map((part) => part.trim()).filter(Boolean);
+}
+function lessonLocationPartIsHome(part = "") {
+  const key = normalizeMapMatchText(part);
+  return !key || /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(key);
+}
+function lessonLocationEntries(luogo, allieviIds = []) {
+  const rawParts = appointmentLocationRouteParts(luogo);
+  const parts = rawParts.length ? rawParts : [String(luogo || "").trim()].filter(Boolean);
+  const linked = allieviIds.length === 1 ? allievoById(allieviIds[0]) : null;
+  return parts.map((part) => {
+    const clean = String(part || "").trim();
+    if (!clean) return null;
+    const homeLike = lessonLocationPartIsHome(clean);
+    const nome = homeLike && linked ? `Casa di ${mappaAllievoHomeName(linked)}` : clean;
+    return { raw: clean, nome, homeLike, allievo: homeLike ? linked : null };
+  }).filter(Boolean);
+}
+function missingLessonLocationEntries(luogo, allieviIds = []) {
+  return lessonLocationEntries(luogo, allieviIds).filter((entry) => !locationRecordByName(entry.nome));
+}
+function appointmentHomeLocationRecord(allievo, fallbackName = "casa") {
+  const address = allievo ? visibleAllievoAddress(allievo) : {};
+  const homeName = allievo ? `Casa di ${mappaAllievoHomeName(allievo)}` : fallbackName;
+  return locationRecordByName(homeName) || {
+    nome: homeName,
+    indirizzo: address.indirizzo || address.casa || "",
+    latitudine: address.casa_latitudine,
+    longitudine: address.casa_longitudine,
+    tipologia: "Casa allievo"
+  };
+}
+function appointmentLocationPointInfo(part, allievo = null) {
+  const label = String(part || "").trim();
+  const key = normalizeMapMatchText(label);
+  const homeLike = !label || /^casa(?:\b|$)|^home(?:\b|$)|abitazione/.test(key);
+  const record = homeLike ? appointmentHomeLocationRecord(allievo, label || "casa") : locationRecordByName(label) || { nome: label, indirizzo: label, tipologia: "Location" };
+  const coords = locationMapCoords(record);
+  const canonical = (coords == null ? void 0 : coords.label) || record.nome || record.indirizzo || label;
+  return {
+    label: homeLike ? record.nome || label || "casa" : label,
+    key: normalizeMapMatchText(canonical),
+    point: coords ? mappaProjectCoord(coords) : null
+  };
+}
+function appointmentLocationInfoForTarget(target) {
+  var _a2;
+  const location = appointmentLocationForTarget(target);
+  const allievo = (target == null ? void 0 : target.allievo) || ((_a2 = target == null ? void 0 : target.members) == null ? void 0 : _a2[0]) || null;
+  const parts = appointmentLocationRouteParts(location);
+  const startInfo = appointmentLocationPointInfo(parts[0] || location, allievo);
+  const endInfo = appointmentLocationPointInfo(parts.length > 1 ? parts[parts.length - 1] : parts[0] || location, allievo);
+  const key = startInfo.key === endInfo.key ? startInfo.key : `${startInfo.key}->${endInfo.key}`;
+  return {
+    label: location,
+    key,
+    point: startInfo.point,
+    startLabel: startInfo.label,
+    startKey: startInfo.key,
+    startPoint: startInfo.point,
+    endLabel: endInfo.label,
+    endKey: endInfo.key,
+    endPoint: endInfo.point,
+    isRoute: parts.length > 1 && startInfo.key !== endInfo.key
+  };
+}
+function hydrateAppointmentTarget(target, fallbackDuration) {
+  var _a2;
+  target.memberIds = (target.memberIds || ((_a2 = target.members) == null ? void 0 : _a2.map((member) => member.id)) || []).map((id) => String(id)).filter(Boolean);
+  target.weeklyCount = appointmentWeeklyCountForTarget(target);
+  target.avoidConsecutive = appointmentAvoidConsecutiveForTarget(target);
+  target.consecutiveMode = appointmentConsecutiveModeForTarget(target);
+  target.lessonDuration = appointmentLessonDurationForTarget(target, fallbackDuration);
+  target.locationInfo = appointmentLocationInfoForTarget(target);
+  target.location = target.locationInfo.label;
+  target.locationKey = target.locationInfo.key;
+  target.locationPoint = target.locationInfo.point;
+  target.routeStartLabel = target.locationInfo.startLabel;
+  target.routeStartKey = target.locationInfo.startKey;
+  target.routeStartPoint = target.locationInfo.startPoint;
+  target.routeEndLabel = target.locationInfo.endLabel;
+  target.routeEndKey = target.locationInfo.endKey;
+  target.routeEndPoint = target.locationInfo.endPoint;
+  target.routeIsItinerary = target.locationInfo.isRoute;
+  target.priorityMode = appointmentTargetPriorityMode(target);
+  target.tierRank = Math.min(...(target.members || []).map((member) => allievoTierRank(member)), 3);
+  return target;
+}
+function appointmentTargetForAllievo(allievo, fallbackDuration) {
+  return hydrateAppointmentTarget({
+    type: "allievo",
+    id: `allievo:${allievo.id}`,
+    label: allievo.gruppo ? `${lezioneTargetLabelAllievo(allievo)} \xB7 individuale` : lezioneTargetLabelAllievo(allievo),
+    allievo,
+    members: [allievo],
+    memberIds: [allievo.id]
+  }, fallbackDuration);
+}
+function appointmentSchedulableTargets(filteredAllievi = []) {
+  const fallbackDuration = appointmentCurrentFallbackDuration();
+  const targets = [];
+  const grouped = /* @__PURE__ */ new Set();
+  const selectedIds = new Set(filteredAllievi.map((allievo) => String(allievo.id)));
+  filteredAllievi.forEach((allievo) => {
+    if (allievo.gruppo) {
+      if (!grouped.has(allievo.gruppo)) {
+        grouped.add(allievo.gruppo);
+        const members = appointmentGroupMembers(allievo.gruppo).filter((member) => selectedIds.has(String(member.id)));
+        if (members.length) {
+          targets.push(hydrateAppointmentTarget({
+            type: "gruppo",
+            id: appointmentGroupTargetValue(allievo.gruppo),
+            label: allievo.gruppo,
+            gruppo: allievo.gruppo,
+            members,
+            memberIds: members.map((member) => member.id)
+          }, fallbackDuration));
+        }
+      }
+    }
+    if (!allievo.gruppo || appointmentIndividualLessonsActiveForAllievo(allievo)) {
+      targets.push(appointmentTargetForAllievo(allievo, fallbackDuration));
+    }
+  });
+  return targets.sort((a, b) => String(a.label).localeCompare(String(b.label), "it", { sensitivity: "base" }));
+}
+function appointmentWindowHeatOverlap(startMin, endMin) {
+  return Math.max(0, Math.min(endMin, APPOINTMENT_HEAT_END_MIN) - Math.max(startMin, APPOINTMENT_HEAT_START_MIN));
+}
+function appointmentTargetFromResult(result) {
+  return {
+    id: result.targetId,
+    label: result.targetName,
+    type: result.targetType,
+    memberIds: (result.memberIds || []).map((id) => String(id)).filter(Boolean),
+    weeklyCount: result.weeklyCount,
+    avoidConsecutive: result.avoidConsecutive,
+    consecutiveMode: result.consecutiveMode,
+    lessonDuration: result.lessonDuration,
+    location: result.location,
+    locationKey: result.locationKey,
+    locationPoint: result.locationPoint,
+    routeStartLabel: result.routeStartLabel,
+    routeStartKey: result.routeStartKey,
+    routeStartPoint: result.routeStartPoint,
+    routeEndLabel: result.routeEndLabel,
+    routeEndKey: result.routeEndKey,
+    routeEndPoint: result.routeEndPoint,
+    routeIsItinerary: result.routeIsItinerary,
+    priorityMode: result.priorityMode,
+    tierRank: result.tierRank
+  };
+}
+function buildAppointmentScheduleCandidates(results, bufferMin) {
+  const candidates = [];
+  results.forEach((result) => {
+    const target = appointmentTargetFromResult(result);
+    const lessonDuration = target.lessonDuration || APPOINTMENT_MIN_LESSON_MIN;
+    const requiredDuration = lessonDuration + bufferMin;
+    result.windows.forEach((window2) => {
+      const latestStart = window2.endMin - requiredDuration;
+      for (let startMin = window2.startMin; startMin <= latestStart; startMin += AVAILABILITY_STEP_MIN) {
+        const lessonEndMin = startMin + lessonDuration;
+        const blockEndMin = startMin + requiredDuration;
+        candidates.push({
+          targetId: target.id,
+          targetName: target.label,
+          targetType: target.type,
+          memberIds: target.memberIds || [],
+          weeklyCount: target.weeklyCount,
+          avoidConsecutive: target.avoidConsecutive,
+          consecutiveMode: target.consecutiveMode,
+          lessonDuration,
+          location: target.location,
+          locationKey: target.locationKey,
+          locationPoint: target.locationPoint,
+          routeStartLabel: target.routeStartLabel,
+          routeStartKey: target.routeStartKey,
+          routeStartPoint: target.routeStartPoint,
+          routeEndLabel: target.routeEndLabel,
+          routeEndKey: target.routeEndKey,
+          routeEndPoint: target.routeEndPoint,
+          routeIsItinerary: target.routeIsItinerary,
+          priorityMode: target.priorityMode,
+          tierRank: target.tierRank,
+          day: window2.day,
+          startMin,
+          lessonEndMin,
+          blockEndMin,
+          start: minutesToTime(startMin),
+          lessonEnd: minutesToTime(lessonEndMin),
+          blockEnd: minutesToTime(blockEndMin),
+          heatOverlap: appointmentWindowHeatOverlap(startMin, lessonEndMin)
+        });
+      }
+    });
+  });
+  const countByTarget = /* @__PURE__ */ new Map();
+  candidates.forEach((candidate) => countByTarget.set(candidate.targetId, (countByTarget.get(candidate.targetId) || 0) + 1));
+  candidates.forEach((candidate) => {
+    candidate.targetCandidateCount = countByTarget.get(candidate.targetId) || 0;
+  });
+  return candidates;
+}
+function appointmentCandidateConflicts(candidate, scheduled) {
+  return scheduled.some(
+    (item) => Number(item.day) === Number(candidate.day) && candidate.startMin < item.blockEndMin && candidate.blockEndMin > item.startMin
+  );
+}
+function appointmentSameTargetSameDay(candidate, scheduled) {
+  return scheduled.some((item) => item.targetId === candidate.targetId && Number(item.day) === Number(candidate.day));
+}
+function appointmentMemberIdsForScheduleItem(item = {}) {
+  if (Array.isArray(item.memberIds) && item.memberIds.length) return item.memberIds.map((id) => String(id)).filter(Boolean);
+  if (item.targetType === "gruppo" || appointmentTargetIsGroup(item.targetId)) {
+    return appointmentGroupMembers(appointmentGroupFromTarget(item.targetId)).map((member) => String(member.id));
+  }
+  const rawId = String(item.targetId || "").replace(/^allievo:/, "");
+  return rawId ? [rawId] : [];
+}
+function appointmentSameMemberSameDay(candidate, scheduled) {
+  const candidateIds = appointmentMemberIdsForScheduleItem(candidate);
+  if (!candidateIds.length) return false;
+  const candidateSet = new Set(candidateIds);
+  return scheduled.some(
+    (item) => Number(item.day) === Number(candidate.day) && appointmentMemberIdsForScheduleItem(item).some((id) => candidateSet.has(String(id)))
+  );
+}
+function appointmentHasConsecutiveDay(candidate, scheduled) {
+  const days = scheduled.filter((item) => item.targetId === candidate.targetId).map((item) => item.day);
+  return days.some((day) => appointmentConsecutiveDayPairs([day, candidate.day]) > 0);
+}
+function appointmentViolatesStrictConsecutive(candidate, scheduled) {
+  return appointmentConsecutiveModeIsStrict(candidate.consecutiveMode) && appointmentHasConsecutiveDay(candidate, scheduled);
+}
+function appointmentTransitionEndpoints(a, b) {
+  if (a.startMin >= b.blockEndMin) {
+    return {
+      fromKey: b.routeEndKey,
+      fromPoint: b.routeEndPoint,
+      toKey: a.routeStartKey,
+      toPoint: a.routeStartPoint
+    };
+  }
+  if (b.startMin >= a.blockEndMin) {
+    return {
+      fromKey: a.routeEndKey,
+      fromPoint: a.routeEndPoint,
+      toKey: b.routeStartKey,
+      toPoint: b.routeStartPoint
+    };
+  }
+  return {
+    fromKey: b.routeEndKey || a.routeEndKey,
+    fromPoint: b.routeEndPoint || a.routeEndPoint,
+    toKey: a.routeStartKey || b.routeStartKey,
+    toPoint: a.routeStartPoint || b.routeStartPoint
+  };
+}
+function appointmentSameLocation(candidate, item) {
+  const transition = appointmentTransitionEndpoints(candidate, item);
+  return transition.fromKey && transition.toKey && transition.fromKey === transition.toKey;
+}
+function appointmentLocationDistance(candidate, item) {
+  const transition = appointmentTransitionEndpoints(candidate, item);
+  if (!transition.fromPoint || !transition.toPoint) return null;
+  const dx = transition.toPoint.x - transition.fromPoint.x;
+  const dy = transition.toPoint.y - transition.fromPoint.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function appointmentNearbyLocation(candidate, item) {
+  if (appointmentSameLocation(candidate, item)) return true;
+  const distance = appointmentLocationDistance(candidate, item);
+  return distance !== null && distance <= 75;
+}
+function scoreAppointmentCandidate(candidate, scheduled, variant) {
+  const sameDay = scheduled.filter((item) => Number(item.day) === Number(candidate.day));
+  const dayLoad = sameDay.length;
+  const scarcity = candidate.targetCandidateCount || 999;
+  let score = scarcity * 2 + availabilityDayOrder(candidate.day) * 6 + candidate.startMin / 60;
+  score += (candidate.tierRank || 0) * 8;
+  if (candidate.priorityMode === "priority") score -= 120;
+  if (candidate.priorityMode === "flex") score += 120;
+  if (appointmentHasConsecutiveDay(candidate, scheduled)) score += appointmentConsecutiveModeIsStrict(candidate.consecutiveMode) ? 1e4 : 90;
+  if (variant.id === "balanced") score += dayLoad * 16;
+  if (variant.id === "max") score += dayLoad * 4;
+  if (variant.id === "compact") {
+    if (!sameDay.length) score += 28;
+    sameDay.forEach((item) => {
+      const gap = Math.min(Math.abs(candidate.startMin - item.blockEndMin), Math.abs(item.startMin - candidate.blockEndMin));
+      const distance = appointmentLocationDistance(candidate, item);
+      if (appointmentSameLocation(candidate, item)) score -= 140;
+      else if (appointmentNearbyLocation(candidate, item)) score -= 85;
+      if (gap <= 90) score -= 50 - gap / 3;
+      if (candidate.locationKey && item.locationKey && !appointmentNearbyLocation(candidate, item) && gap < 45) score += 95;
+      if (distance !== null && !appointmentSameLocation(candidate, item)) score += Math.min(70, distance / 3);
+    });
+  }
+  if (variant.id === "anti_heat") {
+    score += candidate.heatOverlap ? 260 + candidate.heatOverlap : 0;
+    score += dayLoad * 7;
+  }
+  if (variant.randomness) score += Math.random() * variant.randomness;
+  return score;
+}
+function appointmentScheduledItemKey(item = {}) {
+  return String(item.previewId || `${item.targetId}:${item.day}:${item.startMin}:${item.lessonEndMin}`);
+}
+function normalizeAppointmentLockedSlots(lockedSlots = []) {
+  return (lockedSlots || []).map((item) => __spreadProps(__spreadValues({}, item), {
+    locked: true,
+    previewId: item.previewId || appointmentScheduledItemKey(item)
+  }));
+}
+function buildAppointmentScheduleVariant(results, variant, bufferMin, options = {}) {
+  const totalDemand = results.reduce((sum, result) => sum + result.weeklyCount, 0);
+  const candidates = buildAppointmentScheduleCandidates(results, bufferMin);
+  const remaining = new Map(results.map((result) => [result.targetId, result.weeklyCount]));
+  const scheduled = [];
+  normalizeAppointmentLockedSlots(options.lockedSlots).forEach((item) => {
+    if (!remaining.has(item.targetId)) return;
+    if ((remaining.get(item.targetId) || 0) <= 0) return;
+    if (appointmentSameTargetSameDay(item, scheduled) || appointmentSameMemberSameDay(item, scheduled)) return;
+    if (appointmentCandidateConflicts(item, scheduled)) return;
+    scheduled.push(item);
+    remaining.set(item.targetId, Math.max(0, (remaining.get(item.targetId) || 0) - 1));
+  });
+  let guard = 0;
+  while (guard < totalDemand && scheduled.length < totalDemand) {
+    guard += 1;
+    const viable = candidates.filter((candidate) => (remaining.get(candidate.targetId) || 0) > 0).filter((candidate) => !appointmentSameTargetSameDay(candidate, scheduled)).filter((candidate) => !appointmentSameMemberSameDay(candidate, scheduled)).filter((candidate) => !appointmentViolatesStrictConsecutive(candidate, scheduled)).filter((candidate) => !appointmentCandidateConflicts(candidate, scheduled));
+    if (!viable.length) break;
+    viable.sort((a, b) => scoreAppointmentCandidate(a, scheduled, variant) - scoreAppointmentCandidate(b, scheduled, variant));
+    const chosen = __spreadProps(__spreadValues({}, viable[0]), { previewId: `${variant.id}:${appointmentGenerationNonce}:${scheduled.length}:${viable[0].targetId}:${viable[0].day}:${viable[0].startMin}` });
+    scheduled.push(chosen);
+    remaining.set(chosen.targetId, (remaining.get(chosen.targetId) || 0) - 1);
+  }
+  scheduled.sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), "it", { sensitivity: "base" }));
+  const unplaced = results.map((result) => {
+    const missing = remaining.get(result.targetId) || 0;
+    if (!missing) return null;
+    const availableDays = [...new Set(result.windows.map((window2) => window2.day))].length;
+    const maxNonConsecutiveDays = appointmentMaxNonConsecutiveDayCount(result.windows.map((window2) => window2.day));
+    const scheduledForTarget = scheduled.filter((item) => item.targetId === result.targetId).length;
+    let reason = "finestre compatibili occupate da altri appuntamenti";
+    if (!result.windows.length) reason = "nessuna sovrapposizione utile con la disponibilita maestro";
+    else if (appointmentConsecutiveModeIsStrict(result.consecutiveMode) && maxNonConsecutiveDays < result.weeklyCount) reason = `vincolo assoluto: al massimo ${maxNonConsecutiveDays} giorn${maxNonConsecutiveDays === 1 ? "o non consecutivo" : "i non consecutivi"}`;
+    else if (availableDays < result.weeklyCount) reason = `solo ${availableDays} giorn${availableDays === 1 ? "o" : "i"} disponibile${availableDays === 1 ? "" : "i"} per ${result.weeklyCount} richiesti`;
+    else if (scheduledForTarget > 0) reason = "non resta spazio senza sovrapporre lezioni gia piazzate";
+    return {
+      targetName: result.targetName,
+      missing,
+      reason
+    };
+  }).filter(Boolean);
+  return __spreadProps(__spreadValues({}, variant), {
+    scheduled,
+    totalDemand,
+    placed: scheduled.length,
+    missing: Math.max(0, totalDemand - scheduled.length),
+    remaining,
+    unplaced
+  });
+}
+function appointmentScheduleVariantDefinitions() {
+  return [
+    { id: "max", title: "Massima copertura", note: "Piazza il maggior numero di lezioni, dando priorita a chi ha meno finestre disponibili." },
+    { id: "compact", title: "Compatta spostamenti", note: "Tiene vicine nello stesso giorno le lezioni con stesso luogo, alias simili o coordinate vicine." },
+    { id: "anti_heat", title: "Anti-caldo", note: "Evita il piu possibile le lezioni tra 13:00 e 15:30." },
+    { id: "balanced", title: "Distribuita", note: "Distribuisce il carico sui giorni, utile quando non vuoi giornate troppo dense." }
+  ];
+}
+function buildAppointmentScheduleVariants(results, bufferMin) {
+  const variants = appointmentScheduleVariantDefinitions();
+  return variants.map((variant) => buildAppointmentScheduleVariant(results, variant, bufferMin));
+}
+function readAppointmentTravelRules() {
+  try {
+    const rows = JSON.parse(safeStorage.getItem(APPOINTMENT_TRAVEL_STORAGE_KEY) || "[]");
+    return Array.isArray(rows) ? rows : [];
+  } catch (e) {
+    return [];
+  }
+}
+function writeAppointmentTravelRules(rows = []) {
+  safeStorage.setItem(APPOINTMENT_TRAVEL_STORAGE_KEY, JSON.stringify(rows));
+}
+function appointmentTravelRuleKey(fromKey, toKey) {
+  const keys = [normalizeMapMatchText(fromKey), normalizeMapMatchText(toKey)].filter(Boolean).sort();
+  return keys.length === 2 ? `${keys[0]}::${keys[1]}` : "";
+}
+function appointmentTravelRuleFor(fromKey, toKey) {
+  const key = appointmentTravelRuleKey(fromKey, toKey);
+  if (!key) return null;
+  return readAppointmentTravelRules().find((rule) => rule.key === key) || null;
+}
+function appointmentTravelMinutesBetween(a, b) {
+  if (!a || !b) return 0;
+  const fromKey = a.routeEndKey || a.locationKey;
+  const toKey = b.routeStartKey || b.locationKey;
+  if (fromKey && toKey && normalizeMapMatchText(fromKey) === normalizeMapMatchText(toKey)) return 0;
+  const rule = appointmentTravelRuleFor(fromKey, toKey);
+  if (rule) return Math.max(0, parseInt(rule.minutes, 10) || 0);
+  return APPOINTMENT_BUFFER_MIN;
+}
+function appointmentPreviewRangeStyle(startMin, endMin) {
+  const dayStart = AVAILABILITY_START_MIN;
+  const dayEnd = AVAILABILITY_END_MIN;
+  const top = (Math.max(dayStart, startMin) - dayStart) / (dayEnd - dayStart) * 100;
+  const height = Math.max(AVAILABILITY_STEP_MIN, Math.min(dayEnd, endMin) - Math.max(dayStart, startMin)) / (dayEnd - dayStart) * 100;
+  return `top:${top.toFixed(3)}%;height:${Math.max(1.6, height).toFixed(3)}%`;
+}
+function appointmentPreviewPointStyle(min) {
+  const dayStart = AVAILABILITY_START_MIN;
+  const dayEnd = AVAILABILITY_END_MIN;
+  const top = (Math.max(dayStart, Math.min(dayEnd, min)) - dayStart) / (dayEnd - dayStart) * 100;
+  return `top:${top.toFixed(3)}%`;
+}
+function appointmentPreviewHourLabelsHtml() {
+  const labels = [];
+  for (let min = AVAILABILITY_START_MIN; min <= AVAILABILITY_END_MIN; min += 60) {
+    labels.push(`<span class="appointment-preview-hour-label" style="${appointmentPreviewPointStyle(min)}">${minutesToTime(min)}</span>`);
+  }
   return `
-    <div class="appointment-result">
-      <strong>${availabilityDayLabel(window2.day)}</strong>
-      <span>${esc(window2.start)} - ${esc(window2.end)}<small>${window2.duration} min totali${bufferText}${detail ? ` \xB7 ${esc(detail)}` : ""}</small></span>
-      <small>${esc(tail)}</small>
+    <div class="appointment-preview-day appointment-preview-time-rail" aria-hidden="true">
+      <div class="appointment-preview-time-title"></div>
+      <div class="appointment-preview-lane appointment-preview-time-lane">
+        ${labels.join("")}
+      </div>
     </div>`;
 }
-function renderAppointmentIntersections() {
+function appointmentPreviewExcludedBlocks(items = []) {
+  const blocks = [];
+  normalizeAvailabilitySlots(maestroExcludedSlots).forEach((slot) => blocks.push(__spreadProps(__spreadValues({}, slot), { label: "Maestro", kind: "maestro" })));
+  (items || []).forEach((item) => {
+    const exclusions = item.targetType === "gruppo" ? availabilityExcludedSlotsForGroup(appointmentGroupFromTarget(item.targetId)) : availabilityExcludedSlotsForAllievo(allievoById(String(item.targetId).replace(/^allievo:/, "")));
+    normalizeAvailabilitySlots(exclusions).forEach((slot) => blocks.push(__spreadProps(__spreadValues({}, slot), { label: item.targetName, kind: "allievo" })));
+  });
+  const deduped = /* @__PURE__ */ new Map();
+  blocks.forEach((slot) => deduped.set(`${slot.kind}:${slot.label}:${slot.day}:${slot.start}:${slot.end}`, slot));
+  return [...deduped.values()];
+}
+function appointmentScheduleByDayHtml(items) {
+  if (!items.length) return '<div class="availability-empty">Nessuna lezione piazzabile con le disponibilita correnti.</div>';
+  const excluded = appointmentPreviewExcludedBlocks(items);
+  return `
+    <div class="appointment-preview-calendar">
+      ${appointmentPreviewHourLabelsHtml()}
+      ${AVAILABILITY_DAYS.map((day) => {
+    const dayItems = items.filter((item) => Number(item.day) === Number(day.value)).sort((a, b) => a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), "it", { sensitivity: "base" }));
+    const dayExcluded = excluded.filter((slot) => Number(slot.day) === Number(day.value));
+    const travelBlocks = dayItems.slice(0, -1).map((item, index) => {
+      const next = dayItems[index + 1];
+      const minutes = appointmentTravelMinutesBetween(item, next);
+      if (!minutes) return null;
+      const startMin = Math.min(item.lessonEndMin, next.startMin);
+      const endMin = Math.min(next.startMin, startMin + minutes);
+      if (endMin <= startMin) return null;
+      return { startMin, endMin, from: item.targetName, to: next.targetName, minutes };
+    }).filter(Boolean);
+    return `
+          <div class="appointment-preview-day" data-day="${day.value}" ondragover="event.preventDefault()" ondrop="dropAppointmentPreviewItem(event,${day.value})">
+            <div class="appointment-preview-day-title">${esc(day.short)}</div>
+            <div class="appointment-preview-lane">
+              ${dayExcluded.map((slot) => {
+      const startMin = timeToMinutes(slot.start);
+      const endMin = timeToMinutes(slot.end);
+      return `<div class="appointment-preview-excluded" style="${appointmentPreviewRangeStyle(startMin, endMin)}" title="${esc(slot.label)} \xB7 ${esc(slot.start)}-${esc(slot.end)}"></div>`;
+    }).join("")}
+              ${travelBlocks.map((block) => `
+                <div class="appointment-preview-travel" style="${appointmentPreviewRangeStyle(block.startMin, block.endMin)}" title="Spostamento ${esc(block.from)} \u2192 ${esc(block.to)} \xB7 ${block.minutes} min">
+                  ${block.minutes}m
+                </div>`).join("")}
+              ${dayItems.map((item) => {
+      const optionsText = item.targetCandidateCount > 1 ? `${item.targetCandidateCount} opzioni` : "1 opzione";
+      const modeText = item.priorityMode === "priority" ? "priorita" : item.priorityMode === "flex" ? "flessibile" : "";
+      const detailsText = [optionsText, modeText, item.location].filter(Boolean).join(" \xB7 ");
+      return `
+                  <div class="appointment-preview-item${item.locked ? " is-locked" : ""}" draggable="true" data-preview-id="${esc(appointmentScheduledItemKey(item))}" style="${appointmentPreviewRangeStyle(item.startMin, item.lessonEndMin)}" title="${esc(detailsText)}" ondragstart="startAppointmentPreviewDrag(event,${jsArg(appointmentScheduledItemKey(item))})">
+                    <strong>${esc(item.targetName)}</strong>
+                    <span>${esc(item.start)}-${esc(item.lessonEnd)}</span>
+                    <button type="button" onclick="event.stopPropagation(); toggleAppointmentPreviewLock(${jsArg(appointmentScheduledItemKey(item))})" title="${item.locked ? "Sblocca proposta" : "Blocca proposta"}">${item.locked ? "Fissa" : "Blocca"}</button>
+                  </div>`;
+    }).join("")}
+            </div>
+          </div>`;
+  }).join("")}
+    </div>`;
+}
+function appointmentScheduleByDayListHtml(items) {
+  return AVAILABILITY_DAYS.map((day) => {
+    const dayItems = items.filter((item) => Number(item.day) === Number(day.value));
+    if (!dayItems.length) return "";
+    return `
+      <div class="appointment-agenda-day">
+        <div class="appointment-agenda-day-title">${esc(day.label)}</div>
+        ${appointmentDayRouteMapHtml(dayItems)}
+        <div class="appointment-agenda-items">
+          ${dayItems.map((item) => `
+            <div class="appointment-agenda-item">
+              <strong>${esc(item.start)}-${esc(item.lessonEnd)}</strong>
+              <span>${esc(item.targetName)} \xB7 ${item.lessonDuration} min \xB7 ${esc(appointmentConsecutiveModeIsStrict(item.consecutiveMode) ? "no consecutivi assoluto" : "no consecutivi preferibile")}${item.routeIsItinerary ? ` \xB7 ${esc(item.routeStartLabel || "")} \u2192 ${esc(item.routeEndLabel || "")}` : item.location ? ` \xB7 ${esc(item.location)}` : ""}</span>
+              ${item.heatOverlap ? "<small>fascia calda</small>" : ""}
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+function appointmentPreviewItemById(previewId) {
+  if (!appointmentCurrentVariant) return null;
+  const key = String(previewId);
+  return appointmentCurrentVariant.scheduled.find((item) => appointmentScheduledItemKey(item) === key) || null;
+}
+function normalizePreviewScheduledItem(item) {
+  const lessonDuration = item.lessonDuration || Math.max(AVAILABILITY_STEP_MIN, item.lessonEndMin - item.startMin);
+  return __spreadProps(__spreadValues({}, item), {
+    start: minutesToTime(item.startMin),
+    lessonEndMin: item.startMin + lessonDuration,
+    lessonEnd: minutesToTime(item.startMin + lessonDuration),
+    blockEndMin: item.startMin + lessonDuration + APPOINTMENT_BUFFER_MIN,
+    blockEnd: minutesToTime(item.startMin + lessonDuration + APPOINTMENT_BUFFER_MIN)
+  });
+}
+function rerenderCurrentAppointmentPreview() {
+  if (!appointmentCurrentVariant) return renderAppointmentAgendaPreview();
+  appointmentCurrentVariant.scheduled.sort((a, b) => availabilityDayOrder(a.day) - availabilityDayOrder(b.day) || a.startMin - b.startMin || String(a.targetName).localeCompare(String(b.targetName), "it", { sensitivity: "base" }));
+  renderAppointmentAgendaPreview();
+}
+function toggleAppointmentPreviewLock(previewId) {
+  const item = appointmentPreviewItemById(previewId);
+  if (!item) return;
+  item.locked = !item.locked;
+  rerenderCurrentAppointmentPreview();
+}
+function startAppointmentPreviewDrag(event, previewId) {
+  var _a2, _b2, _c;
+  appointmentPreviewDragId = String(previewId);
+  (_a2 = event.dataTransfer) == null ? void 0 : _a2.setData("text/plain", appointmentPreviewDragId);
+  (_c = (_b2 = event.dataTransfer) == null ? void 0 : _b2.setDragImage) == null ? void 0 : _c.call(_b2, event.currentTarget, 12, 12);
+}
+function dropAppointmentPreviewItem(event, day) {
+  var _a2;
+  event.preventDefault();
+  const previewId = ((_a2 = event.dataTransfer) == null ? void 0 : _a2.getData("text/plain")) || appointmentPreviewDragId;
+  const item = appointmentPreviewItemById(previewId);
+  const lane = event.currentTarget.querySelector(".appointment-preview-lane");
+  if (!item || !lane) return;
+  const rect = lane.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)));
+  const duration = item.lessonDuration || Math.max(AVAILABILITY_STEP_MIN, item.lessonEndMin - item.startMin);
+  const rawStart = AVAILABILITY_START_MIN + ratio * (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN);
+  const startMin = availabilityClampStart(availabilitySnap(rawStart), duration + APPOINTMENT_BUFFER_MIN);
+  item.day = Number(day);
+  item.startMin = startMin;
+  item.locked = true;
+  Object.assign(item, normalizePreviewScheduledItem(item));
+  rerenderCurrentAppointmentPreview();
+}
+function appointmentPointDistance(a, b) {
+  if (!a || !b) return null;
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function appointmentRouteItems(items) {
+  const points = [];
+  items.forEach((item, index) => {
+    const startPoint = item.routeStartPoint || item.locationPoint;
+    const endPoint = item.routeEndPoint || item.locationPoint;
+    if (startPoint) {
+      points.push({
+        point: startPoint,
+        label: item.routeIsItinerary ? item.routeStartLabel || item.location || item.targetName : item.location || item.targetName,
+        targetName: item.targetName,
+        marker: String(index + 1),
+        title: `${index + 1}. ${item.targetName}${item.location ? " \xB7 " + item.location : ""}`
+      });
+    }
+    const samePoint = startPoint && endPoint && Math.abs(startPoint.x - endPoint.x) < 1 && Math.abs(startPoint.y - endPoint.y) < 1;
+    if (item.routeIsItinerary && endPoint && !samePoint) {
+      points.push({
+        point: endPoint,
+        label: item.routeEndLabel || item.location || item.targetName,
+        targetName: item.targetName,
+        marker: `${index + 1}b`,
+        title: `${index + 1}. fine \xB7 ${item.targetName}${item.routeEndLabel ? " \xB7 " + item.routeEndLabel : ""}`
+      });
+    }
+  });
+  return points;
+}
+function appointmentRouteStats(routeItems) {
+  if (routeItems.length < 2) return null;
+  let total = 0;
+  for (let index = 1; index < routeItems.length; index += 1) {
+    total += appointmentPointDistance(routeItems[index - 1].point, routeItems[index].point) || 0;
+  }
+  const direct = appointmentPointDistance(routeItems[0].point, routeItems[routeItems.length - 1].point) || 0;
+  const ratio = direct > 1 ? total / direct : total > 1 ? 99 : 1;
+  const label = ratio > 1.7 && total > 90 ? "poco lineare" : ratio > 1.25 && total > 70 ? "migliorabile" : "lineare";
+  return { total, direct, ratio, label };
+}
+function appointmentDayRouteMapHtml(items) {
+  const routeItems = appointmentRouteItems(items);
+  if (routeItems.length < 2) return "";
+  const stats = appointmentRouteStats(routeItems);
+  const points = routeItems.map((item) => `${item.point.x.toFixed(1)},${item.point.y.toFixed(1)}`).join(" ");
+  const mappedLessons = items.filter((item) => item.routeStartPoint || item.locationPoint).length;
+  return `
+    <div class="appointment-route-map">
+      <div class="appointment-route-meta">
+        <strong>Tracciato giornata</strong>
+        <span>${esc((stats == null ? void 0 : stats.label) || "tracciato")} \xB7 ${mappedLessons}/${items.length} lezioni in mappa</span>
+      </div>
+      <div class="appointment-route-stage">
+        <img class="map-base-image" src="${MILANO_MAP_IMAGE}" alt="Mappa di Milano divisa per quartieri">
+        <svg class="appointment-route-svg" viewBox="0 0 ${MILANO_MAP_VIEWBOX.width} ${MILANO_MAP_VIEWBOX.height}" role="img" aria-label="Tracciato giornata">
+          <polyline class="appointment-route-line" points="${points}"></polyline>
+          ${routeItems.map((item) => `
+            <g class="appointment-route-point" transform="translate(${item.point.x.toFixed(1)} ${item.point.y.toFixed(1)})">
+              <title>${esc(item.title)}</title>
+              <circle r="17"></circle>
+              <text y="4" text-anchor="middle">${esc(item.marker)}</text>
+            </g>`).join("")}
+        </svg>
+      </div>
+    </div>`;
+}
+function appointmentScheduleVariantHtml(variant) {
+  var _a2;
+  const heatCount = variant.scheduled.filter((item) => item.heatOverlap).length;
+  const score = `${variant.placed}/${variant.totalDemand} lezioni`;
+  const importedClass = importedAppointmentVariantIds.has(String(variant.id)) ? " is-in-calendar" : "";
+  return `
+    <div class="appointment-schedule-variant${importedClass}" data-appointment-variant-id="${esc(variant.id)}">
+      <div class="appointment-schedule-head">
+        <div>
+          <h4>${esc(variant.title)}</h4>
+          <span>${esc(variant.note)}</span>
+        </div>
+        <div class="appointment-schedule-actions">
+          <strong>${esc(score)}</strong>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addAppointmentVariantToCalendar(${jsArg(variant.id)})" ${variant.scheduled.length ? "" : "disabled"}>Metti in calendario</button>
+        </div>
+      </div>
+      <div class="appointment-schedule-meta">
+        ${variant.missing ? `<span class="warn">${variant.missing} non piazzat${variant.missing === 1 ? "a" : "e"}</span>` : '<span class="ok">Tutte piazzate</span>'}
+        ${heatCount ? `<span>${heatCount} in fascia calda</span>` : "<span>Zero fascia calda</span>"}
+      </div>
+      ${((_a2 = variant.unplaced) == null ? void 0 : _a2.length) ? `<div class="appointment-unplaced">
+        <strong>Non piazzate</strong>
+        ${variant.unplaced.map((item) => `<span>${esc(item.targetName)}: ${item.missing} \xB7 ${esc(item.reason)}</span>`).join("")}
+      </div>` : ""}
+      <div class="appointment-preview-toolbar">
+        <span>Le lezioni bloccate restano ferme.</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="generateAppointmentAgenda(${jsArg(variant.id)})">Nuovo suggerimento</button>
+      </div>
+      ${appointmentScheduleByDayHtml(variant.scheduled)}
+    </div>`;
+}
+function appointmentCurrentFallbackDuration() {
+  const durationInput = document.getElementById("appointments-min-duration");
+  const fallback = normalizeAppointmentLessonDuration((durationInput == null ? void 0 : durationInput.value) || APPOINTMENT_MIN_LESSON_MIN, APPOINTMENT_MIN_LESSON_MIN);
+  if (durationInput && Number(durationInput.value) !== fallback) durationInput.value = String(fallback);
+  return fallback;
+}
+function buildAppointmentPlannerResults() {
+  const fallbackDuration = appointmentCurrentFallbackDuration();
+  const filtered = appointmentSelectedAllievi();
+  const missing = [];
+  const maestroSlots = normalizeAvailabilitySlots(maestroAvailabilitySlots);
+  const effectiveMaestroSlots = effectiveMaestroAvailabilitySlots();
+  if (!maestroSlots.length) missing.push("Maestro");
+  else if (!effectiveMaestroSlots.length) missing.push("Maestro senza fasce utili dopo le esclusioni");
+  const targets = appointmentSchedulableTargets(filtered);
+  const withoutSlots = targets.filter((target) => !availabilitySlotsForAppointmentScheduleTarget(target).length);
+  if (withoutSlots.length) {
+    const preview = withoutSlots.slice(0, 4).map((target) => target.label).join(", ");
+    missing.push(`${withoutSlots.length} element${withoutSlots.length === 1 ? "o" : "i"} senza fasce${preview ? ` (${preview}${withoutSlots.length > 4 ? ", ..." : ""})` : ""}`);
+  }
+  const targetResults = targets.map((target) => {
+    const windows = computeAvailabilityIntersectionsForTarget(target, target.lessonDuration, APPOINTMENT_BUFFER_MIN);
+    return {
+      targetId: target.id,
+      targetName: target.label,
+      targetType: target.type,
+      memberIds: target.memberIds || [],
+      weeklyCount: target.weeklyCount,
+      avoidConsecutive: target.avoidConsecutive,
+      consecutiveMode: target.consecutiveMode,
+      lessonDuration: target.lessonDuration,
+      location: target.location,
+      locationKey: target.locationKey,
+      locationPoint: target.locationPoint,
+      routeStartLabel: target.routeStartLabel,
+      routeStartKey: target.routeStartKey,
+      routeStartPoint: target.routeStartPoint,
+      routeEndLabel: target.routeEndLabel,
+      routeEndKey: target.routeEndKey,
+      routeEndPoint: target.routeEndPoint,
+      routeIsItinerary: target.routeIsItinerary,
+      priorityMode: target.priorityMode,
+      tierRank: target.tierRank,
+      windows,
+      plan: chooseAppointmentWeeklyPlan(windows, target.weeklyCount, target.consecutiveMode)
+    };
+  });
+  return { fallbackDuration, missing, targets, targetResults };
+}
+function generateAppointmentAgenda(variantId) {
+  var _a2;
   const el = document.getElementById("appointments-intersections");
   if (!el) return;
-  const durationInput = document.getElementById("appointments-min-duration");
-  const rawDuration = Number((durationInput == null ? void 0 : durationInput.value) || APPOINTMENT_MIN_LESSON_MIN);
-  const minDuration = Number.isFinite(rawDuration) ? Math.max(APPOINTMENT_MIN_LESSON_MIN, rawDuration) : APPOINTMENT_MIN_LESSON_MIN;
-  if (durationInput && Number(durationInput.value) !== minDuration) durationInput.value = String(minDuration);
-  const filtered = filteredAppointmentAllievi();
-  const filteredIds = filtered.map((a) => a.id);
-  const missing = [];
-  if (!normalizeAvailabilitySlots(maestroAvailabilitySlots).length) missing.push("Maestro");
-  const withoutSlots = filtered.filter((a) => !availabilitySlotsForAllievo(a).length);
-  if (withoutSlots.length) {
-    const preview = withoutSlots.slice(0, 4).map((a) => lezioneTargetLabelAllievo(a)).join(", ");
-    missing.push(`${withoutSlots.length} alliev${withoutSlots.length === 1 ? "o" : "i"} senza fasce${preview ? ` (${preview}${withoutSlots.length > 4 ? ", ..." : ""})` : ""}`);
+  appointmentGenerationNonce += 1;
+  const { fallbackDuration, missing, targets, targetResults } = buildAppointmentPlannerResults();
+  const definition = appointmentScheduleVariantDefinitions().find((item) => item.id === variantId) || appointmentScheduleVariantDefinitions()[0];
+  const lockedSlots = ((_a2 = appointmentCurrentVariant == null ? void 0 : appointmentCurrentVariant.scheduled) == null ? void 0 : _a2.filter((item) => item.locked)) || [];
+  const variant = buildAppointmentScheduleVariant(targetResults, __spreadProps(__spreadValues({}, definition), { randomness: 45 + appointmentGenerationNonce % 7 * 9 }), APPOINTMENT_BUFFER_MIN, { lockedSlots });
+  appointmentCurrentVariant = variant;
+  lastAppointmentScheduleVariants = [variant];
+  renderAppointmentAgendaPreview({ fallbackDuration, missing, targets, targetResults });
+}
+function renderAppointmentAgendaPreview(context = null) {
+  var _a2, _b2;
+  const el = document.getElementById("appointments-intersections");
+  if (!el) return;
+  const data = context || buildAppointmentPlannerResults();
+  const { fallbackDuration, missing, targets, targetResults } = data;
+  const totalDemand = targetResults.reduce((sum, result) => sum + result.weeklyCount, 0);
+  if (!appointmentCurrentVariant) {
+    el.innerHTML = `
+      ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(", "))}.</div>` : ""}
+      <div class="availability-empty">Scegli una tipologia agenda per generare la preview. Verranno considerati ${targets.length} element${targets.length === 1 ? "o" : "i"} e ${totalDemand} lezion${totalDemand === 1 ? "e" : "i"} richieste.</div>`;
+    return;
   }
-  const pairwise = computePairwiseAvailabilityIntersections(filteredIds, minDuration, APPOINTMENT_BUFFER_MIN);
+  const scheduleVariants = [appointmentCurrentVariant];
   el.innerHTML = `
     ${missing.length ? `<div class="appointments-warning">Disponibilita mancanti o incomplete: ${esc(missing.join(", "))}.</div>` : ""}
     <div class="appointments-results">
       <div class="appointments-card-title">
-        <h3>Incroci disponibili</h3>
-        <span>${filtered.length} alliev${filtered.length === 1 ? "o" : "i"} nel filtro corrente \xB7 durata lezione minima ${minDuration} min \xB7 pausa ${APPOINTMENT_BUFFER_MIN} min</span>
+        <h3>Preview agenda</h3>
+        <span>${targets.length} element${targets.length === 1 ? "o" : "i"} da pianificare \xB7 ${((_a2 = scheduleVariants[0]) == null ? void 0 : _a2.totalDemand) || 0} lezion${(((_b2 = scheduleVariants[0]) == null ? void 0 : _b2.totalDemand) || 0) === 1 ? "e" : "i"} richieste \xB7 fallback ${fallbackDuration} min</span>
       </div>
-      ${pairwise.length ? pairwise.slice(0, 80).map((window2) => appointmentResultHtml(window2, window2.allievoName)).join("") : `<div class="availability-empty">Nessun incrocio maestro-allievo trovato con ${minDuration} min di lezione e ${APPOINTMENT_BUFFER_MIN} min di pausa.</div>`}
-      ${pairwise.length > 80 ? `<div class="appointments-status">Mostro i primi 80 incroci su ${pairwise.length}. Restringi il filtro per vedere meno risultati.</div>` : ""}
+      <div id="appointments-calendar-status" class="appointments-status"></div>
+      <div>
+        ${scheduleVariants.map(appointmentScheduleVariantHtml).join("")}
+      </div>
     </div>`;
 }
 function openLezione(id, fromAllievoId = null, fromGruppoNome = null) {
@@ -2819,16 +5181,38 @@ function loadLocation(luogo) {
       <button class="back-btn" onclick="showView('allievi')">\u2190 Dashboard</button>
       <div class="section-header"><h2>Location</h2><button class="btn btn-primary btn-sm" onclick="openLocation('Nuova location')">+ Nuova location</button></div>
       <div class="card">
+        <div class="map-list" style="max-height:none">
         ${names.length ? names.map((name) => {
         const rec = locationRecordByName(name);
-        const count = (lezioniCache || []).filter((l) => normalizeText(l.luogo || "") === normalizeText(name)).length;
-        return `<div class="lezione-read-person clickable" onclick="openLocation(${jsArg(name)})"><strong>${esc(name)}</strong><span> \xB7 ${esc((rec == null ? void 0 : rec.tipologia) || "Location")} \xB7 ${count} lezion${count === 1 ? "e" : "i"}</span>${(rec == null ? void 0 : rec.indirizzo) ? `<span> \xB7 ${esc(rec.indirizzo)}</span>` : ""}${(rec == null ? void 0 : rec.condivisa) ? "<span> \xB7 condivisa</span>" : ""}</div>`;
+        const record = __spreadProps(__spreadValues({}, rec || { nome: name }), {
+          nome: (rec == null ? void 0 : rec.nome) || name,
+          tipologia: locationTipologia(rec || { nome: name }),
+          tipo: locationType(rec || { nome: name })
+        });
+        const linkedLessons = locationLessonsForRecord(record);
+        record.lessonCount = linkedLessons.length;
+        record.ultimoUso = linkedLessons.map((l) => String(l.data || "").slice(0, 10)).filter(Boolean).sort().pop() || "";
+        record.coords = locationMapCoords(record);
+        const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName);
+        const countText = `${record.lessonCount || 0} lezion${Number(record.lessonCount || 0) === 1 ? "e" : "i"}`;
+        const lastText = record.ultimoUso ? `ultimo uso: ${formatDate(record.ultimoUso)}` : "ultimo uso: -";
+        return `<div class="map-location-row${selectedRow ? " is-selected" : ""}" role="button" tabindex="0" onclick="openLocation(${jsArg(record.nome)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); openLocation(${jsArg(record.nome)})}">
+            <div class="map-location-row-main">
+              <strong>${esc(record.nome)}</strong>
+              <span>${esc(record.indirizzo || "Indirizzo da verificare")}</span>
+              <span>${esc(countText)} \xB7 ${esc(lastText)}</span>
+              ${renderLocationBadges(record)}
+              ${renderLocationCardActions(record)}
+            </div>
+            <div class="map-location-row-preview">${renderMappaMiniPreview(record)}</div>
+          </div>`;
       }).join("") : '<div class="empty">Nessuna location registrata.</div>'}
+        </div>
       </div>`;
       return;
     }
     const stored = locationRecordByName(nome) || {};
-    const lezioni = (lezioniCache || []).filter((l) => normalizeText(l.luogo || "") === normalizeText(nome));
+    const lezioni = (lezioniCache || []).filter((l) => lessonLocationUsesName(l, nome));
     const allieviIds = [...new Set(lezioni.flatMap((l) => (l.lezioni_allievi || []).map((la) => {
       var _a2;
       return (_a2 = la.allievi) == null ? void 0 : _a2.id;
@@ -2842,7 +5226,7 @@ function loadLocation(luogo) {
     const editable = canEditLocation(stored);
     const disabledAttr = editable ? "" : " disabled";
     el.innerHTML = `
-    <button class="back-btn" onclick="showView('lezioni')">\u2190 Lezioni</button>
+    ${locationBackButtonHtml()}
     <div class="card">
       <div class="lezione-read-title">${esc(displayNome)}</div>
       <div class="scheda-meta">${esc(tipologia)}${indirizzo ? ` \xB7 ${esc(indirizzo)}` : ""}${coords ? ` \xB7 ${esc(formatMapCoordinate(coords.lat))}, ${esc(formatMapCoordinate(coords.lng))}` : ""}${stored.condivisa ? " \xB7 condivisa" : ""}</div>
@@ -2909,6 +5293,8 @@ function mappaHomeRecordsFromAllievi() {
       nome,
       tipologia: "Casa allievo",
       indirizzo,
+      latitudine: visibleAddress.casa_latitudine,
+      longitudine: visibleAddress.casa_longitudine,
       note: casa && zona && normalizeText(casa) !== normalizeText(zona) ? `Zona: ${zona}` : "",
       condivisa: !!profilo.indirizzo_condiviso,
       source: "allievo-casa",
@@ -2924,12 +5310,16 @@ function mappaLocationRecords() {
   const locationRecords = locationNamesFromLessons().map((nome) => {
     const rec = locationRecordByName(nome) || { nome };
     const displayName = rec.nome || nome;
-    const lessonCount = (lezioniCache || []).filter((l) => normalizeText(l.luogo || "") === normalizeText(nome)).length;
+    const linkedLessons = locationLessonsForRecord(__spreadProps(__spreadValues({}, rec), { nome: displayName }));
+    const lessonCount = linkedLessons.length;
+    const ultimoUso = linkedLessons.map((l) => String(l.data || "").slice(0, 10)).filter(Boolean).sort().pop() || "";
     const coords = locationMapCoords(__spreadProps(__spreadValues({}, rec), { nome: displayName }));
     return __spreadProps(__spreadValues({}, rec), {
       nome: displayName,
-      tipologia: rec.tipologia || "Location",
+      tipologia: locationTipologia(rec),
+      tipo: locationType(rec),
       lessonCount,
+      ultimoUso,
       coords
     });
   });
@@ -2943,6 +5333,13 @@ function mappaLocationRecords() {
     if (!!b.coords !== !!a.coords) return b.coords ? 1 : -1;
     if (((_a2 = a.coords) == null ? void 0 : _a2.source) === "stimato" !== (((_b2 = b.coords) == null ? void 0 : _b2.source) === "stimato")) return ((_c = a.coords) == null ? void 0 : _c.source) === "stimato" ? 1 : -1;
     return String(a.nome || "").localeCompare(String(b.nome || ""), "it", { sensitivity: "base" });
+  });
+}
+function locationLessonsForRecord(record = {}) {
+  const id = locationDbId(record);
+  return (lezioniCache || []).filter((lezione) => {
+    if (id && lezione.location_id && String(lezione.location_id) === String(id)) return true;
+    return lessonLocationUsesName(lezione, record.nome);
   });
 }
 function mappaTipoClass(tipologia = "") {
@@ -2986,9 +5383,69 @@ function mappaShortName(name) {
   const clean = String(name || "Location").replace(/\s+/g, " ").trim();
   return clean.length > 18 ? clean.slice(0, 16) + "..." : clean;
 }
+function clampMapPreview(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+function renderMappaMiniPreview(record = {}) {
+  var _a2;
+  if (record.preview_url) {
+    return `<button type="button" class="map-mini-preview" title="Preview luogo" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})"><img src="${esc(record.preview_url)}" alt=""></button>`;
+  }
+  if (!record.coords || record.coords.source === "stimato") {
+    const coordLabel = ((_a2 = record.coords) == null ? void 0 : _a2.source) === "stimato" ? "GPS da verificare" : "Preview non disponibile";
+    return `<button type="button" class="map-mini-preview map-mini-placeholder" title="${esc(coordLabel)}" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})">
+      <span class="map-placeholder-pin">pin</span><span>${esc(coordLabel)}</span>
+    </button>`;
+  }
+  const point = mappaProjectCoord(record.coords);
+  if (!point) return `<button type="button" class="map-mini-preview map-mini-placeholder" title="GPS da verificare" onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})"><span class="map-placeholder-pin">pin</span><span>GPS da verificare</span></button>`;
+  const viewW = 190;
+  const viewH = 142;
+  const viewX = clampMapPreview(point.x - viewW / 2, 0, MILANO_MAP_VIEWBOX.width - viewW);
+  const viewY = clampMapPreview(point.y - viewH / 2, 0, MILANO_MAP_VIEWBOX.height - viewH);
+  const selected = normalizeText(record.nome) === normalizeText(mappaSingleFocusName);
+  return `
+    <button type="button" class="map-mini-preview${selected ? " is-selected" : ""}" title="Mostra solo questo punto sulla mappa"
+      onclick="event.stopPropagation(); previewMappaLocation(${jsArg(record.nome)})">
+      <svg viewBox="${viewX.toFixed(1)} ${viewY.toFixed(1)} ${viewW} ${viewH}" aria-hidden="true" focusable="false">
+        <image href="${MILANO_MAP_IMAGE}" x="0" y="0" width="${MILANO_MAP_VIEWBOX.width}" height="${MILANO_MAP_VIEWBOX.height}" preserveAspectRatio="xMidYMid meet"></image>
+        <circle class="map-mini-halo" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="18"></circle>
+        <circle class="map-mini-core" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="9"></circle>
+      </svg>
+    </button>`;
+}
+function previewMappaLocation(nome) {
+  if (visibleViewName() === "mappa") focusMappaLocation(nome);
+  else showView("mappa", nome);
+}
+function locationBadgeLabels(record = {}) {
+  const labels = [];
+  const tipo = normalizeText(locationType(record));
+  const tipologia = normalizeText(locationTipologia(record));
+  if (isPrivateLocation(record)) labels.push("privato");
+  else if (/skate/.test(tipo + " " + tipologia)) labels.push("skatepark");
+  else if (/strada|ciclabile|street/.test(tipo + " " + tipologia)) labels.push("street");
+  else labels.push("spot");
+  (record.tags || []).forEach((tag) => {
+    const clean = String(tag || "").trim();
+    if (clean && !labels.some((label) => normalizeText(label) === normalizeText(clean))) labels.push(clean);
+  });
+  if (!locationCoordinatesFromRecord(record)) labels.push("GPS da verificare");
+  return labels.slice(0, 4);
+}
+function renderLocationBadges(record = {}) {
+  return `<div class="map-location-badges">${locationBadgeLabels(record).map((label) => `<span class="chip map-location-badge">${esc(label)}</span>`).join("")}</div>`;
+}
+function renderLocationCardActions(record = {}) {
+  const mapsUrl = locationGoogleMapsUrl(record);
+  return `<div class="map-location-actions">
+    ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ""}
+    <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); showView('location',${jsArg(record.nome)})">Modifica</button>
+  </div>`;
+}
 function renderMilanoMapSvg(records, selectedName) {
   const nearbyLabelCounts = /* @__PURE__ */ new Map();
-  const projectedRecords = records.filter((record) => record.coords).map((record) => ({ record, point: mappaProjectCoord(record.coords) })).filter((item) => item.point);
+  const projectedRecords = records.filter((record) => record.coords && record.coords.source !== "stimato").map((record) => ({ record, point: mappaProjectCoord(record.coords) })).filter((item) => item.point);
   const points = projectedRecords.map(({ record, point }) => {
     var _a2;
     const bucket = `${Math.round(point.x / 62)}:${Math.round(point.y / 62)}`;
@@ -3019,24 +5476,97 @@ function renderMilanoMapSvg(records, selectedName) {
           <text class="map-location-label" x="${labelX}" y="${labelY}" text-anchor="${anchor}">${esc(mappaShortName(record.nome))}</text>
         </g>`;
   }).join("");
+  const selectedRecord = projectedRecords.find(({ record }) => normalizeText(record.nome) === normalizeText(selectedName));
+  const popup = selectedRecord ? renderMappaPopup(selectedRecord.record, selectedRecord.point) : "";
   return `
     <div class="map-image-stage">
       <img class="map-base-image" src="${MILANO_MAP_IMAGE}" alt="Mappa di Milano divisa per quartieri">
       <svg id="milano-map-svg" class="map-overlay-svg" viewBox="0 0 ${MILANO_MAP_VIEWBOX.width} ${MILANO_MAP_VIEWBOX.height}" role="img" aria-label="Mappa di Milano con punti location" onclick="handleMappaClick(event)">
         ${points || '<text class="map-location-label" x="557" y="520" text-anchor="middle" style="opacity:1">Nessun punto posizionato</text>'}
       </svg>
+      ${popup}
     </div>`;
+}
+function renderMappaPopup(record = {}, point = null) {
+  if (!record || !point) return "";
+  const left = point.x / MILANO_MAP_VIEWBOX.width * 100;
+  const top = point.y / MILANO_MAP_VIEWBOX.height * 100;
+  const mapsUrl = locationGoogleMapsUrl(record);
+  return `<div class="map-marker-popup" style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%" onclick="event.stopPropagation()">
+    <strong>${esc(record.nome || "Location")}</strong>
+    <span>${Number(record.lessonCount || 0)} lezion${Number(record.lessonCount || 0) === 1 ? "e" : "i"}</span>
+    <div class="map-marker-popup-actions">
+      ${mapsUrl ? `<button type="button" class="btn btn-outline btn-xs" onclick="openLocationMaps(${jsArg(record.id || record.nome)})">Maps</button>` : ""}
+    </div>
+  </div>`;
 }
 function mappaVisibleRecords(records) {
   if (mappaTipoFiltro === "all") return records;
   const target = normalizeText(mappaTipoFiltro);
   return records.filter((record) => normalizeText(record.tipologia || "Location") === target);
 }
+function renderTravelTimePanel(records = []) {
+  const options = records.filter((record) => record.nome).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "it", { sensitivity: "base" }));
+  const rules = readAppointmentTravelRules();
+  const optionHtml = '<option value="">Scegli location</option>' + options.map((record) => `<option value="${esc(record.nome)}">${esc(record.nome)}</option>`).join("");
+  return `
+    <div class="map-panel">
+      <h3>Spostamenti medi</h3>
+      <div class="map-panel-meta">Questi tempi vengono mostrati nella preview appuntamenti come blocchi trasparenti tra due lezioni consecutive.</div>
+      <div class="map-travel-form">
+        <div class="field"><label>Da</label><select id="map-travel-from">${optionHtml}</select></div>
+        <div class="field"><label>A</label><select id="map-travel-to">${optionHtml}</select></div>
+        <div class="field"><label>Minuti</label><input id="map-travel-minutes" type="number" min="0" step="5" value="${APPOINTMENT_BUFFER_MIN}"></div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="saveMapTravelTime()">Salva</button>
+      </div>
+      <div id="map-travel-status" class="appointments-status"></div>
+      <div class="map-travel-list">
+        ${rules.length ? rules.map((rule) => `
+          <div class="map-travel-row">
+            <span>${esc(rule.fromLabel)} - ${esc(rule.toLabel)}</span>
+            <strong>${Number(rule.minutes || 0)} min</strong>
+            <button type="button" class="btn btn-outline btn-xs" onclick="deleteMapTravelTime(${jsArg(rule.key)})">Rimuovi</button>
+          </div>`).join("") : '<div class="map-empty-inline">Nessuno spostamento personalizzato.</div>'}
+      </div>
+    </div>`;
+}
+function setMapTravelStatus(text, cls = "") {
+  const el = document.getElementById("map-travel-status");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = cls === "err" ? "var(--danger)" : cls === "ok" ? "var(--success)" : "var(--muted)";
+}
+function saveMapTravelTime() {
+  var _a2, _b2, _c;
+  const fromLabel = ((_a2 = document.getElementById("map-travel-from")) == null ? void 0 : _a2.value.trim()) || "";
+  const toLabel = ((_b2 = document.getElementById("map-travel-to")) == null ? void 0 : _b2.value.trim()) || "";
+  const minutes = Math.max(0, parseInt((_c = document.getElementById("map-travel-minutes")) == null ? void 0 : _c.value, 10) || 0);
+  const key = appointmentTravelRuleKey(fromLabel, toLabel);
+  if (!key || normalizeMapMatchText(fromLabel) === normalizeMapMatchText(toLabel)) {
+    setMapTravelStatus("Scegli due location diverse.", "err");
+    return;
+  }
+  const rows = readAppointmentTravelRules().filter((rule) => rule.key !== key);
+  rows.push({ key, fromLabel, toLabel, minutes, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  rows.sort((a, b) => String(a.fromLabel).localeCompare(String(b.fromLabel), "it", { sensitivity: "base" }) || String(a.toLabel).localeCompare(String(b.toLabel), "it", { sensitivity: "base" }));
+  writeAppointmentTravelRules(rows);
+  if (appointmentCurrentVariant) rerenderCurrentAppointmentPreview();
+  renderMappa(mappaSelectedLocationName);
+}
+function deleteMapTravelTime(key) {
+  writeAppointmentTravelRules(readAppointmentTravelRules().filter((rule) => rule.key !== key));
+  if (appointmentCurrentVariant) rerenderCurrentAppointmentPreview();
+  renderMappa(mappaSelectedLocationName);
+}
 function renderMappa(_0) {
   return __async(this, arguments, function* (selectedName) {
     const el = document.getElementById("mappa-content");
     if (!el) return;
     if (arguments.length) mappaSelectedLocationName = selectedName || null;
+    if (!mappaPuntiEspansiLoaded) {
+      mappaPuntiEspansi = safeStorage.getItem(MAP_POINTS_EXPANDED_STORAGE_KEY) === "1";
+      mappaPuntiEspansiLoaded = true;
+    }
     el.innerHTML = '<div class="loading">Caricamento\u2026</div>';
     if (!lezioniCache) yield loadLezioni(true);
     yield loadLocations();
@@ -3045,8 +5575,10 @@ function renderMappa(_0) {
     if (mappaTipoFiltro !== "all" && !types.some((t) => normalizeText(t) === normalizeText(mappaTipoFiltro))) mappaTipoFiltro = "all";
     const visibleRecords = mappaVisibleRecords(records);
     const selected = records.find((record) => normalizeText(record.nome) === normalizeText(mappaSelectedLocationName)) || null;
+    const focusedRecord = mappaSingleFocusName ? records.find((record) => normalizeText(record.nome) === normalizeText(mappaSingleFocusName)) : null;
+    const mapRecords = focusedRecord ? [focusedRecord] : visibleRecords;
     const selectedCoords = (selected == null ? void 0 : selected.coords) || null;
-    const placedCount = records.filter((record) => record.coords).length;
+    const placedCount = records.filter((record) => record.coords && record.coords.source !== "stimato").length;
     const inferredCount = records.filter((record) => {
       var _a2;
       return ((_a2 = record.coords) == null ? void 0 : _a2.source) === "stimato";
@@ -3055,19 +5587,21 @@ function renderMappa(_0) {
     const formTipologia = (selected == null ? void 0 : selected.tipologia) || "Location";
     const selectedEditable = !selected || canEditLocation(selected);
     const selectedDisabledAttr = selectedEditable ? "" : " disabled";
+    const mergeTargets = selected && selected.source !== "allievo-casa" && selectedEditable ? records.filter((record) => normalizeText(record.nome) !== normalizeText(selected.nome)) : [];
     el.innerHTML = `
     <div class="map-shell">
       <div class="map-canvas-panel">
         <div class="map-canvas-head">
           <div class="map-canvas-title">
             <strong>Milano operativa</strong>
-            <span>Mappa quartieri ricolorata con la palette del gestionale. Clicca sulla mappa per impostare il punto.</span>
+            <span>${focusedRecord ? `Vista singola: ${esc(focusedRecord.nome)}` : "Mappa quartieri ricolorata con la palette del gestionale. Clicca sulla mappa per impostare il punto."}</span>
           </div>
           <div class="map-filter-row">
+            ${focusedRecord ? '<button type="button" class="chip chip-on" onclick="clearMappaSingleFocus()">Mostra tutti</button>' : ""}
             ${types.map((type) => `<button type="button" class="chip${normalizeText(type) === normalizeText(mappaTipoFiltro) ? " chip-on" : ""}" onclick="setMappaFiltro(${jsArg(type)})">${esc(type === "all" ? "Tutte" : type)}</button>`).join("")}
           </div>
         </div>
-        <div class="map-canvas-wrap">${renderMilanoMapSvg(visibleRecords, mappaSelectedLocationName)}</div>
+        <div class="map-canvas-wrap">${renderMilanoMapSvg(mapRecords, mappaSelectedLocationName)}</div>
       </div>
 
       <div class="map-side">
@@ -3103,20 +5637,42 @@ function renderMappa(_0) {
             <button class="btn btn-outline btn-sm" onclick="preparaNuovaMappaLocation()">Nuovo</button>
             ${selected ? selected.source === "allievo-casa" ? `<button class="btn btn-outline btn-sm" onclick="loadScheda(${jsArg(selected.allievo_id)})">Allievo</button>` : `<button class="btn btn-outline btn-sm" onclick="showView('location',${jsArg(selected.nome)})">Scheda</button>` : ""}
           </div>
+          ${selected && selected.source !== "allievo-casa" && selectedEditable ? `
+            <div class="map-panel-meta" style="margin-top:.85rem">Fondi questo punto in una location gia presente quando due nomi indicano lo stesso posto.</div>
+            <div class="map-form-actions">
+              <select id="map-merge-target" class="btn btn-outline btn-sm" style="min-width:180px;max-width:100%">
+                <option value="">Fondi in...</option>
+                ${mergeTargets.map((record) => `<option value="${esc(record.nome)}">${esc(record.nome)}</option>`).join("")}
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="mergeMappaLocation(${jsArg(selected.nome)})">Merge</button>
+            </div>
+          ` : ""}
         </div>
 
-        <div class="map-panel">
-          <h3>Punti</h3>
+        ${renderTravelTimePanel(records)}
+
+        <div class="map-panel map-points-panel${mappaPuntiEspansi ? " is-expanded" : ""}">
+          <div class="map-panel-title-row">
+            <h3>Punti</h3>
+            <button type="button" class="btn btn-outline btn-xs" onclick="toggleMappaPuntiEspansi()">${mappaPuntiEspansi ? "Compatta" : "Espandi"}</button>
+          </div>
           <div class="map-list">
             ${visibleRecords.length ? visibleRecords.map((record) => {
-      var _a2;
       const selectedRow = normalizeText(record.nome) === normalizeText(mappaSelectedLocationName);
-      const meta = [record.tipologia || "Location", record.indirizzo || "", record.condivisa ? "condivisa" : "", record.lessonCount ? `${record.lessonCount} lezion${record.lessonCount === 1 ? "e" : "i"}` : ""].filter(Boolean).join(" \xB7 ");
-      const coordLabel = ((_a2 = record.coords) == null ? void 0 : _a2.source) === "stimato" ? "Stimato" : record.coords ? "Salvato" : "Da posizionare";
-      return `<button type="button" class="map-location-row${selectedRow ? " is-selected" : ""}" onclick="selectMappaLocation(${jsArg(record.nome)})">
-                <span><strong>${esc(record.nome)}</strong><br><span>${esc(meta || "Nessun dettaglio")}</span></span>
-                <span class="${record.coords && record.coords.source !== "stimato" ? "" : "map-missing"}">${esc(coordLabel)}</span>
-              </button>`;
+      const countText = `${record.lessonCount || 0} lezion${Number(record.lessonCount || 0) === 1 ? "e" : "i"}`;
+      const lastText = record.ultimoUso ? `ultimo uso: ${formatDate(record.ultimoUso)}` : "ultimo uso: -";
+      return `<div class="map-location-row${selectedRow ? " is-selected" : ""}" role="button" tabindex="0"
+                onclick="selectMappaLocation(${jsArg(record.nome)})"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); selectMappaLocation(${jsArg(record.nome)})}">
+                <div class="map-location-row-main">
+                  <strong>${esc(record.nome)}</strong>
+                  <span>${esc(record.indirizzo || "Indirizzo da verificare")}</span>
+                  <span>${esc(countText)} \xB7 ${esc(lastText)}</span>
+                  ${renderLocationBadges(record)}
+                  ${renderLocationCardActions(record)}
+                </div>
+                <div class="map-location-row-preview">${renderMappaMiniPreview(record)}</div>
+              </div>`;
     }).join("") : '<div class="map-empty-inline">Nessuna location per questo filtro.</div>'}
           </div>
         </div>
@@ -3124,6 +5680,13 @@ function renderMappa(_0) {
     </div>`;
   });
 }
+function toggleMappaPuntiEspansi() {
+  mappaPuntiEspansi = !mappaPuntiEspansi;
+  mappaPuntiEspansiLoaded = true;
+  safeStorage.setItem(MAP_POINTS_EXPANDED_STORAGE_KEY, mappaPuntiEspansi ? "1" : "0");
+  renderMappa(mappaSelectedLocationName);
+}
+window.toggleMappaPuntiEspansi = toggleMappaPuntiEspansi;
 function setMappaStatus(message, className = "msg-info") {
   const status = document.getElementById("map-status");
   if (!status) return;
@@ -3132,14 +5695,26 @@ function setMappaStatus(message, className = "msg-info") {
 }
 function setMappaFiltro(tipologia) {
   mappaTipoFiltro = tipologia || "all";
+  mappaSingleFocusName = null;
   renderMappa();
 }
 function selectMappaLocation(nome) {
   mappaSelectedLocationName = nome || null;
+  mappaSingleFocusName = null;
+  renderMappa(mappaSelectedLocationName);
+}
+function focusMappaLocation(nome) {
+  mappaSelectedLocationName = nome || null;
+  mappaSingleFocusName = nome || null;
+  renderMappa(mappaSelectedLocationName);
+}
+function clearMappaSingleFocus() {
+  mappaSingleFocusName = null;
   renderMappa(mappaSelectedLocationName);
 }
 function preparaNuovaMappaLocation() {
   mappaSelectedLocationName = null;
+  mappaSingleFocusName = null;
   if (visibleViewName() !== "mappa") showView("mappa");
   else renderMappa(null);
   setTimeout(() => {
@@ -3206,6 +5781,93 @@ function salvaMappaLocation() {
     );
   });
 }
+function replaceLessonLocationPart(text, sourceName, targetName) {
+  const sourceKey = normalizeText(sourceName);
+  const cleanTarget = String(targetName || "").trim();
+  const cleanText = String(text || "").trim();
+  if (!sourceKey || !cleanTarget || !cleanText) return cleanText;
+  const parts = appointmentLocationRouteParts(cleanText);
+  if (parts.length > 1) {
+    let changed = false;
+    const replaced = parts.map((part) => {
+      if (normalizeText(part) !== sourceKey) return part;
+      changed = true;
+      return cleanTarget;
+    });
+    return changed ? replaced.join(" - ") : cleanText;
+  }
+  return normalizeText(cleanText) === sourceKey ? cleanTarget : cleanText;
+}
+function removeLocalLocationByName(nome) {
+  const key = normalizeText(nome);
+  if (!key) return;
+  try {
+    const local = JSON.parse(safeStorage.getItem("locationsLocal") || "[]").filter((location) => normalizeText(location.nome) !== key);
+    safeStorage.setItem("locationsLocal", JSON.stringify(local));
+  } catch (e) {
+  }
+  saveLocationMapCoordsLocal(nome, null, null);
+  allLocations = allLocations.filter((location) => normalizeText(location.nome) !== key);
+  locationsLoaded = true;
+}
+function deleteMergedLocationRecord(record) {
+  return __async(this, null, function* () {
+    if (!(record == null ? void 0 : record.id) || !canEditLocation(record)) return null;
+    const { error } = yield sb.from("locations").delete().eq("id", record.id);
+    return error || null;
+  });
+}
+function mergeMappaLocation(sourceName) {
+  return __async(this, null, function* () {
+    var _a2;
+    const targetName = (_a2 = document.getElementById("map-merge-target")) == null ? void 0 : _a2.value.trim();
+    if (!sourceName || !targetName) {
+      setMappaStatus("Scegli la location in cui fondere questo punto.", "msg-err");
+      return;
+    }
+    if (normalizeText(sourceName) === normalizeText(targetName)) {
+      setMappaStatus("Scegli una location diversa.", "msg-err");
+      return;
+    }
+    const sourceRecord = locationRecordByName(sourceName) || { nome: sourceName };
+    if (sourceRecord.source === "allievo-casa" || !canEditLocation(sourceRecord)) {
+      setMappaStatus("Questo punto non puo essere fuso da qui.", "msg-err");
+      return;
+    }
+    const ok = confirm(`Fondere "${sourceName}" in "${targetName}"?
+Le lezioni verranno aggiornate e il punto duplicato verra rimosso dove possibile.`);
+    if (!ok) return;
+    setMappaStatus("Merge in corso...", "msg-info");
+    if (!lezioniCache) yield loadLezioni(true);
+    const updates = (lezioniCache || []).map((lezione) => {
+      const nextLuogo = replaceLessonLocationPart(lezione.luogo, sourceName, targetName);
+      return nextLuogo !== String(lezione.luogo || "").trim() ? { lezione, nextLuogo } : null;
+    }).filter(Boolean);
+    try {
+      for (const item of updates) {
+        const { error } = yield sb.from("lezioni").update({ luogo: item.nextLuogo }).eq("id", item.lezione.id);
+        if (error) throw error;
+      }
+      lezioniCache = (lezioniCache || []).map((lezione) => {
+        const found = updates.find((item) => String(item.lezione.id) === String(lezione.id));
+        return found ? __spreadProps(__spreadValues({}, lezione), { luogo: found.nextLuogo }) : lezione;
+      });
+      const deleteError = yield deleteMergedLocationRecord(sourceRecord);
+      removeLocalLocationByName(sourceName);
+      yield loadLocations(true);
+      luoghiLezioneCache.clear();
+      logModificaLocale("location", targetName, `Merge location: ${sourceName} -> ${targetName}`);
+      renderDashboard();
+      yield renderMappa(targetName);
+      setMappaStatus(
+        deleteError ? `Merge completato su ${updates.length} lezion${updates.length === 1 ? "e" : "i"}, ma il punto sorgente non e stato cancellato dal DB: ${deleteError.message || "permesso negato"}.` : `Merge completato: ${updates.length} lezion${updates.length === 1 ? "e aggiornata" : "i aggiornate"}.`,
+        deleteError ? "msg-info" : "msg-ok"
+      );
+    } catch (error) {
+      setMappaStatus((error == null ? void 0 : error.message) || "Errore durante il merge.", "msg-err");
+    }
+  });
+}
 function salvaLocation(originalName) {
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f;
@@ -3256,15 +5918,19 @@ function salvaLocation(originalName) {
     renderDashboard();
   });
 }
-function ensureLocationDaLezione(_0) {
-  return __async(this, arguments, function* (luogo, allieviIds = []) {
-    const nome = String(luogo || "").trim();
+function ensureSingleLocationDaLezione(_0) {
+  return __async(this, arguments, function* (entry, allieviIds = []) {
+    var _a2, _b2;
+    const nome = String((entry == null ? void 0 : entry.nome) || "").trim();
     if (!nome || locationRecordByName(nome)) return;
-    const linked = allieviIds.length === 1 ? allAllievi.find((a) => a.id === allieviIds[0]) : null;
+    const linked = (entry == null ? void 0 : entry.allievo) || ((entry == null ? void 0 : entry.homeLike) && allieviIds.length === 1 ? allievoById(allieviIds[0]) : null);
+    const address = linked ? visibleAllievoAddress(linked) : {};
     const payload = {
       nome,
-      tipologia: linked && /casa|home|abitazione/i.test(nome) ? "Casa allievo" : "Location",
-      indirizzo: linked ? visibleAllievoAddress(linked).indirizzo || null : null,
+      tipologia: (entry == null ? void 0 : entry.homeLike) ? "Casa allievo" : "Location",
+      indirizzo: (entry == null ? void 0 : entry.homeLike) && linked ? address.casa || address.indirizzo || null : null,
+      latitudine: (entry == null ? void 0 : entry.homeLike) && linked ? (_a2 = address.casa_latitudine) != null ? _a2 : null : null,
+      longitudine: (entry == null ? void 0 : entry.homeLike) && linked ? (_b2 = address.casa_longitudine) != null ? _b2 : null : null,
       allievo_id: (linked == null ? void 0 : linked.id) || null,
       maestro_id: currentUid || null,
       condivisa: false,
@@ -3278,12 +5944,20 @@ function ensureLocationDaLezione(_0) {
         const local = JSON.parse(safeStorage.getItem("locationsLocal") || "[]").filter((l) => !localLocationMatches(l, payload, nome));
         local.push(payload);
         safeStorage.setItem("locationsLocal", JSON.stringify(local));
-        allLocations = local;
+        allLocations = local.map(locationWithLocalMapCoords);
         locationsLoaded = true;
       }
       return;
     }
     yield loadLocations(true);
+  });
+}
+function ensureLocationDaLezione(_0) {
+  return __async(this, arguments, function* (luogo, allieviIds = []) {
+    const entries = missingLessonLocationEntries(luogo, allieviIds);
+    for (const entry of entries) {
+      yield ensureSingleLocationDaLezione(entry, allieviIds);
+    }
   });
 }
 function apriSchedaAllievoDaLezione(allievoId) {
@@ -3337,7 +6011,8 @@ function allieviVisibiliGod() {
 }
 function ordinaAllieviLista(lista) {
   return [...lista].sort((a, b) => {
-    if (!!a.vip !== !!b.vip) return a.vip ? -1 : 1;
+    const tierDelta = allievoTierRank(a) - allievoTierRank(b);
+    if (tierDelta) return tierDelta;
     return String(a.nome || "").localeCompare(String(b.nome || ""), "it", { sensitivity: "base" }) || String(a.cognome || "").localeCompare(String(b.cognome || ""), "it", { sensitivity: "base" }) || String(a.nickname || "").localeCompare(String(b.nickname || ""), "it", { sensitivity: "base" });
   });
 }
@@ -3348,13 +6023,139 @@ function scheduleGlobalSearch() {
   clearTimeout(globalSearchTimer);
   globalSearchTimer = setTimeout(renderGlobalSearch, 120);
 }
+function resetGlobalSearchPanelPosition(panel) {
+  if (!panel) return;
+  panel.classList.remove("is-fixed");
+  panel.style.removeProperty("left");
+  panel.style.removeProperty("top");
+  panel.style.removeProperty("width");
+  panel.style.removeProperty("max-height");
+}
+function positionGlobalSearchPanel() {
+  const input = document.getElementById("global-search-input");
+  const panel = document.getElementById("global-search-panel");
+  if (!input || !panel || panel.hidden) return;
+  resetGlobalSearchPanelPosition(panel);
+  const margin = 8;
+  const inputRect = input.getBoundingClientRect();
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+  const width = Math.min(430, Math.max(220, viewportW - margin * 2));
+  let left = inputRect.right - width;
+  left = Math.min(Math.max(margin, left), Math.max(margin, viewportW - width - margin));
+  const top = Math.min(inputRect.bottom + 6, Math.max(margin, viewportH - 180));
+  const maxHeight = Math.max(160, viewportH - top - margin);
+  panel.classList.add("is-fixed");
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+  panel.style.width = `${width}px`;
+  panel.style.maxHeight = `${maxHeight}px`;
+}
+function globalSearchTokens(value = "") {
+  return normalizeText(value).split(/\s+/).filter(Boolean);
+}
+function globalSearchRelationshipTokens() {
+  return /* @__PURE__ */ new Set(["madre", "mamma", "padre", "papa", "genitore", "genitori", "tutore", "tutori", "nonna", "nonno", "zia", "zio"]);
+}
+function globalSearchHasRelationshipToken(tokens = []) {
+  const relationshipTokens = globalSearchRelationshipTokens();
+  return tokens.some((token) => relationshipTokens.has(token));
+}
+function globalSearchIsRelationshipOnly(tokens = []) {
+  const relationshipTokens = globalSearchRelationshipTokens();
+  return tokens.length > 0 && tokens.every((token) => relationshipTokens.has(token));
+}
+function globalSearchMatches(parts = [], tokens = []) {
+  const haystack = normalizeText(parts.filter((value) => value !== void 0 && value !== null && value !== "").join(" "));
+  return tokens.length > 0 && tokens.every((token) => haystack.includes(token));
+}
+function globalSearchResultRank(result, queryText) {
+  const tokens = globalSearchTokens(queryText);
+  const relationshipSearch = globalSearchHasRelationshipToken(tokens);
+  const typeRanks = relationshipSearch ? {
+    Referente: 5,
+    Allievo: 30,
+    Gruppo: 40,
+    Location: 50,
+    "Lezione aperta": 60,
+    Lezione: 70,
+    Skill: 80
+  } : {
+    Allievo: 10,
+    Referente: 20,
+    Gruppo: 30,
+    Location: 40,
+    "Lezione aperta": 50,
+    Lezione: 60,
+    Skill: 70
+  };
+  const typeRank = typeRanks[result.type] || 90;
+  const title = normalizeText(result.title);
+  const query = normalizeText(queryText);
+  const titleRank = title === query ? -6 : title.startsWith(query) ? -4 : title.includes(query) ? -2 : 0;
+  return typeRank + titleRank;
+}
+function addGlobalSearchResult(results, seen, result, queryText) {
+  const key = result.key || `${result.type}:${result.action}:${result.title}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  results.push(__spreadProps(__spreadValues({}, result), { rank: globalSearchResultRank(result, queryText) }));
+}
+function allievoSearchParts(allievo = {}) {
+  const p = allievo.profilo || {};
+  const address = visibleAllievoAddress(allievo);
+  const individuale = logisticaIndividualeProfilo(p, !!allievo.gruppo);
+  const gruppo = allievo.gruppo ? profiloComuneGruppo(gruppoMembri(allievo.gruppo, { includeArchived: true })) : {};
+  return [
+    allievoDisplayName(allievo.id),
+    allievo.nome,
+    allievo.cognome,
+    allievo.nickname,
+    allievo.gruppo,
+    allievo.email,
+    allievo.telefono,
+    allievo.blocco_attuale,
+    allievo.livello_attuale,
+    allievo.note_generali,
+    p.cultura,
+    p.note_salute,
+    p.competenze,
+    p.obiettivi,
+    p.talenti,
+    p.paure,
+    p.sport,
+    p.equipaggiamento,
+    address.indirizzo,
+    address.casa,
+    individuale.appuntamento,
+    individuale.luogo_incontro,
+    gruppo.appuntamento,
+    gruppo.luogo_incontro
+  ];
+}
+function allievoFamiliariSearchRows(allievo = {}) {
+  var _a2;
+  const familiari = Array.isArray((_a2 = allievo.profilo) == null ? void 0 : _a2.familiari) ? allievo.profilo.familiari : [];
+  return familiari.map((familiare, index) => __spreadProps(__spreadValues({}, normalizzaFamiliare(familiare)), { index })).filter((familiare) => familiare.nome || familiare.cognome || familiare.relazione || familiare.telefono);
+}
+function locationSearchRecords() {
+  const byKey = /* @__PURE__ */ new Map();
+  [...mappaLocationRecords(), ...allLocations.map(locationWithLocalMapCoords)].forEach((record) => {
+    const nome = String((record == null ? void 0 : record.nome) || "").trim();
+    if (!nome) return;
+    const key = record.source === "allievo-casa" && record.allievo_id ? `home:${record.allievo_id}` : `location:${normalizeText(nome)}`;
+    if (!byKey.has(key)) byKey.set(key, record);
+  });
+  return [...byKey.values()];
+}
 function renderGlobalSearch() {
   return __async(this, null, function* () {
     const input = document.getElementById("global-search-input");
     const panel = document.getElementById("global-search-panel");
     if (!input || !panel) return;
-    const query = normalizeText(input.value || "");
-    if (!query) {
+    const queryText = input.value || "";
+    const tokens = globalSearchTokens(queryText);
+    if (!tokens.length) {
       panel.hidden = true;
       panel.innerHTML = "";
       return;
@@ -3362,60 +6163,152 @@ function renderGlobalSearch() {
     if (!lezioniCache) yield loadLezioni(true);
     yield loadLocations();
     const results = [];
+    const seen = /* @__PURE__ */ new Set();
+    const relationshipOnly = globalSearchIsRelationshipOnly(tokens);
     allieviVisibiliGod().forEach((a) => {
-      var _a2, _b2, _c;
       const name = allievoDisplayName(a.id);
       const address = visibleAllievoAddress(a);
-      const haystack = normalizeText([name, a.nome, a.cognome, a.nickname, a.gruppo, a.email, a.telefono, a.note_generali, (_a2 = a.profilo) == null ? void 0 : _a2.note_salute, address.indirizzo, address.casa, (_b2 = a.profilo) == null ? void 0 : _b2.luogo_incontro].filter(Boolean).join(" "));
-      if (haystack.includes(query)) results.push({ type: "Allievo", title: name, detail: a.gruppo || ((_c = a.profilo) == null ? void 0 : _c.luogo_incontro) || "", action: `loadScheda('${a.id}')` });
+      if (!relationshipOnly && globalSearchMatches(allievoSearchParts(a), tokens)) {
+        const detail = [a.gruppo, a.nickname ? `Nick ${a.nickname}` : "", a.telefono, address.indirizzo || address.casa].filter(Boolean).join(" \xB7 ");
+        addGlobalSearchResult(results, seen, { type: "Allievo", title: name, detail, action: `loadScheda(${jsArg(a.id)})`, key: `allievo:${a.id}` }, queryText);
+      }
+      allievoFamiliariSearchRows(a).forEach((familiare) => {
+        const familiareName = [familiare.nome, familiare.cognome].filter(Boolean).join(" ") || familiare.telefono || "Referente";
+        const parts = [familiareName, familiare.nome, familiare.cognome, familiare.relazione, familiare.telefono, name, a.nome, a.cognome, a.nickname, a.gruppo];
+        if (!globalSearchMatches(parts, tokens)) return;
+        const detail = [`${familiare.relazione || "Referente"} di ${name}`, familiare.telefono].filter(Boolean).join(" \xB7 ");
+        addGlobalSearchResult(results, seen, { type: "Referente", title: familiareName, detail, action: `loadScheda(${jsArg(a.id)})`, key: `referente:${a.id}:${familiare.index}` }, queryText);
+      });
     });
+    if (relationshipOnly) {
+      const limited2 = results.sort((a, b) => a.rank - b.rank || String(a.title || "").localeCompare(String(b.title || ""), "it", { sensitivity: "base" })).slice(0, 18);
+      panel.innerHTML = limited2.length ? limited2.map((r) => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong><span class="search-result-type">${esc(r.type)}</span>${esc(r.title)}</strong><span>${r.detail ? esc(r.detail) : ""}</span></button>`).join("") : '<div class="place-suggest-empty">Nessun referente trovato.</div>';
+      panel.hidden = false;
+      requestAnimationFrame(positionGlobalSearchPanel);
+      return;
+    }
     gruppiEsistenti().forEach((gruppo) => {
-      if (normalizeText(gruppo).includes(query)) results.push({ type: "Gruppo", title: gruppo, detail: `${gruppoMembri(gruppo).length} allievi`, action: `showView('gruppo',${jsArg(gruppo)})` });
+      const membri = gruppoMembri(gruppo);
+      const profilo = profiloComuneGruppo(membri);
+      const parts = [
+        gruppo,
+        profilo.appuntamento,
+        profilo.luogo_incontro,
+        profilo.pagamento_metodo,
+        profilo.pagamento_stato,
+        ...membri.flatMap((a) => [allievoDisplayName(a.id), a.nome, a.cognome, a.nickname])
+      ];
+      if (!globalSearchMatches(parts, tokens)) return;
+      const detail = [`${membri.length} allievi`, profilo.luogo_incontro, profilo.appuntamento].filter(Boolean).join(" \xB7 ");
+      addGlobalSearchResult(results, seen, { type: "Gruppo", title: gruppo, detail, action: `showView('gruppo',${jsArg(gruppo)})`, key: `gruppo:${gruppo}` }, queryText);
     });
     allSkills.forEach((skill) => {
-      const haystack = normalizeText([skill.nome, skill.ramo, skill.blocco, skill.descrizione].filter(Boolean).join(" "));
-      if (haystack.includes(query)) results.push({ type: "Skill", title: skill.nome, detail: skillMetaLabel(skill), action: `openSkillDetailModal('${skill.id}')` });
+      const parts = [skill.nome, skill.ramo, skill.blocco, skill.descrizione];
+      if (globalSearchMatches(parts, tokens)) addGlobalSearchResult(results, seen, { type: "Skill", title: skill.nome, detail: skillMetaLabel(skill), action: `openSkillDetailModal(${jsArg(skill.id)})`, key: `skill:${skill.id}` }, queryText);
     });
-    locationNamesFromLessons().forEach((nome) => {
-      const rec = locationRecordByName(nome);
-      const haystack = normalizeText([nome, rec == null ? void 0 : rec.indirizzo, rec == null ? void 0 : rec.tipologia, rec == null ? void 0 : rec.note].filter(Boolean).join(" "));
-      if (haystack.includes(query)) results.push({ type: "Location", title: nome, detail: [rec == null ? void 0 : rec.tipologia, rec == null ? void 0 : rec.indirizzo].filter(Boolean).join(" \xB7 "), action: `openLocation(${jsArg(nome)})` });
+    locationSearchRecords().forEach((record) => {
+      const nome = String(record.nome || "").trim();
+      const linkedAllievo = record.allievo_id ? allAllievi.find((a) => String(a.id) === String(record.allievo_id)) : null;
+      const parts = [
+        nome,
+        normalizedLocationName(nome),
+        record.indirizzo,
+        record.tipologia,
+        record.tipo,
+        record.note,
+        ...record.tags || [],
+        linkedAllievo ? allievoDisplayName(linkedAllievo.id) : ""
+      ];
+      if (!globalSearchMatches(parts, tokens)) return;
+      const detail = [locationTipologia(record), record.indirizzo, record.lessonCount ? `${record.lessonCount} lezioni` : "", linkedAllievo ? allievoDisplayName(linkedAllievo.id) : ""].filter(Boolean).join(" \xB7 ");
+      addGlobalSearchResult(results, seen, { type: "Location", title: nome, detail, action: `showView('mappa',${jsArg(nome)})`, key: `location:${record.source || ""}:${record.allievo_id || normalizeText(nome)}` }, queryText);
     });
     (lezioniCache || []).forEach((l) => {
       const parsed = lessonParsedNotes(l);
-      const haystack = normalizeText([formatDate(l.data), labelPartecipantiLezione(l), l.luogo, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note].filter(Boolean).join(" "));
-      if (haystack.includes(query)) results.push({ type: lessonStatus(l) === "aperta" ? "Lezione aperta" : "Lezione", title: `${formatDate(l.data)} \xB7 ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || "", action: `openLezione(${jsArg(l.id)})` });
+      const parts = [formatLessonDate(l), labelPartecipantiLezione(l), l.luogo, parsed.ora, parsed.meteo, lessonSpecialNotes(l), parsed.bene, parsed.nonFatto, parsed.note];
+      if (!globalSearchMatches(parts, tokens)) return;
+      addGlobalSearchResult(results, seen, { type: lessonStatus(l) === "aperta" ? "Lezione aperta" : "Lezione", title: `${formatLessonDate(l)} \xB7 ${labelPartecipantiLezione(l)}`, detail: l.luogo || parsed.note || "", action: `openLezione(${jsArg(l.id)})`, key: `lezione:${l.id}` }, queryText);
     });
-    const limited = results.slice(0, 12);
-    panel.innerHTML = limited.length ? limited.map((r) => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong>${esc(r.title)}</strong><span>${esc(r.type)}${r.detail ? ` \xB7 ${esc(r.detail)}` : ""}</span></button>`).join("") : '<div class="place-suggest-empty">Nessun risultato.</div>';
+    const limited = results.sort((a, b) => a.rank - b.rank || String(a.title || "").localeCompare(String(b.title || ""), "it", { sensitivity: "base" })).slice(0, 18);
+    panel.innerHTML = limited.length ? limited.map((r) => `<button type="button" class="search-result" onclick="closeGlobalSearch(); ${r.action}"><strong><span class="search-result-type">${esc(r.type)}</span>${esc(r.title)}</strong><span>${r.detail ? esc(r.detail) : ""}</span></button>`).join("") : '<div class="place-suggest-empty">Nessun risultato.</div>';
     panel.hidden = false;
+    requestAnimationFrame(positionGlobalSearchPanel);
   });
 }
 function closeGlobalSearch() {
   const panel = document.getElementById("global-search-panel");
-  if (panel) panel.hidden = true;
+  if (panel) {
+    panel.hidden = true;
+    resetGlobalSearchPanelPosition(panel);
+  }
+}
+function resetActionPanelPosition(panel) {
+  if (!panel) return;
+  panel.classList.remove("is-fixed");
+  panel.style.removeProperty("left");
+  panel.style.removeProperty("top");
+  panel.style.removeProperty("width");
+}
+function positionInlineActionPanel(panel) {
+  if (!panel || panel.hidden) return;
+  resetActionPanelPosition(panel);
+  const margin = 8;
+  const menu = panel.closest(".inline-action-menu");
+  const trigger = menu == null ? void 0 : menu.querySelector("button");
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+  const rect = panel.getBoundingClientRect();
+  const triggerRect = (trigger == null ? void 0 : trigger.getBoundingClientRect()) || rect;
+  const constrainedWidth = Math.min(Math.max(rect.width, 170), Math.max(170, viewportW - margin * 2));
+  const constrainedHeight = Math.min(rect.height, Math.max(140, viewportH - margin * 2));
+  const clippedByViewport = rect.left < margin || rect.right > viewportW - margin || rect.top < margin || rect.bottom > viewportH - margin;
+  const clipParent = panel.closest(".table-wrap, .modal");
+  const parentRect = clipParent == null ? void 0 : clipParent.getBoundingClientRect();
+  const clippedByParent = !!parentRect && (rect.left < parentRect.left || rect.right > parentRect.right || rect.bottom > parentRect.bottom);
+  if (!clippedByViewport && !clippedByParent) return;
+  let left = Math.min(Math.max(margin, triggerRect.right - constrainedWidth), viewportW - constrainedWidth - margin);
+  if (!Number.isFinite(left)) left = margin;
+  let top = triggerRect.bottom + 6;
+  if (top + constrainedHeight > viewportH - margin) top = triggerRect.top - constrainedHeight - 6;
+  top = Math.min(Math.max(margin, top), Math.max(margin, viewportH - constrainedHeight - margin));
+  panel.classList.add("is-fixed");
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+  panel.style.width = `${constrainedWidth}px`;
+  const placed = panel.getBoundingClientRect();
+  const dx = left - placed.left;
+  const dy = top - placed.top;
+  if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+    panel.style.left = `${left + dx}px`;
+    panel.style.top = `${top + dy}px`;
+  }
+}
+function closeActionMenus() {
+  document.querySelectorAll(".inline-action-panel").forEach((panel) => {
+    panel.hidden = true;
+    resetActionPanelPosition(panel);
+  });
+  document.querySelectorAll(".inline-action-menu.action-menu-open, .card.action-menu-open").forEach((el) => el.classList.remove("action-menu-open"));
 }
 function toggleActionMenu(id, event) {
   var _a2, _b2;
   event == null ? void 0 : event.stopPropagation();
-  document.querySelectorAll(".inline-action-panel").forEach((panel2) => {
-    if (panel2.id !== id) panel2.hidden = true;
-  });
-  document.querySelectorAll(".inline-action-menu.action-menu-open, .card.action-menu-open").forEach((el) => el.classList.remove("action-menu-open"));
   const panel = document.getElementById(id);
-  if (panel) {
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      (_a2 = panel.closest(".inline-action-menu")) == null ? void 0 : _a2.classList.add("action-menu-open");
-      (_b2 = panel.closest(".card")) == null ? void 0 : _b2.classList.add("action-menu-open");
-    }
-  }
+  const shouldOpen = !!(panel == null ? void 0 : panel.hidden);
+  closeActionMenus();
+  if (!panel || !shouldOpen) return;
+  panel.hidden = false;
+  (_a2 = panel.closest(".inline-action-menu")) == null ? void 0 : _a2.classList.add("action-menu-open");
+  (_b2 = panel.closest(".card")) == null ? void 0 : _b2.classList.add("action-menu-open");
+  requestAnimationFrame(() => positionInlineActionPanel(panel));
 }
+window.addEventListener("resize", () => {
+  closeActionMenus();
+  positionGlobalSearchPanel();
+});
+window.addEventListener("scroll", positionGlobalSearchPanel, { passive: true });
 document.addEventListener("click", () => {
-  document.querySelectorAll(".inline-action-panel").forEach((panel) => {
-    panel.hidden = true;
-  });
-  document.querySelectorAll(".inline-action-menu.action-menu-open, .card.action-menu-open").forEach((el) => el.classList.remove("action-menu-open"));
+  closeActionMenus();
   closeGlobalSearch();
 });
 function formatDateTime(value) {
@@ -3486,6 +6379,17 @@ function openHistoryModal(tipo, id, title = "Storico modifiche") {
     </div>`;
   document.body.appendChild(overlay);
 }
+function setLezioneFormMessage(message = "", className = "msg-err") {
+  const errEl = document.getElementById("lz-err");
+  if (!errEl) return;
+  errEl.classList.remove("msg-err", "msg-info", "msg-ok", "show");
+  errEl.classList.add(className);
+  errEl.textContent = message;
+  if (message) errEl.classList.add("show");
+}
+function clearLezioneFormMessage() {
+  setLezioneFormMessage("");
+}
 function setLessonStatus(status) {
   var _a2, _b2;
   const value = status === "chiusa" ? "chiusa" : "aperta";
@@ -3494,6 +6398,7 @@ function setLessonStatus(status) {
   (_a2 = document.getElementById("lz-status-open")) == null ? void 0 : _a2.classList.toggle("is-on", value === "aperta");
   (_b2 = document.getElementById("lz-status-done")) == null ? void 0 : _b2.classList.toggle("is-on", value === "chiusa");
   syncLessonFeedbackVisibility();
+  syncGroupStudentFeedbackVisibility();
 }
 function lessonStatus(lezione) {
   const explicit = String((lezione == null ? void 0 : lezione.stato) || (lezione == null ? void 0 : lezione.status) || splitLessonNotes((lezione == null ? void 0 : lezione.note) || "").stato || "").toLowerCase();
@@ -3502,6 +6407,7 @@ function lessonStatus(lezione) {
 }
 const LESSON_CHECK_MARKERS = {
   stato: "[[stato]]",
+  ora: "[[ora]]",
   meteo: "[[meteo]]",
   speciali: "[[note_speciali]]",
   bene: "[[check_bene]]",
@@ -3523,6 +6429,7 @@ function splitLessonNotes(raw = "") {
   };
   return {
     stato: read("stato"),
+    ora: read("ora"),
     meteo: read("meteo"),
     speciali: read("speciali"),
     bene: read("bene"),
@@ -3530,11 +6437,13 @@ function splitLessonNotes(raw = "") {
     note: read("note")
   };
 }
-function composeLessonNotes(note, bene, nonFatto, speciali = "", stato = "", meteo = "") {
-  if (!bene && !nonFatto && !speciali && !stato && !meteo) return note || null;
+function composeLessonNotes(note, bene, nonFatto, speciali = "", stato = "", meteo = "", ora = "") {
+  if (!bene && !nonFatto && !speciali && !stato && !meteo && !ora) return note || null;
   return [
     LESSON_CHECK_MARKERS.stato,
     stato || "",
+    LESSON_CHECK_MARKERS.ora,
+    normalizeLessonTime(ora) || "",
     LESSON_CHECK_MARKERS.meteo,
     meteo || "",
     LESSON_CHECK_MARKERS.speciali,
@@ -3557,10 +6466,38 @@ function renderLessonCheckBlocks(lezione) {
 function lessonParsedNotes(lezione) {
   const parsed = splitLessonNotes((lezione == null ? void 0 : lezione.note) || "");
   return __spreadProps(__spreadValues({}, parsed), {
+    ora: normalizeLessonTime((lezione == null ? void 0 : lezione.orario) || (lezione == null ? void 0 : lezione.ora) || (lezione == null ? void 0 : lezione.time) || parsed.ora || ""),
     meteo: (lezione == null ? void 0 : lezione.meteo) || parsed.meteo || "",
     bene: (lezione == null ? void 0 : lezione.check_bene) || parsed.bene || "",
     nonFatto: (lezione == null ? void 0 : lezione.check_non_fatto) || parsed.nonFatto || ""
   });
+}
+function normalizeLessonTime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?$/) || raw.match(/^(\d{1,2})(\d{2})$/);
+  if (!match) return "";
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return "";
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function lessonTime(lezione = {}) {
+  return lessonParsedNotes(lezione).ora || "";
+}
+function formatLessonDate(lezione = {}) {
+  const date = formatDate(lezione.data);
+  const ora = lessonTime(lezione);
+  return ora ? `${date} \xB7 ${ora}` : date;
+}
+function formatLessonDateWithWeekday(lezione = {}) {
+  const date = formatDateWithWeekday(lezione.data);
+  const ora = lessonTime(lezione);
+  return ora ? `${date} \xB7 ${ora}` : date;
+}
+function lessonSortToken(lezione = {}) {
+  const day = String(lezione.data || "").slice(0, 10) || "0000-00-00";
+  return `${day}T${lessonTime(lezione) || "00:00"}`;
 }
 function lessonSpecialNotes(lezione) {
   const parsed = lessonParsedNotes(lezione);
@@ -3637,7 +6574,7 @@ function initAppNotes() {
     if ((data == null ? void 0 : data.content) !== void 0 && (data == null ? void 0 : data.content) !== null) {
       textarea.value = data.content;
       safeStorage.setItem(APP_NOTES_KEY, data.content);
-      const updated = data.updated_at ? ` Aggiornate: ${formatDateWithWeekday(data.updated_at)}` : "";
+      const updated = data.updated_at ? ` Ultima modifica: ${formatDateTime(data.updated_at)}` : "";
       setAppNotesStatus(`Note online caricate.${updated}`, "msg-ok");
     } else if (localValue) {
       setAppNotesStatus("Nessuna nota online: resta pronta la copia locale. Premi Salva note per pubblicarla.", "msg-info");
@@ -3663,11 +6600,12 @@ function saveAppNotes() {
       return;
     }
     setAppNotesStatus("Salvataggio note online...", "msg-info");
+    const updatedAt = (/* @__PURE__ */ new Date()).toISOString();
     const payload = {
       key: APP_NOTES_REMOTE_KEY,
       content,
       updated_by: currentUid || null,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      updated_at: updatedAt
     };
     const { error } = yield sb.from("app_notes").upsert(payload, { onConflict: "key" });
     if (error) {
@@ -3680,7 +6618,7 @@ function saveAppNotes() {
       return;
     }
     appNotesRemoteAvailable = true;
-    setAppNotesStatus("Note salvate online.", "msg-ok");
+    setAppNotesStatus(`Note salvate online. Ultima modifica: ${formatDateTime(updatedAt)}`, "msg-ok");
   });
 }
 function scheduleAppNotesSave() {
@@ -3695,9 +6633,10 @@ function setGodScope(scope) {
 function renderAllievi() {
   const el = document.getElementById("allievi-content");
   renderDashboard();
-  const baseLista = allieviVisibiliGod();
+  const listaVisibile = allieviVisibiliGod();
+  const baseLista = filtroVacanza ? listaVisibile.filter((a) => allievoInVacanza(a)) : listaVisibile;
   if (!baseLista.length) {
-    el.innerHTML = mostraArchiviati ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>' : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>';
+    el.innerHTML = mostraArchiviati ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>' : filtroVacanza ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="toggleFiltroVacanza()" class="chip chip-on">\u{1F3D6} In vacanza</button></div><div class="empty">Nessun allievo o gruppo in vacanza.</div>' : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>';
     return;
   }
   const gruppi = [...new Set(baseLista.map((a) => a.gruppo).filter(Boolean))].sort();
@@ -3705,53 +6644,54 @@ function renderAllievi() {
   const tuttiGruppiEspansi = mostraToggleGruppi && gruppi.every((g) => gruppiEspansi.has(g));
   const chipsHtml = `
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
-      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null ? " chip-on" : ""}">Tutti</button>
+      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null && !filtroVacanza ? " chip-on" : ""}">Tutti</button>
       ${gruppi.map((g) => `<button type="button" onclick="setFiltroGruppo('${g.replace(/'/g, "\\'")}')" class="chip${filtroGruppo === g ? " chip-on" : ""}">${esc(g)}</button>`).join("")}
       ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? "Raggruppa tutti i gruppi" : "Espandi tutti i gruppi"}">${tuttiGruppiEspansi ? "\u25B4 Raggruppa" : "\u25BE Espandi"}</button>` : ""}
+      <button type="button" onclick="toggleFiltroVacanza()" class="chip${filtroVacanza ? " chip-on" : ""}" title="Mostra solo chi e in vacanza">\u{1F3D6} In vacanza</button>
       <button type="button" onclick="setArchivio(true)" class="chip${mostraArchiviati ? " chip-on" : ""}" style="margin-left:auto">Archivio</button>
     </div>`;
   const lista = ordinaAllieviLista(filtroGruppo ? baseLista.filter((a) => a.gruppo === filtroGruppo) : baseLista);
   const allieviColgroup = `
     <colgroup>
-      <col style="width:32px">
+      <col style="width:46px">
       <col style="width:28%">
       <col style="width:19%">
       <col style="width:14%">
-      <col style="width:6%">
+      <col style="width:7%">
       <col>
-      <col style="width:52px">
+      <col style="width:118px">
     </colgroup>`;
   const renderAllievoRow = (a, extraClass = "") => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === "archiviato" ? "opacity:.55" : ""};cursor:pointer">
-      <td style="width:28px;text-align:center">${a.vip ? '<span class="vip-star">\u2605</span>' : ""}</td>
+      <td style="width:42px;text-align:center;white-space:nowrap">${allievoTier(a) === "VIP" ? '<span class="vip-star">\u2605</span>' : ""}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
         <strong>${esc(a.nome)}</strong>
         ${a.tipo === "associazione" ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ""}
         ${a.stato === "archiviato" ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ""}
+        ${allievoInVacanza(a) ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}
       </td>
       <td>${a.tipo === "associazione" ? "" : esc(a.cognome)}</td>
       <td style="color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ""}</td>
-      <td>${a.livello_attuale}</td>
+      <td><span class="chip" title="Tier">${esc(allievoTier(a))}</span></td>
       <td>${esc(a.blocco_attuale)}</td>
       <td style="width:40px;text-align:center">
         <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
-          ${godMode && !a.maestro_id ? `<button class="btn btn-ghost btn-sm" title="Assegna a me" onclick="event.stopPropagation(); assegnaAllievoAMe('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Assegna</button>` : ""}
-          ${godMode ? `<button class="btn btn-ghost btn-sm" title="Condividi" onclick="event.stopPropagation(); apriCondividiAllievo('${a.id}')" style="padding:.2rem .45rem;font-size:.82rem">Condividi</button>` : ""}
-          ${godMode && a.gruppo ? `<button class="btn btn-ghost btn-sm" title="Condividi gruppo" onclick="event.stopPropagation(); apriCondividiGruppo('${a.gruppo.replace(/'/g, "\\'")}')" style="padding:.2rem .45rem;font-size:.82rem">Gruppo</button>` : ""}
-          ${a.stato !== "archiviato" ? `<button class="btn btn-ghost btn-sm" title="Modifica" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>` : ""}
+          ${renderAllievoActionMenu(a, `allievo-list-actions-${a.id}`)}
         </div>
       </td>
     </tr>`;
   if (!filtroGruppo) {
     const senzaGruppo = lista.filter((a) => !a.gruppo);
-    const gruppiRows = gruppi.map((gruppo) => {
+    const gruppiRows = gruppi.map((gruppo, index) => {
       const membri = ordinaAllieviLista(lista.filter((a) => a.gruppo === gruppo));
       const expanded = gruppiEspansi.has(gruppo);
       const blocchi = [...new Set(membri.map((a) => a.blocco_attuale).filter(Boolean))].join(", ") || "\u2014";
+      const gruppoVacanza = gruppoInVacanza(gruppo);
+      const actionId = `gruppo-list-actions-${index}`;
       return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
-          <td style="width:28px;text-align:center"><span class="group-count">[${membri.length}]</span></td>
-          <td><strong>${esc(gruppo)}</strong></td>
+          <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
+          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -3759,7 +6699,7 @@ function renderAllievi() {
           <td style="width:40px;text-align:center">
             <div style="display:flex;justify-content:flex-end;gap:.25rem">
               <button class="btn btn-ghost btn-sm" title="${expanded ? "Compatta membri" : "Espandi membri"}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? "\u25B4" : "\u25BE"}</button>
-              <button class="btn btn-ghost btn-sm" title="Scheda gruppo" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:1rem">${editIcon()}</button>
+              ${renderGruppoActionMenu(gruppo, actionId)}
             </div>
           </td>
         </tr>
@@ -3773,7 +6713,7 @@ function renderAllievi() {
       <div class="table-wrap">
         <table>
           ${allieviColgroup}
-          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
+          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
           <tbody>
             ${senzaGruppo.map(renderAllievoRow).join("")}
             ${gruppiRows}
@@ -3787,7 +6727,7 @@ function renderAllievi() {
     <div class="table-wrap">
       <table>
         ${allieviColgroup}
-        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Lv.</th><th>Blocco</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
         <tbody>
           ${lista.map(renderAllievoRow).join("")}
         </tbody>
@@ -3800,11 +6740,18 @@ function setFiltroGruppo(g) {
   if (g === null) gruppiEspansi.clear();
   renderAllievi();
 }
+function toggleFiltroVacanza() {
+  filtroVacanza = !filtroVacanza;
+  mostraArchiviati = false;
+  gruppiEspansi.clear();
+  renderAllievi();
+}
 function mostraTuttiAllievi() {
   return __async(this, null, function* () {
     const serveRicarica = mostraArchiviati;
     mostraArchiviati = false;
     filtroGruppo = null;
+    filtroVacanza = false;
     gruppiEspansi.clear();
     if (serveRicarica) yield ricaricaAllievi();
     else renderAllievi();
@@ -3822,26 +6769,90 @@ function toggleTuttiGruppi() {
   if (!tuttiEspansi) gruppi.forEach((g) => gruppiEspansi.add(g));
   renderAllievi();
 }
+function renderAllievoActionMenu(allievo, actionId = "allievo-actions") {
+  if (!allievo) return "";
+  const canShare = canShareAllievo(allievo);
+  const canShareGroup = allievo.gruppo && canShareGruppo(allievo.gruppo);
+  return `
+    <div class="inline-action-menu">
+      <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
+      <div class="inline-action-panel" id="${esc(actionId)}" hidden>
+        ${godMode && !allievo.maestro_id ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); assegnaAllievoAMe('${allievo.id}')">Assegna a me</button>` : ""}
+        ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiAllievo('${allievo.id}')">Condividi allievo</button>` : ""}
+        ${canShareGroup ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(allievo.gruppo)})">Condividi gruppo</button>` : ""}
+        ${allievo.stato !== "archiviato" ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${allievo.id}')">${editIcon()} Modifica</button>` : ""}
+      </div>
+    </div>`;
+}
+function renderGruppoActionMenu(gruppo, actionId = "gruppo-actions", options = {}) {
+  const membriAttivi = gruppoMembri(gruppo);
+  const isArchiviato = !membriAttivi.length && gruppoMembri(gruppo, { includeArchived: true }).length > 0;
+  const showScheda = options.showScheda !== false;
+  const canShare = !isArchiviato && canShareGruppo(gruppo);
+  return `
+    <div class="inline-action-menu">
+      <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
+      <div class="inline-action-panel" id="${esc(actionId)}" hidden>
+        ${showScheda ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})">Scheda gruppo</button>` : ""}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-gruppo',${jsArg(gruppo)})">${editIcon()} Modifica</button>` : ""}
+        ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(gruppo)})">Condividi</button>` : ""}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); archiviaGruppo(${jsArg(gruppo)})">Archivia</button>` : '<div class="inline-action-meta">Gruppo archiviato</div>'}
+      </div>
+    </div>`;
+}
+function archiviaGruppo(gruppo) {
+  return __async(this, null, function* () {
+    const membri = gruppoMembri(gruppo);
+    if (!membri.length) {
+      alert("Nessun allievo attivo da archiviare in questo gruppo.");
+      return;
+    }
+    if (!confirm(`Archiviare il gruppo "${gruppo}" e i ${membri.length} allievi attivi collegati? Potrai ritrovarli dalla lista Archivio.`)) return;
+    try {
+      const ids = membri.map((a) => a.id);
+      const { error } = yield sb.from("allievi").update({ stato: "archiviato" }).in("id", ids);
+      if (error) throw error;
+      logModificaLocale("gruppo", gruppo, `Archiviato gruppo: ${membri.length} allievi`);
+      mostraArchiviati = true;
+      filtroGruppo = null;
+      filtroVacanza = false;
+      gruppiEspansi.clear();
+      yield ricaricaAllievi();
+      showView("allievi");
+    } catch (e) {
+      alert("Errore nell'archiviazione del gruppo: " + (e.message || e));
+    }
+  });
+}
 function setArchivio(on) {
   return __async(this, null, function* () {
     if (mostraArchiviati === on) {
       filtroGruppo = null;
+      filtroVacanza = false;
       gruppiEspansi.clear();
       renderAllievi();
       return;
     }
     mostraArchiviati = on;
     filtroGruppo = null;
+    filtroVacanza = false;
     gruppiEspansi.clear();
     yield ricaricaAllievi();
   });
 }
 function toggleVip() {
-  const btn = document.getElementById("na-vip-btn");
   const inp = document.getElementById("na-vip");
+  const tier = document.getElementById("na-tier");
+  if (!inp) return;
   const isOn = inp.value === "true";
   inp.value = String(!isOn);
-  btn.classList.toggle("on", !isOn);
+  if (tier) tier.value = !isOn ? "VIP" : "C";
+}
+function syncTierVipIndicator() {
+  var _a2;
+  const tier = ((_a2 = document.getElementById("na-tier")) == null ? void 0 : _a2.value) || "C";
+  const inp = document.getElementById("na-vip");
+  if (inp) inp.value = String(tier === "VIP");
 }
 function setDot(groupId, val) {
   const g = document.getElementById(groupId);
@@ -3850,7 +6861,7 @@ function setDot(groupId, val) {
   g.querySelectorAll(".dot").forEach((d) => d.classList.toggle("filled", parseInt(d.dataset.v) <= val));
 }
 function initNuovoAllievo(id) {
-  var _a2, _b2, _c, _d, _e, _f, _g;
+  var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
   editingAllieviId = id || null;
   const allievo = id ? allAllievi.find((a) => a.id === id) : null;
   const p = (allievo == null ? void 0 : allievo.profilo) || {};
@@ -3878,19 +6889,28 @@ function initNuovoAllievo(id) {
   document.getElementById("na-tel").value = (allievo == null ? void 0 : allievo.telefono) || "";
   document.getElementById("na-note").value = (allievo == null ? void 0 : allievo.note_generali) || "";
   document.getElementById("na-blocco").value = (allievo == null ? void 0 : allievo.blocco_attuale) || "Base";
+  document.getElementById("na-in-vacanza").checked = allievo ? allievoInVacanzaDiretta(allievo) : false;
   calcolaEtaForm();
-  const vipVal = (allievo == null ? void 0 : allievo.vip) === true;
-  document.getElementById("na-vip").value = String(vipVal);
-  document.getElementById("na-vip-btn").classList.toggle("on", vipVal);
+  const tierVal = allievo ? allievoTier(allievo) : "C";
+  document.getElementById("na-tier").value = tierVal;
+  document.getElementById("na-vip").value = String(tierVal === "VIP");
   const indirizzoInput = document.getElementById("na-indirizzo");
   const casaInput = document.getElementById("na-casa");
+  const casaLatInput = document.getElementById("na-casa-latitudine");
+  const casaLngInput = document.getElementById("na-casa-longitudine");
   const indirizzoCondivisoInput = document.getElementById("na-indirizzo-condiviso");
   indirizzoInput.value = addressVisible ? p.indirizzo || "" : "";
   casaInput.value = addressVisible ? p.casa || "" : "";
+  casaLatInput.value = addressVisible && parseMapCoordinate((_a2 = p.casa_latitudine) != null ? _a2 : p.casa_lat) !== null ? formatMapCoordinate((_b2 = p.casa_latitudine) != null ? _b2 : p.casa_lat) : "";
+  casaLngInput.value = addressVisible && parseMapCoordinate((_d = (_c = p.casa_longitudine) != null ? _c : p.casa_lng) != null ? _d : p.casa_lon) !== null ? formatMapCoordinate((_f = (_e = p.casa_longitudine) != null ? _e : p.casa_lng) != null ? _f : p.casa_lon) : "";
   indirizzoInput.disabled = !addressEditable;
   casaInput.disabled = !addressEditable;
+  casaLatInput.disabled = !addressEditable;
+  casaLngInput.disabled = !addressEditable;
   indirizzoInput.placeholder = addressVisible ? "Es. Milano Nord" : "Privato del maestro proprietario";
   casaInput.placeholder = addressVisible ? "Es. via e civico casa" : "Privato del maestro proprietario";
+  casaLatInput.placeholder = addressVisible ? "45.46420" : "Privato";
+  casaLngInput.placeholder = addressVisible ? "9.19000" : "Privato";
   indirizzoCondivisoInput.checked = !!p.indirizzo_condiviso;
   indirizzoCondivisoInput.disabled = !addressEditable;
   document.getElementById("na-cultura").value = p.cultura || "";
@@ -3929,13 +6949,13 @@ function initNuovoAllievo(id) {
   (p.familiari || []).forEach((f) => {
     famContainer.appendChild(creaFamiliareRow(f));
   });
-  setDot("dot-coord", ((_a2 = p.capacita) == null ? void 0 : _a2.coordinazione) || 0);
-  setDot("dot-prop", ((_b2 = p.capacita) == null ? void 0 : _b2.propriocezione) || 0);
-  setDot("dot-vel", ((_c = p.capacita) == null ? void 0 : _c.velocita_apprendimento) || 0);
-  setDot("dot-bil", ((_d = p.capacita) == null ? void 0 : _d.bilateralita) || 0);
-  setDot("dot-visivo", ((_e = p.apprendimento) == null ? void 0 : _e.visivo) || 0);
-  setDot("dot-teorico", ((_f = p.apprendimento) == null ? void 0 : _f.teorico) || 0);
-  setDot("dot-pratico", ((_g = p.apprendimento) == null ? void 0 : _g.pratico) || 0);
+  setDot("dot-coord", ((_g = p.capacita) == null ? void 0 : _g.coordinazione) || 0);
+  setDot("dot-prop", ((_h = p.capacita) == null ? void 0 : _h.propriocezione) || 0);
+  setDot("dot-vel", ((_i = p.capacita) == null ? void 0 : _i.velocita_apprendimento) || 0);
+  setDot("dot-bil", ((_j = p.capacita) == null ? void 0 : _j.bilateralita) || 0);
+  setDot("dot-visivo", ((_k = p.apprendimento) == null ? void 0 : _k.visivo) || 0);
+  setDot("dot-teorico", ((_l = p.apprendimento) == null ? void 0 : _l.teorico) || 0);
+  setDot("dot-pratico", ((_m = p.apprendimento) == null ? void 0 : _m.pratico) || 0);
   if (!document.getElementById("view-nuovo-allievo").dataset.dotsInit) {
     document.querySelectorAll("#view-nuovo-allievo .dots-group").forEach((g) => {
       g.querySelectorAll(".dot").forEach((dot) => {
@@ -4008,25 +7028,45 @@ function renderLogisticaGruppoAllievo() {
   const gruppo = (_b2 = document.getElementById("na-gruppo")) == null ? void 0 : _b2.value.trim();
   const membri = checked && gruppo ? gruppoMembri(gruppo, { includeArchived: true }) : [];
   const profilo = membri.length ? profiloComuneGruppo(membri) : {};
-  const hasLogistica = !!(profilo.appuntamento || profilo.luogo_incontro || profilo.durata_lezione || profilo.compenso || profilo.pagamento_metodo || profilo.pagamento_stato || profilo.pagamento_note);
+  const hasLogistica = !!(profilo.appuntamento || profilo.luogo_incontro || profilo.durata_lezione || profilo.compenso || profilo.pagamento_metodo || profilo.pagamento_stato || profilo.pagamento_note || profilo.in_vacanza);
   if (!checked || !gruppo || !membri.length || !hasLogistica) {
     panel.hidden = true;
     panel.innerHTML = "";
+    panel.removeAttribute("role");
+    panel.removeAttribute("tabindex");
+    panel.removeAttribute("aria-label");
+    panel.onclick = null;
+    panel.onkeydown = null;
     return;
   }
   const item = (label, value) => value ? `<div class="group-logistics-item"><span>${esc(label)}</span>${esc(String(value))}</div>` : "";
   const pagamento = [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(" \xB7 ");
   panel.hidden = false;
+  panel.setAttribute("role", "button");
+  panel.setAttribute("tabindex", "0");
+  panel.setAttribute("aria-label", `Apri scheda gruppo ${gruppo}`);
+  panel.onclick = () => openGruppoFromAllievoLogistica(gruppo);
+  panel.onkeydown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openGruppoFromAllievoLogistica(gruppo);
+    }
+  };
   panel.innerHTML = `
     <div class="group-logistics-title">${esc(gruppo)}</div>
     <div class="group-logistics-grid">
       ${item("Appuntamento", profilo.appuntamento)}
       ${item("Durata", profilo.durata_lezione ? profilo.durata_lezione + " min" : "")}
-      ${item("Luogo", profilo.luogo_incontro)}
+      ${item("Luogo di incontro", profilo.luogo_incontro)}
       ${item("Compenso", profilo.compenso ? "\u20AC " + Number(profilo.compenso).toFixed(2) : "")}
       ${item("Pagamento", pagamento)}
       ${item("Note pagamento", profilo.pagamento_note)}
+      ${item("Stato lezioni", profilo.in_vacanza ? "In vacanza" : "")}
     </div>`;
+}
+function openGruppoFromAllievoLogistica(gruppo) {
+  if (!gruppo || !gruppoMembri(gruppo, { includeArchived: true }).length) return;
+  showView("gruppo", gruppo);
 }
 function aggiungiFamiliare() {
   const container = document.getElementById("na-familiari");
@@ -4104,12 +7144,7 @@ function calcolaEtaForm() {
     el.value = "";
     return;
   }
-  const [y, m, d] = dn.split("-").map(Number);
-  const oggi = /* @__PURE__ */ new Date(), nascita = new Date(y, m - 1, d);
-  let anni = oggi.getFullYear() - nascita.getFullYear();
-  if (oggi.getMonth() < nascita.getMonth() || oggi.getMonth() === nascita.getMonth() && oggi.getDate() < nascita.getDate()) anni--;
-  const mesi = Math.round((oggi - nascita) / (1e3 * 60 * 60 * 24 * 30.44));
-  el.value = anni >= 2 ? anni + " anni" : mesi + " mesi";
+  el.value = allievoEtaLabel(dn);
 }
 function formatDateField(input) {
   const digits = input.value.replace(/\D/g, "").slice(0, 8);
@@ -4135,18 +7170,57 @@ function profiloSenzaLogisticaTopLevel(profilo = {}) {
   LOGISTICA_KEYS.forEach((key) => delete clean[key]);
   return clean;
 }
+function hasOwn(obj = {}, key) {
+  return Object.prototype.hasOwnProperty.call(obj || {}, key);
+}
+function normalizeVacationFlag(value) {
+  return value === true || value === 1 || value === "1" || String(value || "").toLowerCase() === "true";
+}
+function hasVacationField(obj = {}) {
+  return ["in_vacanza", "inVacanza", "vacanza"].some((key) => hasOwn(obj, key));
+}
+function vacationValue(obj = {}) {
+  if (hasOwn(obj, "in_vacanza")) return normalizeVacationFlag(obj.in_vacanza);
+  if (hasOwn(obj, "inVacanza")) return normalizeVacationFlag(obj.inVacanza);
+  if (hasOwn(obj, "vacanza")) return normalizeVacationFlag(obj.vacanza);
+  return false;
+}
+function applyVacationField(base = {}, source = {}) {
+  return hasVacationField(source) ? __spreadProps(__spreadValues({}, base), { in_vacanza: vacationValue(source) }) : base;
+}
 function logisticaGruppoProfilo(profilo = {}) {
   const dedicata = profilo.logistica_gruppo || {};
-  return logisticaHaValori(dedicata) ? dedicata : estraiLogistica(profilo);
+  if (logisticaHaValori(dedicata) || hasVacationField(dedicata)) return applyVacationField(__spreadValues({}, dedicata), dedicata);
+  return applyVacationField(estraiLogistica(profilo), profilo);
 }
 function logisticaIndividualeProfilo(profilo = {}, inGruppo = false) {
-  if (!inGruppo) return estraiLogistica(profilo);
+  if (!inGruppo) return applyVacationField(estraiLogistica(profilo), profilo);
   const dedicata = profilo.logistica_individuale || {};
-  return logisticaHaValori(dedicata) ? dedicata : {};
+  return logisticaHaValori(dedicata) || hasVacationField(dedicata) ? applyVacationField(__spreadValues({}, dedicata), dedicata) : {};
+}
+function allievoInVacanzaDiretta(allievo = {}) {
+  const profilo = allievo.profilo || {};
+  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, !!allievo.gruppo);
+  return vacationValue(logisticaIndividuale) || vacationValue(profilo);
+}
+function gruppoInVacanza(nomeGruppo) {
+  if (!nomeGruppo) return false;
+  const profilo = profiloComuneGruppo(gruppoMembri(nomeGruppo, { includeArchived: true }));
+  return !!profilo.in_vacanza;
+}
+function allievoInVacanza(allievo = {}) {
+  return allievoInVacanzaDiretta(allievo) || !!allievo.gruppo && gruppoInVacanza(allievo.gruppo);
+}
+function vacationIconHtml(active = true) {
+  return active ? '<span class="vacation-icon" title="In vacanza" aria-label="In vacanza">\u{1F3D6}</span>' : "";
+}
+function vacationLabel(allievo = {}) {
+  if (!allievoInVacanza(allievo)) return "";
+  return allievo.gruppo && gruppoInVacanza(allievo.gruppo) && !allievoInVacanzaDiretta(allievo) ? "In vacanza (gruppo)" : "In vacanza";
 }
 function salvaAllievo() {
   return __async(this, null, function* () {
-    var _a2;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const tipo = document.getElementById("na-tipo").value;
     const isAss = tipo === "associazione";
     const nome = isAss ? document.getElementById("ass-nome").value.trim() : document.getElementById("na-nome").value.trim();
@@ -4162,6 +7236,15 @@ function salvaAllievo() {
     const allievoOriginale = editingAllieviId ? allAllievi.find((a) => a.id === editingAllieviId) || null : null;
     const profiloOriginale = (allievoOriginale == null ? void 0 : allievoOriginale.profilo) || {};
     const addressEditable = canEditAllievoAddress(allievoOriginale);
+    const casaLatRaw = !isAss ? ((_a2 = document.getElementById("na-casa-latitudine")) == null ? void 0 : _a2.value.trim()) || "" : "";
+    const casaLngRaw = !isAss ? ((_b2 = document.getElementById("na-casa-longitudine")) == null ? void 0 : _b2.value.trim()) || "" : "";
+    const casaLat = parseMapCoordinate(casaLatRaw);
+    const casaLng = parseMapCoordinate(casaLngRaw);
+    if (!isAss && addressEditable && ((casaLatRaw || casaLngRaw) && (casaLat === null || casaLng === null))) {
+      errEl.textContent = "Inserisci sia latitudine sia longitudine GPS casa in formato numerico.";
+      errEl.className = "msg msg-err show";
+      return;
+    }
     let profilo;
     if (isAss) {
       profilo = {
@@ -4172,24 +7255,30 @@ function salvaAllievo() {
     } else {
       const famRows = document.querySelectorAll("#na-familiari .familiare-row");
       const familiari = [...famRows].map((row) => {
-        var _a3, _b3, _c2, _d;
+        var _a3, _b3, _c2, _d2;
         return {
           nome: ((_a3 = row.querySelector(".fam-nome")) == null ? void 0 : _a3.value.trim()) || "",
           cognome: ((_b3 = row.querySelector(".fam-cognome")) == null ? void 0 : _b3.value.trim()) || "",
           relazione: ((_c2 = row.querySelector(".fam-relazione")) == null ? void 0 : _c2.value.trim()) || "",
-          telefono: ((_d = row.querySelector(".fam-telefono")) == null ? void 0 : _d.value.trim()) || ""
+          telefono: ((_d2 = row.querySelector(".fam-telefono")) == null ? void 0 : _d2.value.trim()) || ""
         };
       }).filter((f) => f.nome || f.cognome || f.telefono);
+      const inVacanza = !!((_c = document.getElementById("na-in-vacanza")) == null ? void 0 : _c.checked);
+      const tierValue = normalizeAllievoTier(((_d = document.getElementById("na-tier")) == null ? void 0 : _d.value) || "C");
       const logisticaIndividuale = {
         durata_lezione: parseInt(document.getElementById("na-durata").value) || null,
         compenso: parseFloat(document.getElementById("na-compenso").value) || null,
         appuntamento: document.getElementById("na-appuntamento").value.trim() || null,
-        luogo_incontro: document.getElementById("na-luogo-incontro").value.trim() || null
+        luogo_incontro: document.getElementById("na-luogo-incontro").value.trim() || null,
+        in_vacanza: inVacanza
       };
       const baseProfilo = __spreadProps(__spreadValues({}, profiloSenzaLogisticaTopLevel(profiloOriginale)), {
         indirizzo: addressEditable ? document.getElementById("na-indirizzo").value.trim() || null : profiloOriginale.indirizzo || null,
         casa: addressEditable ? document.getElementById("na-casa").value.trim() || null : profiloOriginale.casa || null,
-        indirizzo_condiviso: addressEditable ? !!((_a2 = document.getElementById("na-indirizzo-condiviso")) == null ? void 0 : _a2.checked) : !!profiloOriginale.indirizzo_condiviso,
+        casa_latitudine: addressEditable ? casaLat : (_f = (_e = profiloOriginale.casa_latitudine) != null ? _e : profiloOriginale.casa_lat) != null ? _f : null,
+        casa_longitudine: addressEditable ? casaLng : (_i = (_h = (_g = profiloOriginale.casa_longitudine) != null ? _g : profiloOriginale.casa_lng) != null ? _h : profiloOriginale.casa_lon) != null ? _i : null,
+        indirizzo_condiviso: addressEditable ? !!((_j = document.getElementById("na-indirizzo-condiviso")) == null ? void 0 : _j.checked) : !!profiloOriginale.indirizzo_condiviso,
+        tier: tierValue,
         cultura: document.getElementById("na-cultura").value.trim() || null,
         note_salute: document.getElementById("na-note-salute").value.trim() || null,
         scadenza_cert: dateInputToIso(document.getElementById("na-cert").value) || null,
@@ -4216,7 +7305,8 @@ function salvaAllievo() {
       });
       if (gruppoAttivo) {
         const logisticaGruppo = profiloOriginale.logistica_gruppo || {};
-        profilo = __spreadValues(__spreadValues(__spreadValues({}, baseProfilo), logisticaHaValori(logisticaGruppo) ? { logistica_gruppo: logisticaGruppo } : {}), logisticaHaValori(logisticaIndividuale) ? { logistica_individuale: logisticaIndividuale } : {});
+        delete baseProfilo.in_vacanza;
+        profilo = __spreadValues(__spreadValues(__spreadValues({}, baseProfilo), logisticaHaValori(logisticaGruppo) || hasVacationField(logisticaGruppo) ? { logistica_gruppo: logisticaGruppo } : {}), logisticaHaValori(logisticaIndividuale) || inVacanza ? { logistica_individuale: logisticaIndividuale } : {});
       } else {
         profilo = __spreadValues(__spreadValues({}, baseProfilo), logisticaIndividuale);
         delete profilo.logistica_gruppo;
@@ -4230,12 +7320,22 @@ function salvaAllievo() {
     btn.textContent = "Salvataggio\u2026";
     btnTop.disabled = true;
     btnTop.textContent = "Salvataggio\u2026";
+    let writeUid = currentUid;
+    try {
+      if (!editingAllieviId) writeUid = yield requireCurrentUidForWrite(errEl);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = labelOrig;
+      btnTop.disabled = false;
+      btnTop.textContent = labelOrig;
+      return;
+    }
     const payload = __spreadValues({
       nome,
       cognome,
       tipo,
       nickname: isAss ? document.getElementById("ass-nick").value.trim() || null : document.getElementById("na-nickname").value.trim() || null,
-      vip: isAss ? false : document.getElementById("na-vip").value === "true",
+      vip: isAss ? false : normalizeAllievoTier(((_k = document.getElementById("na-tier")) == null ? void 0 : _k.value) || "C") === "VIP",
       blocco_attuale: isAss ? "Base" : document.getElementById("na-blocco").value,
       gruppo: isAss ? document.getElementById("ass-gruppo").value.trim() || null : gruppoAttivo ? document.getElementById("na-gruppo").value.trim() || null : null,
       data_nascita: isAss ? null : dateInputToIso(document.getElementById("na-nascita").value) || null,
@@ -4245,7 +7345,7 @@ function salvaAllievo() {
       note_generali: isAss ? document.getElementById("ass-note").value.trim() || null : document.getElementById("na-note").value.trim() || null,
       profilo,
       aggiornato_il: (/* @__PURE__ */ new Date()).toISOString()
-    }, editingAllieviId ? {} : { maestro_id: currentUid });
+    }, editingAllieviId ? {} : { maestro_id: writeUid });
     const savedId = editingAllieviId;
     const originalAllievo = savedId ? allAllievi.find((a) => String(a.id) === String(savedId)) || {} : {};
     try {
@@ -4253,15 +7353,15 @@ function salvaAllievo() {
       if (savedId) {
         ;
         ({ data, error } = yield sb.from("allievi").update(payload).eq("id", savedId).select().single());
-        if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
-          const _b2 = payload, { aggiornato_il } = _b2, compatPayload = __objRest(_b2, ["aggiornato_il"]);
+        if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || "")) {
+          const _l = payload, { aggiornato_il } = _l, compatPayload = __objRest(_l, ["aggiornato_il"]);
           ({ data, error } = yield sb.from("allievi").update(compatPayload).eq("id", savedId).select().single());
         }
       } else {
         ;
         ({ data, error } = yield sb.from("allievi").insert(payload).select().single());
-        if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
-          const _c = payload, { aggiornato_il } = _c, compatPayload = __objRest(_c, ["aggiornato_il"]);
+        if (error && /aggiornato_il|updated_at|schema cache|column|tier/i.test(error.message || error.details || error.hint || "")) {
+          const _m = payload, { aggiornato_il } = _m, compatPayload = __objRest(_m, ["aggiornato_il"]);
           ({ data, error } = yield sb.from("allievi").insert(compatPayload).select().single());
         }
       }
@@ -4270,6 +7370,7 @@ function salvaAllievo() {
         nome: "nome",
         cognome: "cognome",
         nickname: "nickname",
+        tier: "tier",
         vip: "VIP",
         blocco_attuale: "blocco",
         gruppo: "gruppo",
@@ -4285,9 +7386,9 @@ function salvaAllievo() {
       allAllievi = fresh || [];
       renderAllievi();
       const lessonDraft = loadLezioneDraft();
-      if (!savedId && lessonDraft) {
+      if (!savedId && (lessonDraft == null ? void 0 : lessonDraft.editingLezioneId)) {
         pendingSpecialGuestId = (data == null ? void 0 : data.id) || null;
-        showView("nuova-lezione");
+        showView("nuova-lezione", `lezione:${lessonDraft.editingLezioneId}`);
         return;
       }
       if (savedId) {
@@ -4299,7 +7400,7 @@ function salvaAllievo() {
         showView("allievi");
       }
     } catch (e) {
-      errEl.textContent = e.message || "Errore di rete. Riprova.";
+      errEl.textContent = saveErrorMessage(e);
       errEl.classList.add("show");
       btn.disabled = false;
       btn.textContent = labelOrig;
@@ -4316,7 +7417,7 @@ function salvaAllievo() {
 }
 function initNuovoGruppo(nomeGruppo = null) {
   editingGruppoNome = nomeGruppo || null;
-  const membri = editingGruppoNome ? gruppoMembri(editingGruppoNome) : [];
+  const membri = editingGruppoNome ? gruppoMembri(editingGruppoNome, { includeArchived: true }) : [];
   const profilo = profiloComuneGruppo(membri);
   document.getElementById("gr-title").textContent = editingGruppoNome ? `Modifica gruppo \u2014 ${editingGruppoNome}` : "Nuovo gruppo";
   document.getElementById("btn-salva-gr").textContent = editingGruppoNome ? "Aggiorna gruppo" : "Salva gruppo";
@@ -4327,6 +7428,8 @@ function initNuovoGruppo(nomeGruppo = null) {
   document.getElementById("gr-luogo").value = profilo.luogo_incontro || "";
   document.getElementById("gr-durata").value = profilo.durata_lezione || "";
   document.getElementById("gr-compenso").value = profilo.compenso || "";
+  document.getElementById("gr-in-vacanza").checked = !!profilo.in_vacanza;
+  document.getElementById("gr-archiviato").checked = !!(membri.length && membri.every((a) => a.stato === "archiviato"));
   document.getElementById("gr-pagamento-metodo").value = profilo.pagamento_metodo || "";
   document.getElementById("gr-pagamento-stato").value = profilo.pagamento_stato || "";
   document.getElementById("gr-pagamento-note").value = profilo.pagamento_note || "";
@@ -4550,11 +7653,14 @@ function leggiAllievoGruppo(row) {
 }
 function salvaGruppo() {
   return __async(this, null, function* () {
+    var _a2, _b2;
     const nomeGruppo = document.getElementById("gr-nome").value.trim();
     const orario = document.getElementById("gr-orario").value.trim();
     const luogo = document.getElementById("gr-luogo").value.trim();
     const durata = parseInt(document.getElementById("gr-durata").value) || null;
     const compenso = parseFloat(document.getElementById("gr-compenso").value) || null;
+    const inVacanza = !!((_a2 = document.getElementById("gr-in-vacanza")) == null ? void 0 : _a2.checked);
+    const archiviato = !!((_b2 = document.getElementById("gr-archiviato")) == null ? void 0 : _b2.checked);
     const pagamentoMetodo = document.getElementById("gr-pagamento-metodo").value || null;
     const pagamentoStato = document.getElementById("gr-pagamento-stato").value || null;
     const pagamentoNote = document.getElementById("gr-pagamento-note").value.trim() || null;
@@ -4583,6 +7689,16 @@ function salvaGruppo() {
     btn.textContent = "Salvataggio\u2026";
     btnTop.disabled = true;
     btnTop.textContent = "Salvataggio\u2026";
+    let writeUid = currentUid;
+    try {
+      if (allievi.some((a) => !a.id)) writeUid = yield requireCurrentUidForWrite(errEl);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = "Salva gruppo";
+      btnTop.disabled = false;
+      btnTop.textContent = "Salva gruppo";
+      return;
+    }
     const oggi = localDateIso();
     const commonLogistica = {
       appuntamento: orario || null,
@@ -4591,7 +7707,8 @@ function salvaGruppo() {
       compenso,
       pagamento_metodo: pagamentoMetodo,
       pagamento_stato: pagamentoStato,
-      pagamento_note: pagamentoNote
+      pagamento_note: pagamentoNote,
+      in_vacanza: inVacanza
     };
     const commonProfile = __spreadProps(__spreadValues({}, commonLogistica), {
       logistica_gruppo: commonLogistica
@@ -4613,6 +7730,7 @@ function salvaGruppo() {
               cognome: a.cognome,
               nickname: a.nickname || null,
               gruppo: nomeGruppo,
+              stato: archiviato ? "archiviato" : "attivo",
               note_generali: a.note || null,
               profilo: __spreadProps(__spreadValues(__spreadValues({}, original.profilo || {}), commonProfile), { familiari: a.referenti })
             };
@@ -4627,10 +7745,11 @@ function salvaGruppo() {
               vip: false,
               blocco_attuale: "Base",
               gruppo: nomeGruppo,
+              stato: archiviato ? "archiviato" : "attivo",
               data_iscrizione: oggi,
               note_generali: a.note || null,
-              profilo: __spreadProps(__spreadValues({}, commonProfile), { familiari: a.referenti }),
-              maestro_id: currentUid
+              profilo: __spreadProps(__spreadValues({}, commonProfile), { tier: "C", familiari: a.referenti }),
+              maestro_id: writeUid
             });
             if (error) throw error;
           }
@@ -4641,9 +7760,17 @@ function salvaGruppo() {
         editReturnTarget = null;
         editingGruppoNome = null;
         yield ricaricaAllievi();
+        if (archiviato) {
+          mostraArchiviati = true;
+          filtroGruppo = null;
+          filtroVacanza = false;
+          gruppiEspansi.clear();
+          showView("allievi");
+          return;
+        }
         yield goToReturnTarget(destination, { name: "gruppo", id: nextGroup });
       } catch (e) {
-        errEl.textContent = e.message || "Errore di rete. Riprova.";
+        errEl.textContent = saveErrorMessage(e);
         errEl.classList.add("show");
       } finally {
         btn.disabled = false;
@@ -4663,6 +7790,7 @@ function salvaGruppo() {
             cognome: a.cognome,
             nickname: a.nickname || null,
             gruppo: nomeGruppo,
+            stato: archiviato ? "archiviato" : "attivo",
             note_generali: a.note || null,
             profilo: __spreadProps(__spreadValues(__spreadValues({}, original.profilo || {}), commonProfile), { familiari: a.referenti })
           };
@@ -4677,10 +7805,11 @@ function salvaGruppo() {
             vip: false,
             blocco_attuale: "Base",
             gruppo: nomeGruppo,
+            stato: archiviato ? "archiviato" : "attivo",
             data_iscrizione: oggi,
             note_generali: a.note || null,
-            profilo: __spreadProps(__spreadValues({}, commonProfile), { familiari: a.referenti }),
-            maestro_id: currentUid
+            profilo: __spreadProps(__spreadValues({}, commonProfile), { tier: "C", familiari: a.referenti }),
+            maestro_id: writeUid
           });
         }
       }
@@ -4691,9 +7820,17 @@ function salvaGruppo() {
       filtroGruppo = nomeGruppo;
       editReturnTarget = null;
       yield ricaricaAllievi();
+      if (archiviato) {
+        mostraArchiviati = true;
+        filtroGruppo = null;
+        filtroVacanza = false;
+        gruppiEspansi.clear();
+        showView("allievi");
+        return;
+      }
       showView("gruppo", nomeGruppo);
     } catch (e) {
-      errEl.textContent = e.message || "Errore di rete. Riprova.";
+      errEl.textContent = saveErrorMessage(e);
       errEl.classList.add("show");
     } finally {
       btn.disabled = false;
@@ -4715,6 +7852,7 @@ function profiloComuneGruppo(membri) {
     var _a2;
     return ((_a2 = profili.find((p) => p[key] !== void 0 && p[key] !== null && p[key] !== "")) == null ? void 0 : _a2[key]) || "";
   };
+  const firstVacationValue = profili.find((p) => hasVacationField(p));
   return {
     appuntamento: firstValue("appuntamento"),
     luogo_incontro: firstValue("luogo_incontro"),
@@ -4722,7 +7860,8 @@ function profiloComuneGruppo(membri) {
     compenso: firstValue("compenso"),
     pagamento_metodo: firstValue("pagamento_metodo"),
     pagamento_stato: firstValue("pagamento_stato"),
-    pagamento_note: firstValue("pagamento_note")
+    pagamento_note: firstValue("pagamento_note"),
+    in_vacanza: firstVacationValue ? vacationValue(firstVacationValue) : false
   };
 }
 function loadGruppo(nomeGruppo) {
@@ -4732,7 +7871,9 @@ function loadGruppo(nomeGruppo) {
     recordAppHistory("gruppo", nomeGruppo);
     const el = document.getElementById("gruppo-content");
     el.innerHTML = '<div class="loading">Caricamento\u2026</div>';
-    const membri = gruppoMembri(nomeGruppo);
+    const membriAttivi = gruppoMembri(nomeGruppo);
+    const membri = membriAttivi.length ? membriAttivi : gruppoMembri(nomeGruppo, { includeArchived: true });
+    const gruppoArchiviato = !membriAttivi.length && membri.length > 0;
     if (!membri.length) {
       el.innerHTML = `<button class="back-btn" onclick="showView('allievi')">\u2190 Allievi</button><div class="card"><div class="empty">Gruppo non trovato.</div></div>`;
       return;
@@ -4764,8 +7905,8 @@ function loadGruppo(nomeGruppo) {
     const membriHtml = membri.map((a) => `
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
-        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(" "))}${a.nickname ? ` \xB7 ${esc(a.nickname)}` : ""}</div>
-        <div class="gruppo-member-meta">Lv ${a.livello_attuale || "\u2014"} \xB7 ${esc(a.blocco_attuale || "\u2014")}</div>
+        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(" "))}${a.nickname ? ` \xB7 ${esc(a.nickname)}` : ""}${vacationIconHtml(allievoInVacanza(a))}</div>
+        <div class="gruppo-member-meta">Lv ${a.livello_attuale || "\u2014"} \xB7 ${esc(a.blocco_attuale || "\u2014")}${allievoInVacanza(a) ? " \xB7 In vacanza" : ""}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
     </div>`).join("");
@@ -4776,16 +7917,16 @@ function loadGruppo(nomeGruppo) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
       <button class="back-btn" onclick="showView('allievi')" style="margin-bottom:0">\u2190 Allievi</button>
       <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="showView('nuovo-gruppo',${jsArg(nomeGruppo)})">${editIcon()} Modifica gruppo</button>
-        <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione',${jsArg("gruppo:" + nomeGruppo)})">+ Lezione gruppo</button>
+        ${renderGruppoActionMenu(nomeGruppo, "gruppo-scheda-actions", { showScheda: false })}
+        ${gruppoArchiviato ? "" : `<button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione',${jsArg("gruppo:" + nomeGruppo)})">+ Lezione gruppo</button>`}
       </div>
     </div>
 
     <div class="card">
       <div class="lezione-read-head">
         <div>
-          <div class="lezione-read-title">${esc(nomeGruppo)}</div>
-          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? "o" : "i"} attiv${membri.length === 1 ? "o" : "i"}</div>
+          <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
+          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? "o" : "i"} ${gruppoArchiviato ? "archiviat" : "attiv"}${membri.length === 1 ? "o" : "i"}${profilo.in_vacanza ? " \xB7 In vacanza" : ""}</div>
         </div>
         <div class="lezione-read-when">
           ${profilo.appuntamento ? `<div class="lezione-read-date">${esc(profilo.appuntamento)}</div>` : "<span>Orario non indicato</span>"}
@@ -4805,10 +7946,11 @@ function loadGruppo(nomeGruppo) {
           <div class="info-grid">
             ${info("Appuntamento", profilo.appuntamento)}
             ${info("Durata lezione", profilo.durata_lezione ? profilo.durata_lezione + " min" : null)}
-            ${info("Luogo", profilo.luogo_incontro)}
+            ${info("Luogo di incontro", profilo.luogo_incontro)}
             ${info("Compenso", compenso)}
             ${info("Pagamento", [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(" \xB7 "))}
             ${info("Note pagamento", profilo.pagamento_note)}
+            ${info("Stato lezioni", profilo.in_vacanza ? "In vacanza" : "")}
           </div>
         </div>
       </div>
@@ -4826,15 +7968,9 @@ function loadScheda(id) {
     showView("scheda");
     currentSchedaId = id;
     recordAppHistory("scheda", id);
-    const shortcut = document.getElementById("scheda-nuova-lezione");
     const prepShortcut = document.getElementById("scheda-prepara-lezione");
-    const postumaShortcut = document.getElementById("scheda-lezione-postuma");
-    shortcut.hidden = false;
-    shortcut.onclick = () => showView("nuova-lezione", id);
     prepShortcut.hidden = false;
     prepShortcut.onclick = () => showView("nuova-lezione", `modo:prep:${id}`);
-    postumaShortcut.hidden = false;
-    postumaShortcut.onclick = () => showView("nuova-lezione", `modo:postuma:${id}`);
     document.getElementById("scheda-content").innerHTML = '<div class="loading">Caricamento\u2026</div>';
     const allievo = allAllievi.find((a) => a.id === id);
     const [{ data: progressiRaw }, { data: laRows }] = yield Promise.all([
@@ -4905,7 +8041,9 @@ function loadScheda(id) {
         </div>`).join("") : '<div class="empty">Nessuna skill registrata ancora.</div>';
     const p = allievo.profilo || {};
     const logisticaScheda = logisticaIndividualeProfilo(p, !!allievo.gruppo);
+    const logisticaGruppoScheda = allievo.gruppo ? profiloComuneGruppo(gruppoMembri(allievo.gruppo)) : {};
     const addressScheda = visibleAllievoAddress(allievo);
+    const etaScheda = allievoEtaLabel(allievo.data_nascita);
     function dotsRo(val) {
       return [1, 2, 3].map((i) => `<span class="dot-ro${i <= val ? " filled" : ""}"></span>`).join("");
     }
@@ -4917,21 +8055,26 @@ function loadScheda(id) {
         <strong>${esc([f.nome, f.cognome].filter(Boolean).join(" "))}</strong>${f.relazione ? ` \u2014 ${esc(f.relazione)}` : ""}${f.telefono ? ` \xB7 <a href="tel:${esc(f.telefono)}" style="color:var(--blu)">${esc(f.telefono)}</a>` : ""}
       </div>`).join("") : '<span style="color:var(--muted);font-size:.87rem">Nessun familiare registrato.</span>';
     const compenso = logisticaScheda.compenso ? "\u20AC " + Number(logisticaScheda.compenso).toFixed(2) : null;
+    const compensoGruppo = logisticaGruppoScheda.compenso ? "\u20AC " + Number(logisticaGruppoScheda.compenso).toFixed(2) : null;
     const hasPagamento = !!(compenso || logisticaScheda.pagamento_metodo || logisticaScheda.pagamento_stato || logisticaScheda.pagamento_note);
+    const hasLogisticaIndividuale = !!(logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento);
+    const hasPagamentoGruppo = !!(compensoGruppo || logisticaGruppoScheda.pagamento_metodo || logisticaGruppoScheda.pagamento_stato || logisticaGruppoScheda.pagamento_note);
+    const hasLogisticaGruppo = !!(logisticaGruppoScheda.appuntamento || logisticaGruppoScheda.luogo_incontro || logisticaGruppoScheda.durata_lezione || hasPagamentoGruppo || logisticaGruppoScheda.in_vacanza);
     const isAss = allievo.tipo === "associazione";
+    const statoVacanza = vacationLabel(allievo);
     const headerExtra = isAss ? `<div class="scheda-meta" style="margin-top:.3rem">
          <span style="background:var(--blu-chiaro);color:var(--blu);font-size:.75rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase">Associazione</span>
          ${p.categoria_accompagnatori ? `<span style="margin-left:.5rem;color:var(--muted);font-size:.87rem">${esc(p.categoria_accompagnatori)}</span>` : ""}
        </div>` : `<div class="scheda-meta">
-         Livello ${allievo.livello_attuale} \xB7 ${esc(allievo.blocco_attuale)}
-         ${allievo.data_nascita ? ` \xB7 Nato il ${formatDate(allievo.data_nascita)}` : ""}
-       </div>`;
+	         Livello ${allievo.livello_attuale} \xB7 ${esc(allievo.blocco_attuale)}
+	         ${allievo.data_nascita ? ` \xB7 Nato il ${formatDate(allievo.data_nascita)}${etaScheda ? ` \xB7 ${esc(etaScheda)}` : ""}` : ""}
+	       </div>`;
     document.getElementById("scheda-content").innerHTML = `
     <div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
           <div class="scheda-nome">
-            ${esc(allievo.nome)}${!isAss && allievo.cognome ? " " + esc(allievo.cognome) : ""}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ""}${allievo.vip ? ' <span class="vip-star">\u2605</span>' : ""}
+            ${esc(allievo.nome)}${!isAss && allievo.cognome ? " " + esc(allievo.cognome) : ""}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ""}${allievoTier(allievo) === "VIP" ? ' <span class="vip-star">\u2605</span>' : ""}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
        </div>
@@ -4940,6 +8083,7 @@ function loadScheda(id) {
             <button class="btn btn-outline btn-sm" onclick="toggleActionMenu('scheda-actions-${id}', event)" type="button">Azioni</button>
             <div class="inline-action-panel" id="scheda-actions-${id}" hidden>
               <button class="btn btn-ghost btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
+              ${canShareAllievo(allievo) ? `<button class="btn btn-ghost btn-sm" onclick="apriCondividiAllievo('${id}')">Condividi</button>` : ""}
               <button class="btn btn-ghost btn-sm" onclick="eliminaAllievo('${id}')">${allievo.stato === "archiviato" ? "Elimina definitivamente" : "Archivia"}</button>
               <button class="btn btn-ghost btn-sm" onclick="esportaAllievo('${id}')">JSON</button>
               <button class="btn btn-ghost btn-sm" onclick="stampaScheda('${id}')">Stampa</button>
@@ -4965,13 +8109,16 @@ function loadScheda(id) {
         ${(p.familiari || []).length ? `<div style="margin-bottom:.75rem"><div class="info-label" style="margin-bottom:.3rem">Familiari / Tutori</div>${famHtml}</div>` : ""}
         <div class="info-grid">
           ${infoRow("Email", allievo.email ? `<a href="mailto:${esc(allievo.email)}" style="color:var(--blu)">${esc(allievo.email)}</a>` : null, true)}
-          ${infoRow("Telefono", allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
-          ${infoRow("Iscritto il", allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
-          ${infoRow("Indirizzo", addressScheda.indirizzo)}
+	          ${infoRow("Telefono", allievo.telefono ? `<a href="tel:${esc(allievo.telefono)}" style="color:var(--blu)">${esc(allievo.telefono)}</a>` : null, true)}
+	          ${infoRow("Iscritto il", allievo.data_iscrizione ? formatDate(allievo.data_iscrizione) : null)}
+	          ${infoRow("Et\xE0", etaScheda)}
+	          ${infoRow("Indirizzo", addressScheda.indirizzo)}
           ${infoRow("Casa", addressScheda.casa)}
+          ${parseMapCoordinate(addressScheda.casa_latitudine) !== null && parseMapCoordinate(addressScheda.casa_longitudine) !== null ? infoRow("GPS casa", `${formatMapCoordinate(addressScheda.casa_latitudine)}, ${formatMapCoordinate(addressScheda.casa_longitudine)}`) : ""}
           ${p.indirizzo_condiviso ? infoRow("Privacy indirizzo", "Condiviso con altri maestri") : ""}
           ${infoRow("Cultura / lingua", p.cultura)}
           ${infoRow("Gruppo", allievo.gruppo)}
+          ${infoRow("Stato lezioni", statoVacanza)}
         </div>
       </div>
 
@@ -4979,19 +8126,36 @@ function loadScheda(id) {
       <p class="sec-title">Salute e attenzioni</p>
       <div class="card"><div class="lezione-read-note">${esc(p.note_salute)}</div></div>` : ""}
 
-      ${logisticaScheda.appuntamento || logisticaScheda.luogo_incontro || logisticaScheda.durata_lezione || hasPagamento ? `
+      ${hasLogisticaIndividuale || hasLogisticaGruppo ? `
       <p class="sec-title">Logistica</p>
+      ${hasLogisticaIndividuale ? `
       <div class="card">
+        ${allievo.gruppo ? '<div class="info-label" style="margin-bottom:.45rem">Lezioni individuali</div>' : ""}
         <div class="info-grid">
           ${infoRow("Appuntamento", logisticaScheda.appuntamento)}
           ${infoRow("Durata lezione", logisticaScheda.durata_lezione ? logisticaScheda.durata_lezione + " min" : null)}
-          ${infoRow("Luogo", logisticaScheda.luogo_incontro)}
+          ${infoRow("Luogo di incontro", logisticaScheda.luogo_incontro)}
           ${infoRow("Compenso lezione", compenso)}
           ${infoRow("Metodo pagamento", logisticaScheda.pagamento_metodo)}
           ${infoRow("Stato pagamento", logisticaScheda.pagamento_stato)}
           ${infoRow("Note pagamento", logisticaScheda.pagamento_note)}
         </div>
       </div>` : ""}
+      ${hasLogisticaGruppo ? `
+      <div class="card">
+        <div class="info-label" style="margin-bottom:.45rem">Lezioni di gruppo${allievo.gruppo ? ` \xB7 ${esc(allievo.gruppo)}` : ""}</div>
+        <div class="info-grid">
+          ${infoRow("Appuntamento", logisticaGruppoScheda.appuntamento)}
+          ${infoRow("Durata lezione", logisticaGruppoScheda.durata_lezione ? logisticaGruppoScheda.durata_lezione + " min" : null)}
+          ${infoRow("Luogo di incontro", logisticaGruppoScheda.luogo_incontro)}
+          ${infoRow("Compenso lezione", compensoGruppo)}
+          ${infoRow("Metodo pagamento", logisticaGruppoScheda.pagamento_metodo)}
+          ${infoRow("Stato pagamento", logisticaGruppoScheda.pagamento_stato)}
+          ${infoRow("Note pagamento", logisticaGruppoScheda.pagamento_note)}
+          ${infoRow("Stato lezioni", logisticaGruppoScheda.in_vacanza ? "In vacanza" : "")}
+        </div>
+      </div>` : ""}
+      ` : ""}
 
       <p class="sec-title">Profilo psicomotorio</p>
       <div class="card">
@@ -6135,6 +9299,10 @@ function chiudiCondividi() {
 function apriCondividiAllievo(id) {
   const allievo = allAllievi.find((a) => a.id === id);
   if (!allievo) return;
+  if (!canShareAllievo(allievo)) {
+    alert("Puoi condividere solo allievi assegnati al tuo account.");
+    return;
+  }
   shareContext = { type: "allievo", ids: [id], label: [allievo.nome, allievo.cognome].filter(Boolean).join(" ") };
   document.getElementById("condividi-title").textContent = "Condividi allievo";
   document.getElementById("condividi-help").textContent = `Condividi ${shareContext.label} con un altro maestro. Potra vedere e modificare la scheda.`;
@@ -6142,17 +9310,22 @@ function apriCondividiAllievo(id) {
   document.getElementById("condividi-err").classList.remove("show");
   document.getElementById("condividi-ok").classList.remove("show");
   document.getElementById("modal-condividi").hidden = false;
+  document.getElementById("condividi-email").focus();
 }
 function apriCondividiGruppo(gruppo) {
-  const membri = allAllievi.filter((a) => a.gruppo === gruppo).map((a) => a.id);
-  if (!membri.length) return;
-  shareContext = { type: "gruppo", ids: membri, label: gruppo };
+  const membri = shareableGruppoMembri(gruppo);
+  if (!membri.length) {
+    alert("Puoi condividere solo gruppi con allievi attivi assegnati al tuo account.");
+    return;
+  }
+  shareContext = { type: "gruppo", ids: membri.map((a) => a.id), label: gruppo };
   document.getElementById("condividi-title").textContent = "Condividi gruppo";
   document.getElementById("condividi-help").textContent = `Condividi il gruppo "${gruppo}" (${membri.length} allievi) con un altro maestro.`;
   document.getElementById("condividi-email").value = "";
   document.getElementById("condividi-err").classList.remove("show");
   document.getElementById("condividi-ok").classList.remove("show");
   document.getElementById("modal-condividi").hidden = false;
+  document.getElementById("condividi-email").focus();
 }
 function confermaCondividi() {
   return __async(this, null, function* () {
@@ -6171,6 +9344,16 @@ function confermaCondividi() {
       err.classList.add("show");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = "Inserisci una email valida.";
+      err.classList.add("show");
+      return;
+    }
+    if (email === currentEmail) {
+      err.textContent = "Questo maestro e gia il tuo account.";
+      err.classList.add("show");
+      return;
+    }
     try {
       const { data: maestroId, error: rpcError } = yield sb.rpc("find_maestro_by_email", { email_input: email });
       if (rpcError) throw rpcError;
@@ -6184,6 +9367,7 @@ function confermaCondividi() {
       if (error) throw error;
       ok.textContent = shareContext.type === "gruppo" ? `Gruppo condiviso con ${email}.` : `Allievo condiviso con ${email}.`;
       ok.classList.add("show");
+      yield ricaricaAllievi();
     } catch (e) {
       err.textContent = e.message || "Errore nella condivisione.";
       err.classList.add("show");
@@ -6392,7 +9576,14 @@ function importaAllievo(input) {
       return;
     }
     const _a2 = src, { id: _old, creato_il, aggiornato_il, maestro_id: _mid } = _a2, rest = __objRest(_a2, ["id", "creato_il", "aggiornato_il", "maestro_id"]);
-    const payload = __spreadProps(__spreadValues({}, rest), { maestro_id: currentUid, stato: rest.stato || "attivo" });
+    let writeUid;
+    try {
+      writeUid = yield requireCurrentUidForWrite();
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
+    const payload = __spreadProps(__spreadValues({}, rest), { maestro_id: writeUid, stato: rest.stato || "attivo" });
     const { data, error } = yield sb.from("allievi").insert(payload).select().single();
     if (error) {
       alert("Errore importazione: " + error.message);
@@ -6462,7 +9653,7 @@ function stampaScheda(id) {
 
 <div class="header">
   <div>
-    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ""}${allievo.vip ? ' <span style="color:#22b8cf">\u2605</span>' : ""}</h1>
+    <h1>${allievo.nome} ${allievo.cognome}${allievo.nickname ? ` <span style="font-size:13px;color:#64748b;font-weight:400">"${allievo.nickname}"</span>` : ""}${allievoTier(allievo) === "VIP" ? ' <span style="color:#22b8cf">\u2605</span>' : ""}</h1>
     <div class="meta">
       Iscritto il ${fmtDate(allievo.data_iscrizione)}${allievo.data_nascita ? ` \xB7 Nato il ${fmtDate(allievo.data_nascita)}` : ""}${allievo.gruppo ? ` \xB7 Gruppo: ${allievo.gruppo}` : ""}
     </div>
@@ -6479,7 +9670,7 @@ ${p.note_salute ? `<div class="box"><div class="sec-title">Salute e attenzioni</
 
 <div class="box">
   <div class="sec-title">Logistica</div>
-  <table>${row("Appuntamento", p.appuntamento)}${row("Durata lezione", p.durata_lezione ? p.durata_lezione + " min" : null)}${row("Luogo", p.luogo_incontro)}${row("Compenso", p.compenso ? "\u20AC " + Number(p.compenso).toFixed(2) : null)}</table>
+  <table>${row("Appuntamento", p.appuntamento)}${row("Durata lezione", p.durata_lezione ? p.durata_lezione + " min" : null)}${row("Luogo di incontro", p.luogo_incontro)}${row("Compenso", p.compenso ? "\u20AC " + Number(p.compenso).toFixed(2) : null)}</table>
 </div>
 
 <div class="box">
@@ -6587,6 +9778,9 @@ function isMissingLessonCheckError(error) {
 function isMissingLessonMeteoError(error) {
   return !!error && /\b(meteo|weather)\b/i.test(error.message || error.details || error.hint || "");
 }
+function isMissingLessonLocationIdError(error) {
+  return !!error && /\blocation_id\b/i.test(error.message || error.details || error.hint || "");
+}
 function hasLessonSkillMetadata(payload = {}) {
   return !!(payload == null ? void 0 : payload.dimensioni) && Object.keys(payload.dimensioni).length > 0;
 }
@@ -6602,7 +9796,11 @@ function loadLezioni(force = false) {
     }
     const el = document.getElementById("lezioni-content");
     el.innerHTML = '<div class="loading">Caricamento\u2026</div>';
-    let { data, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))").order("data", { ascending: false });
+    let { data, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, location_id, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))").order("data", { ascending: false });
+    if (isMissingLessonLocationIdError(error)) {
+      ;
+      ({ data, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))").order("data", { ascending: false }));
+    }
     if (isMissingLessonMeteoError(error)) {
       ;
       ({ data, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, updated_at, lezioni_allievi(allievi(id, nome, cognome, gruppo, maestro_id)), lezioni_skills(stadio_raggiunto, dimensioni, skills(nome))").order("data", { ascending: false }));
@@ -6629,7 +9827,7 @@ function loadLezioni(force = false) {
       el.innerHTML = `<div class="empty">${esc(error.message || "Errore nel caricamento lezioni.")}</div>`;
       return;
     }
-    lezioniCache = data || [];
+    lezioniCache = (data || []).sort((a, b) => lessonSortToken(b).localeCompare(lessonSortToken(a)) || String(b.id || "").localeCompare(String(a.id || "")));
     renderLezioni({ animate: true });
     renderDashboard();
   });
@@ -6742,7 +9940,7 @@ function renderRowsLezioni(lezioni, { showYearGroups = true, variant = "lista", 
   const annoCorrente = (/* @__PURE__ */ new Date()).getFullYear();
   const passate = /* @__PURE__ */ new Map();
   const rows = [];
-  lezioni.forEach((l) => {
+  [...lezioni || []].sort((a, b) => lessonSortToken(b).localeCompare(lessonSortToken(a)) || String(b.id || "").localeCompare(String(a.id || ""))).forEach((l) => {
     const anno = Number(String(l.data || "").slice(0, 4)) || annoCorrente;
     if (showYearGroups && anno < annoCorrente) {
       if (!passate.has(anno)) passate.set(anno, []);
@@ -6785,7 +9983,7 @@ function renderLezioneListaRow(l, { variant = "lista", schedaId = null, gruppoNo
   const nomi = labelPartecipantiLezione(l);
   const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : "";
   const status = lessonStatus(l) === "aperta" ? '<span class="lesson-status-badge">Aperta</span>' : "";
-  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || "").slice(0, 10))}')">${formatDate(l.data)}</span>`;
+  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || "").slice(0, 10))}')">${formatLessonDate(l)}</span>`;
   const luogoLink = l.luogo ? `<span class="linkish" onclick="event.stopPropagation(); openLocation(${jsArg(l.luogo)})">${esc(l.luogo)}</span>` : "\u2014";
   const noteSpeciali = lessonSpecialNotes(l);
   if (variant === "scheda") {
@@ -6819,7 +10017,7 @@ function openLessonParticipantTarget(lezioneId) {
 }
 function openDayLessonsWidget(date) {
   const day = String(date || "").slice(0, 10);
-  const lessons = (lezioniCache || []).filter((l) => String(l.data || "").slice(0, 10) === day);
+  const lessons = (lezioniCache || []).filter((l) => String(l.data || "").slice(0, 10) === day).sort((a, b) => lessonSortToken(a).localeCompare(lessonSortToken(b)));
   const existing = document.getElementById("modal-day-lessons");
   if (existing) existing.remove();
   const overlay = document.createElement("div");
@@ -6834,7 +10032,7 @@ function openDayLessonsWidget(date) {
       <div style="display:grid;gap:.45rem">
         ${lessons.length ? lessons.map((l) => `
           <button type="button" class="btn btn-outline" style="justify-content:space-between;text-align:left" onclick="var modal=document.getElementById('modal-day-lessons'); if(modal) modal.remove(); openLezione(${jsArg(l.id)})">
-            <span>${esc(labelPartecipantiLezione(l))}</span>
+            <span>${esc(lessonTime(l) ? `${lessonTime(l)} \xB7 ${labelPartecipantiLezione(l)}` : labelPartecipantiLezione(l))}</span>
             <span style="color:var(--muted)">${l.luogo ? esc(l.luogo) : "\u2014"}</span>
           </button>`).join("") : '<div class="empty">Nessuna lezione in questo giorno.</div>'}
       </div>
@@ -6850,7 +10048,16 @@ function lessonSideFeedbackCompactLabel(value) {
   const side = normalizedLessonSideFeedback(value);
   return side === "bilaterale" ? "" : lessonSideFeedbackLabel(side);
 }
+function lessonStudentResultFromRows(rows = []) {
+  var _a2;
+  const row = (rows || []).find((r) => {
+    var _a3;
+    return (_a3 = r == null ? void 0 : r.dimensioni) == null ? void 0 : _a3.esito;
+  });
+  return ((_a2 = row == null ? void 0 : row.dimensioni) == null ? void 0 : _a2.esito) ? normalizedLessonResult(row.dimensioni.esito) : "";
+}
 function renderSkillChipsLezione(lezione, allievoId = null) {
+  const isGroupLesson = (lezione == null ? void 0 : lezione.tipo) === "gruppo";
   const viste = /* @__PURE__ */ new Set();
   const skills = (lezione.lezioni_skills || []).filter((ls) => !allievoId || !ls.allievo_id || String(ls.allievo_id) === String(allievoId)).map((ls) => {
     var _a2, _b2, _c;
@@ -6862,7 +10069,7 @@ function renderSkillChipsLezione(lezione, allievoId = null) {
     return true;
   });
   return skills.length ? skills.map((s) => {
-    const feedback = [lessonResultCompactLabel(s.esito), lessonSideFeedbackCompactLabel(s.latoFeedback)].filter(Boolean).join(" \xB7 ");
+    const feedback = isGroupLesson ? "" : [lessonResultCompactLabel(s.esito), lessonSideFeedbackCompactLabel(s.latoFeedback)].filter(Boolean).join(" \xB7 ");
     return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ""}${feedback ? ` \xB7 ${esc(feedback)}` : ""}</span>`;
   }).join(" ") : "\u2014";
 }
@@ -6912,6 +10119,7 @@ function toggleFiltroLezioniAperte() {
 }
 function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || [];
+  const isGroupLesson = (lezione == null ? void 0 : lezione.tipo) === "gruppo";
   const viste = /* @__PURE__ */ new Set();
   const skills = skillRows.map((ls) => {
     var _a2, _b2, _c, _d;
@@ -6923,7 +10131,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
     return true;
   });
   const skillsHtml = skills.length ? skills.map((s) => {
-    const feedback = [s.esito ? lessonResultLabel(s.esito) : "", s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ""].filter(Boolean).join(" \xB7 ");
+    const feedback = isGroupLesson ? "" : [s.esito ? lessonResultLabel(s.esito) : "", s.latoFeedback ? lessonSideFeedbackLabel(s.latoFeedback) : ""].filter(Boolean).join(" \xB7 ");
     return `<span class="st st${s.stadio}">${esc(s.nome)}${s.originale ? ` <span class="skill-origin-note">prima: ${esc(s.originale)}</span>` : ""}${feedback ? ` \xB7 ${esc(feedback)}` : ""}${s.esercizi.length ? ` \xB7 ${esc(s.esercizi.join(", "))}` : ""}</span>`;
   }).join("") : '<span class="lezione-empty-detail">Nessuna skill registrata.</span>';
   const parsedNotes = lessonParsedNotes(lezione);
@@ -7093,7 +10301,7 @@ function loadLezione(id) {
       const label = isPrev ? "Lezione precedente" : "Lezione successiva";
       const arrow = isPrev ? "\u2039" : "\u203A";
       if (!target) return `<button type="button" class="lezione-nav-arrow" disabled aria-label="${label}">${arrow}</button>`;
-      return `<button type="button" class="lezione-nav-arrow" onclick="openLezione(${jsArg(target.id)},${jsArg(navStessoAllievo.allievoId)},${jsArg(navStessoAllievo.gruppoNome)})" title="${label}: ${esc(formatDateWithWeekday(target.data))}" aria-label="${label}">${arrow}</button>`;
+      return `<button type="button" class="lezione-nav-arrow" onclick="openLezione(${jsArg(target.id)},${jsArg(navStessoAllievo.allievoId)},${jsArg(navStessoAllievo.gruppoNome)})" title="${label}: ${esc(formatLessonDateWithWeekday(target))}" aria-label="${label}">${arrow}</button>`;
     };
     const partecipantiHtml = partecipanti.length ? partecipanti.map((a) => {
       const nomeCompleto = [a.nome, a.cognome].filter(Boolean).join(" ");
@@ -7115,6 +10323,8 @@ function loadLezione(id) {
     const skillsHtml = Object.keys(skillsByAllievo).length ? Object.entries(skillsByAllievo).map(([allievoId, rows]) => {
       const allievo = partecipanti.find((a) => a.id === allievoId);
       const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(" ") : "Skill lavorate";
+      const studentResult = lezione.tipo === "gruppo" ? lessonStudentResultFromRows(rows) : "";
+      const titoloFeedback = studentResult ? ` \xB7 ${lessonResultLabel(studentResult)}` : "";
       const chips = rows.filter((r) => {
         var _a2;
         return (_a2 = r.skills) == null ? void 0 : _a2.nome;
@@ -7122,7 +10332,7 @@ function loadLezione(id) {
         var _a2, _b2, _c, _d;
         const direzione = ((_a2 = r.dimensioni) == null ? void 0 : _a2.direzione) || (r.fakie ? "fakie" : "");
         const esercizi = normalizeExerciseList((_b2 = r.dimensioni) == null ? void 0 : _b2.esercizi);
-        const feedback = [((_c = r.dimensioni) == null ? void 0 : _c.esito) ? lessonResultLabel(r.dimensioni.esito) : "", ((_d = r.dimensioni) == null ? void 0 : _d.lato_feedback) ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ""].filter(Boolean);
+        const feedback = lezione.tipo === "gruppo" ? [] : [((_c = r.dimensioni) == null ? void 0 : _c.esito) ? lessonResultLabel(r.dimensioni.esito) : "", ((_d = r.dimensioni) == null ? void 0 : _d.lato_feedback) ? lessonSideFeedbackLabel(r.dimensioni.lato_feedback) : ""].filter(Boolean);
         const dimensionLabels = ["lato", "superficie", "piano", "velocita", "assistenza", "stress"].map((key) => {
           var _a3;
           return dimensionValueLabel((_a3 = r.dimensioni) == null ? void 0 : _a3[key]);
@@ -7131,7 +10341,7 @@ function loadLezione(id) {
         return `<span class="st st${r.stadio_raggiunto || 0}">${esc(r.skills.nome)}${extra ? ` \xB7 ${esc(extra)}` : ""}${r.skills.livello ? ` \xB7 Lv.${r.skills.livello}` : ""}</span>`;
       }).join("");
       return `<div class="lezione-read-block">
-          <h4>${esc(titolo)}</h4>
+          <h4>${esc(titolo)}${titoloFeedback ? `<span class="lesson-student-result">${esc(titoloFeedback)}</span>` : ""}</h4>
           <div class="lezione-skill-list">${chips || '<span class="lezione-empty-detail">Nessuna skill registrata.</span>'}</div>
         </div>`;
     }).join("") : '<div class="empty">Nessuna skill registrata.</div>';
@@ -7181,7 +10391,7 @@ function loadLezione(id) {
           <div class="lezione-when-nav">
             ${navArrow(navStessoAllievo.prev, "prev")}
             <div class="lezione-when-main">
-              <div class="lezione-read-date">${formatDateWithWeekday(lezione.data)}</div>
+              <div class="lezione-read-date">${formatLessonDateWithWeekday(lezione)}</div>
               ${dettagliQuando || "<span>Orario e luogo non indicati</span>"}
             </div>
             ${navArrow(navStessoAllievo.next, "next")}
@@ -7226,26 +10436,23 @@ function loadLezione(id) {
 function lezioneFormTitle(isEdit = false) {
   if (isEdit) return "Modifica lezione";
   if (lezioneFormMode === "prep") return "Prepara lezione";
-  if (lezioneFormMode === "postuma") return "Lezione postuma";
   return "Nuova lezione";
 }
 function lezioneFormSaveLabel(isEdit = false) {
   if (isEdit) return "Salva modifiche";
-  if (lezioneFormMode === "prep") return "Salva aperta";
-  if (lezioneFormMode === "postuma") return "Salva lezione fatta";
   return "Salva lezione";
 }
 function syncLezioneFormLabels(isEdit = !!editingLezioneId) {
   document.getElementById("lz-title").textContent = lezioneFormTitle(isEdit);
   document.getElementById("btn-salva-lz").textContent = lezioneFormSaveLabel(isEdit);
   document.getElementById("btn-salva-lz-top").textContent = lezioneFormSaveLabel(isEdit);
-  const prep = lezioneFormMode === "prep" && !isEdit;
-  document.getElementById("lz-check-title").hidden = prep;
-  document.getElementById("lz-check-grid").hidden = prep;
-  document.getElementById("lz-note-field").hidden = prep;
+  [document.getElementById("btn-salva-lz"), document.getElementById("btn-salva-lz-top")].filter(Boolean).forEach((btn) => {
+    btn.hidden = false;
+  });
 }
 function initNuovaLezione(presetAllievoId = null) {
   return __async(this, null, function* () {
+    var _a2;
     editingLezioneId = null;
     editingLezioneAllieviIds = [];
     editingLezioneSkillRows = {};
@@ -7255,30 +10462,33 @@ function initNuovaLezione(presetAllievoId = null) {
       lezioneFormMode = "prep";
       explicitLezioneMode = true;
       presetAllievoId = presetAllievoId.startsWith("modo:prep:") ? presetAllievoId.slice("modo:prep:".length) : null;
-    } else if (typeof presetAllievoId === "string" && presetAllievoId.startsWith("modo:postuma")) {
-      lezioneFormMode = "postuma";
-      explicitLezioneMode = true;
-      presetAllievoId = presetAllievoId.startsWith("modo:postuma:") ? presetAllievoId.slice("modo:postuma:".length) : null;
     }
     const editId = typeof presetAllievoId === "string" && presetAllievoId.startsWith("lezione:") ? presetAllievoId.slice("lezione:".length) : null;
     const groupPreset = typeof presetAllievoId === "string" && presetAllievoId.startsWith("gruppo:") ? presetAllievoId.slice("gruppo:".length) : null;
+    if (!editId && !groupPreset && !explicitLezioneMode) {
+      showView("lezioni");
+      return;
+    }
     lezionePresetAllievoId = editId || groupPreset ? null : presetAllievoId;
     if (!editId) {
       lezioneBackAllievoId = groupPreset ? null : presetAllievoId || null;
       lezioneBackGruppoNome = groupPreset || null;
     }
     document.getElementById("lz-data").value = localDateIso();
+    document.getElementById("lz-ora").value = "";
     document.getElementById("lz-durata").value = "";
     document.getElementById("lz-luogo").value = "";
+    const locationSelect = document.getElementById("lz-location-id");
+    if (locationSelect) locationSelect.innerHTML = '<option value="">Luogo manuale / nessuna location</option>';
     document.getElementById("lz-meteo").value = "";
-    setLessonStatus(lezioneFormMode === "postuma" ? "chiusa" : "aperta");
+    setLessonStatus("aperta");
     document.getElementById("lz-luogo-suggest").hidden = true;
     document.getElementById("lz-luogo-suggest").innerHTML = "";
     document.getElementById("lz-note-speciali").value = "";
     document.getElementById("lz-check-bene").value = "";
     document.getElementById("lz-check-non-fatto").value = "";
     document.getElementById("lz-note").value = "";
-    document.getElementById("lz-err").classList.remove("show");
+    clearLezioneFormMessage();
     document.getElementById("lz-prep-board").hidden = true;
     document.getElementById("lz-prep-board").innerHTML = "";
     document.getElementById("lz-skills-container").innerHTML = "";
@@ -7288,11 +10498,18 @@ function initNuovaLezione(presetAllievoId = null) {
     document.getElementById("lz-hidden-checks").innerHTML = "";
     document.getElementById("lz-special-guest-panel").hidden = true;
     document.getElementById("lz-special-guest-panel").innerHTML = "";
+    editingLezioneGroupFeedback = {};
     syncLezioneFormLabels(!!editId);
     document.getElementById("btn-cancella-lz").hidden = !editId;
     document.getElementById("lz-back-btn").textContent = lezioneBackLabel();
+    renderLezioneTargetOptions();
+    ensurePrepFallbackTarget(presetAllievoId);
     if (editId) {
-      let { data: lezione, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)").eq("id", editId).single();
+      let { data: lezione, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, location_id, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)").eq("id", editId).single();
+      if (isMissingLessonLocationIdError(error)) {
+        ;
+        ({ data: lezione, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, meteo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)").eq("id", editId).single());
+      }
       if (isMissingLessonMeteoError(error)) {
         ;
         ({ data: lezione, error } = yield sb.from("lezioni").select("id, data, tipo, durata_min, luogo, note, note_speciali, stato, check_bene, check_non_fatto, lezioni_allievi(allievo_id), lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni)").eq("id", editId).single());
@@ -7328,18 +10545,21 @@ function initNuovaLezione(presetAllievoId = null) {
       editingLezioneId = editId;
       editingLezioneAllieviIds = (lezione.lezioni_allievi || []).map((r) => r.allievo_id).filter(Boolean);
       (lezione.lezioni_skills || []).forEach((r) => {
-        if (!r.allievo_id) return;
-        if (!editingLezioneSkillRows[r.allievo_id]) editingLezioneSkillRows[r.allievo_id] = [];
-        editingLezioneSkillRows[r.allievo_id].push({
+        const ownerId = r.allievo_id || FREE_LESSON_SKILL_ROWS_KEY;
+        if (!editingLezioneSkillRows[ownerId]) editingLezioneSkillRows[ownerId] = [];
+        if (r.allievo_id) rememberGroupStudentFeedback(r.allievo_id, r.dimensioni || {});
+        editingLezioneSkillRows[ownerId].push({
           skillId: r.skill_id,
           stadio: r.stadio_raggiunto || 1,
           fakie: !!r.fakie,
-          dimensioni: r.dimensioni || null
+          dimensioni: lezione.tipo === "gruppo" ? lessonSkillOnlyDimensions(r.dimensioni || {}) : r.dimensioni || null
         });
       });
       document.getElementById("lz-data").value = lezione.data || "";
+      document.getElementById("lz-ora").value = lessonTime(lezione);
       document.getElementById("lz-durata").value = lezione.durata_min || "";
       document.getElementById("lz-luogo").value = lezione.luogo || "";
+      renderLezioneLocationSelect(lezione.location_id || "", lezione.luogo || "");
       setLessonStatus(lessonStatus(lezione));
       const parsedNotes = lessonParsedNotes(lezione);
       document.getElementById("lz-meteo").value = parsedNotes.meteo || "";
@@ -7349,15 +10569,36 @@ function initNuovaLezione(presetAllievoId = null) {
       document.getElementById("lz-note").value = parsedNotes.note || "";
     }
     renderLezioneTargetOptions();
-    if (editId) setLezioneTargetFromEditing();
-    else if (groupPreset) document.getElementById("lz-tipo").value = `gruppo:${groupPreset}`;
-    else if (lezionePresetAllievoId) document.getElementById("lz-tipo").value = `allievo:${lezionePresetAllievoId}`;
-    else document.getElementById("lz-tipo").value = "";
-    if (editId && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds);
+    let restoredDraft = null;
+    let draftSelectedIds = [];
+    if (editId) {
+      const draft2 = loadLezioneDraft();
+      if ((draft2 == null ? void 0 : draft2.editingLezioneId) && String(draft2.editingLezioneId) === String(editId)) {
+        restoredDraft = draft2;
+        draftSelectedIds = restoreLezioneDraft(draft2);
+        setLezioneFormMessage(`Bozza locale ripristinata: il salvataggio online precedente non era riuscito. Riprova quando sei online.`, "msg-info");
+      } else {
+        setLezioneTargetFromEditing();
+      }
+    } else if (groupPreset) {
+      document.getElementById("lz-tipo").value = `gruppo:${groupPreset}`;
+    } else if (lezionePresetAllievoId) {
+      document.getElementById("lz-tipo").value = `allievo:${lezionePresetAllievoId}`;
+    } else {
+      document.getElementById("lz-tipo").value = "";
+    }
+    if (lezioneFormMode === "prep" && !document.getElementById("lz-tipo").value) {
+      document.getElementById("lz-tipo").value = "campo_libero";
+    }
+    if (editId && !restoredDraft && currentLessonTargetIsGroup()) collapseCommonGroupSkillRows(editingLezioneAllieviIds);
     const draft = !editId && !explicitLezioneMode ? loadLezioneDraft() : null;
-    const draftSelectedIds = draft ? restoreLezioneDraft(draft) : [];
-    if (draft == null ? void 0 : draft.formMode) lezioneFormMode = draft.formMode;
+    if (draft && !draft.editingLezioneId) {
+      restoredDraft = draft;
+      draftSelectedIds = restoreLezioneDraft(draft);
+    }
+    if (draft == null ? void 0 : draft.formMode) lezioneFormMode = draft.formMode === "prep" ? "prep" : "standard";
     syncLezioneFormLabels(!!editId);
+    if (!editId) renderLezioneLocationSelect("", ((_a2 = document.getElementById("lz-luogo")) == null ? void 0 : _a2.value) || "");
     renderLezionePartecipanti();
     if (editId) {
       editingLezioneAllieviIds.filter((id) => !selectedLezioneAllieviIds().includes(id)).forEach((id) => addSpecialGuestToLesson(id));
@@ -7371,6 +10612,7 @@ function initNuovaLezione(presetAllievoId = null) {
   });
 }
 function renderLezionePartecipanti() {
+  var _a2, _b2;
   const target = document.getElementById("lz-tipo").value;
   const listEl = document.getElementById("lz-allievi-list");
   const groupPanel = document.getElementById("lz-gruppo-panel");
@@ -7384,6 +10626,13 @@ function renderLezionePartecipanti() {
   if (target && (errEl == null ? void 0 : errEl.textContent) === "Seleziona allievo, gruppo o campo libero.") {
     errEl.classList.remove("show");
   }
+  if (target === "campo_libero") {
+    renderFreeLessonSkillWorkspace();
+    renderSpecialGuestPanel();
+    renderPrepBoard();
+    refreshSuggerimentiLuogoSeAperti();
+    return;
+  }
   const attivi = allieviSelezionabiliLezione();
   if (!attivi.length) {
     renderSpecialGuestPanel();
@@ -7396,9 +10645,11 @@ function renderLezionePartecipanti() {
     const ids = allieviSelezionabiliLezione().filter((a) => a.gruppo === gruppo).map((a) => a.id);
     setLezioneAllievi(ids);
     renderGroupLessonPanel(gruppo);
-    renderGroupSkillWorkspace();
+    if (lezioneFormMode !== "prep") renderGroupSkillWorkspace();
   }
   lezionePresetAllievoId = null;
+  applyDefaultLessonLocationFromTarget();
+  renderLezioneLocationSelect(((_a2 = document.getElementById("lz-location-id")) == null ? void 0 : _a2.value) || "", ((_b2 = document.getElementById("lz-luogo")) == null ? void 0 : _b2.value) || "");
   renderSpecialGuestPanel();
   renderPrepBoard();
   refreshSuggerimentiLuogoSeAperti();
@@ -7406,6 +10657,56 @@ function renderLezionePartecipanti() {
 function currentLessonTargetIsGroup() {
   var _a2, _b2;
   return (_b2 = (_a2 = document.getElementById("lz-tipo")) == null ? void 0 : _a2.value) == null ? void 0 : _b2.startsWith("gruppo:");
+}
+function currentLessonTargetIsFree() {
+  var _a2;
+  return ((_a2 = document.getElementById("lz-tipo")) == null ? void 0 : _a2.value) === "campo_libero";
+}
+function renderLezioneLocationSelect(selectedId = "", selectedLuogo = "") {
+  return __async(this, null, function* () {
+    const select = document.getElementById("lz-location-id");
+    if (!select) return;
+    yield loadLocations();
+    const names = locationNamesFromLessons();
+    const records = names.map((nome) => locationRecordByName(nome) || { nome });
+    const selectedRecord = selectedId ? locationRecordById(selectedId) : selectedLuogo ? locationRecordByName(selectedLuogo) : null;
+    const value = selectedId || (selectedRecord == null ? void 0 : selectedRecord.id) || "";
+    const options = records.filter((record) => record.id).sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "it", { sensitivity: "base" })).map((record) => `<option value="${esc(record.id)}" ${String(record.id) === String(value) ? "selected" : ""}>${esc(record.nome || "")}</option>`).join("");
+    select.innerHTML = `<option value="">Luogo manuale / nessuna location</option>${options}`;
+    select.value = value;
+  });
+}
+function scegliLocationLezione(locationId) {
+  const record = locationRecordById(locationId);
+  if (!record) return;
+  const input = document.getElementById("lz-luogo");
+  if (input) input.value = record.nome || "";
+}
+function defaultLessonLocationForTarget(targetValue = "") {
+  var _a2;
+  if (targetValue.startsWith("gruppo:")) {
+    const gruppo = targetValue.slice("gruppo:".length);
+    return profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro || "";
+  }
+  if (targetValue.startsWith("allievo:")) {
+    const allievo = allievoById(targetValue.slice("allievo:".length));
+    if (!allievo) return "";
+    const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo);
+    return logistica.luogo_incontro || (!allievo.gruppo ? (_a2 = allievo.profilo) == null ? void 0 : _a2.luogo_incontro : "") || "";
+  }
+  return "";
+}
+function applyDefaultLessonLocationFromTarget() {
+  var _a2;
+  if (editingLezioneId) return;
+  const input = document.getElementById("lz-luogo");
+  const target = ((_a2 = document.getElementById("lz-tipo")) == null ? void 0 : _a2.value) || "";
+  if (!input || input.value.trim()) return;
+  const luogo = defaultLessonLocationForTarget(target);
+  if (luogo) {
+    input.value = luogo;
+    renderLezioneLocationSelect("", luogo);
+  }
 }
 function allievoById(id) {
   return allAllievi.find((a) => a.id === id) || null;
@@ -7425,8 +10726,14 @@ function lezioneTargetLabelAllievo(a) {
 function renderLezioneTargetOptions(selected = "") {
   const sel = document.getElementById("lz-tipo");
   if (!sel) return;
-  const attivi = ordinaAllieviLista(allieviSelezionabiliLezione());
-  const gruppi = gruppiSelezionabiliLezione();
+  let attivi = [];
+  let gruppi = [];
+  try {
+    attivi = ordinaAllieviLista(allieviSelezionabiliLezione());
+    gruppi = gruppiSelezionabiliLezione();
+  } catch (error) {
+    console.error("Lista allievi lezione non disponibile", error);
+  }
   sel.innerHTML = `
     <option value="">\u2014 Seleziona allievo o gruppo \u2014</option>
     ${attivi.length ? `<optgroup label="Allievi">${attivi.map((a) => `<option value="allievo:${a.id}">${esc(lezioneTargetLabelAllievo(a))}</option>`).join("")}</optgroup>` : ""}
@@ -7500,20 +10807,33 @@ function renderGroupLessonPanel(gruppo) {
   panel.innerHTML = `
     <div class="card">
       <p class="form-sec" style="margin-top:0">Presenti</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.35rem .8rem">
+      <div class="group-presence-grid">
         ${membri.map((a) => `
-          <label style="display:flex;align-items:center;gap:.55rem;font-size:.9rem">
-            <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? "checked" : ""} onchange="togglePresenzaGruppoLezione(this)">
-            ${esc(allievoDisplayName(a.id))}
-          </label>`).join("")}
+          <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
+            <label class="group-presence-name">
+              <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? "checked" : ""} onchange="togglePresenzaGruppoLezione(this)">
+              <span>${esc(allievoDisplayName(a.id))}</span>
+            </label>
+            ${renderGroupStudentFeedbackControls(a.id, selected.has(a.id))}
+          </div>`).join("")}
       </div>
-      ${guests.length ? `<div style="margin-top:.75rem;color:var(--muted);font-size:.86rem">Guest: ${guests.map((a) => esc(allievoDisplayName(a.id))).join(", ")}</div>` : ""}
+      ${guests.length ? `<div class="group-presence-guests">
+        <div class="lesson-skill-hint">Guest</div>
+        ${guests.map((a) => `
+          <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
+            <div class="group-presence-name"><span>${esc(allievoDisplayName(a.id))}</span></div>
+            ${renderGroupStudentFeedbackControls(a.id, true)}
+          </div>`).join("")}
+      </div>` : ""}
     </div>`;
+  syncGroupStudentFeedbackVisibility();
 }
 function togglePresenzaGruppoLezione(cb) {
+  var _a2, _b2;
   const hidden = [...document.querySelectorAll("#lz-hidden-checks input")].find((input) => input.value === cb.value);
   if (hidden) hidden.checked = cb.checked;
   else if (cb.checked) document.getElementById("lz-hidden-checks").insertAdjacentHTML("beforeend", `<input type="checkbox" value="${cb.value}" checked>`);
+  (_b2 = (_a2 = cb.closest(".group-presence-row")) == null ? void 0 : _a2.querySelector(".group-student-feedback")) == null ? void 0 : _b2.classList.toggle("is-unselected", !cb.checked);
   refreshGroupExclusionControls();
   renderGroupIndividualControls();
   renderSpecialGuestPanel();
@@ -7552,23 +10872,42 @@ function luoghiFrequentatiAllievi(ids) {
     if (luoghiLezioneCache.has(key)) return luoghiLezioneCache.get(key);
     const { data } = yield sb.from("lezioni_allievi").select("lezioni(luogo, data)").in("allievo_id", cleanIds);
     const stats = /* @__PURE__ */ new Map();
+    const addStat = (luogo, count = 1, latest = "") => {
+      const clean = String(luogo || "").trim();
+      if (!clean) return;
+      const k = normalizeText(clean);
+      const prev = stats.get(k) || { luogo: clean, count: 0, latest: "" };
+      prev.count += count;
+      if (String(latest || "") > prev.latest) prev.latest = String(latest || "");
+      stats.set(k, prev);
+    };
     (data || []).forEach((row) => {
-      var _a2, _b2, _c, _d;
+      var _a2, _b2, _c;
       const luogo = (_b2 = (_a2 = row.lezioni) == null ? void 0 : _a2.luogo) == null ? void 0 : _b2.trim();
       if (!luogo) return;
-      const k = normalizeText(luogo);
-      const prev = stats.get(k) || { luogo, count: 0, latest: "" };
-      prev.count += 1;
-      if (String(((_c = row.lezioni) == null ? void 0 : _c.data) || "") > prev.latest) prev.latest = String(((_d = row.lezioni) == null ? void 0 : _d.data) || "");
-      stats.set(k, prev);
+      addStat(luogo, 1, (_c = row.lezioni) == null ? void 0 : _c.data);
+      lessonLocationEntries(luogo, cleanIds).forEach((entry) => {
+        var _a3;
+        return addStat(entry.nome, 2, (_a3 = row.lezioni) == null ? void 0 : _a3.data);
+      });
     });
     (yield loadLocations()).forEach((loc) => {
       const luogo = String(loc.nome || "").trim();
-      if (!luogo) return;
-      const k = normalizeText(luogo);
-      const prev = stats.get(k) || { luogo, count: 0, latest: "" };
-      prev.count += loc.tipologia === "Casa allievo" ? 2 : 1;
-      stats.set(k, prev);
+      addStat(luogo, loc.tipologia === "Casa allievo" ? 2 : 1);
+    });
+    cleanIds.map((id) => allievoById(id)).filter(Boolean).forEach((allievo) => {
+      var _a2;
+      const logistica = logisticaIndividualeProfilo(allievo.profilo || {}, !!allievo.gruppo);
+      const luogo = String(logistica.luogo_incontro || (!allievo.gruppo ? (_a2 = allievo.profilo) == null ? void 0 : _a2.luogo_incontro : "") || "").trim();
+      addStat(luogo, 4);
+    });
+    const gruppi = [...new Set(cleanIds.map((id) => {
+      var _a2;
+      return (_a2 = allievoById(id)) == null ? void 0 : _a2.gruppo;
+    }).filter(Boolean))];
+    gruppi.forEach((gruppo) => {
+      const luogo = String(profiloComuneGruppo(gruppoMembri(gruppo)).luogo_incontro || "").trim();
+      addStat(luogo, 5);
     });
     const luoghi = [...stats.values()].sort((a, b) => b.count - a.count || b.latest.localeCompare(a.latest) || a.luogo.localeCompare(b.luogo, "it", { sensitivity: "base" })).map((item) => item.luogo);
     luoghiLezioneCache.set(key, luoghi);
@@ -7601,21 +10940,43 @@ function mostraSuggerimentiLuogo() {
     }
     const query = normalizeText(input.value);
     const luoghi = (yield luoghiFrequentatiAllievi(ids)).filter((luogo) => !query || normalizeText(luogo).includes(query)).slice(0, 8);
+    const manualValue = input.value.trim();
+    const missingEntries = manualValue ? missingLessonLocationEntries(manualValue, ids) : [];
+    const canCreate = missingEntries.length > 0;
+    const createLabel = missingEntries.length > 1 ? "Crea location mancanti" : "Crea nuova location";
+    const createDetail = missingEntries.map((entry) => entry.nome).join(" \xB7 ");
     if (!luoghi.length) {
-      panel.innerHTML = '<div class="place-suggest-empty">Nessun luogo gi\xE0 registrato per i presenti.</div>';
+      panel.innerHTML = `<div class="place-suggest-empty">Nessun luogo gi\xE0 registrato per i presenti.</div>${canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>${esc(createLabel)}</strong><span>${esc(createDetail)}</span></button>` : ""}`;
       panel.hidden = false;
       return;
     }
     panel.innerHTML = luoghi.map((luogo) => `
     <button type="button" class="place-suggest-btn" onmousedown="scegliLuogoSuggerito(${jsArg(luogo)})">${esc(luogo)}</button>
-  `).join("");
+  `).join("") + (canCreate ? `<button type="button" class="place-suggest-btn" onmousedown="creaLocationDaLuogoLezione()"><strong>${esc(createLabel)}</strong><span>${esc(createDetail)}</span></button>` : "");
     panel.hidden = false;
   });
 }
 function scegliLuogoSuggerito(luogo) {
   document.getElementById("lz-luogo").value = luogo;
+  renderLezioneLocationSelect("", luogo);
   const panel = document.getElementById("lz-luogo-suggest");
   if (panel) panel.hidden = true;
+}
+function creaLocationDaLuogoLezione() {
+  return __async(this, null, function* () {
+    const input = document.getElementById("lz-luogo");
+    const nome = input == null ? void 0 : input.value.trim();
+    if (!nome) return;
+    const ids = selectedLezioneAllieviIds();
+    yield ensureLocationDaLezione(nome, ids);
+    yield renderLezioneLocationSelect("", nome);
+    const entries = lessonLocationEntries(nome, ids);
+    const record = entries.length === 1 ? locationRecordByName(entries[0].nome) : null;
+    const select = document.getElementById("lz-location-id");
+    if (select && (record == null ? void 0 : record.id)) select.value = record.id;
+    const panel = document.getElementById("lz-luogo-suggest");
+    if (panel) panel.hidden = true;
+  });
 }
 function nascondiSuggerimentiLuogoSoon() {
   clearTimeout(luogoSuggestTimer);
@@ -7633,7 +10994,7 @@ function skillWorkKey(row) {
     skillId: row.skillId || "",
     stadio: Number(row.stadio || 1),
     fakie: !!row.fakie,
-    dimensioni: row.dimensioni || {}
+    dimensioni: lessonSkillOnlyDimensions(row.dimensioni || {})
   });
 }
 function collapseCommonGroupSkillRows(ids) {
@@ -7657,7 +11018,10 @@ function collapseCommonGroupSkillRows(ids) {
   const commonKeys = [...counts.entries()].filter(([, count]) => count === presentIds.length).map(([key]) => key);
   if (!commonKeys.length) return;
   const common = new Set(commonKeys);
-  editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] = commonKeys.map((key) => __spreadProps(__spreadValues({}, rowByKey.get(key)), { excludeIds: [] }));
+  editingLezioneSkillRows[GROUP_SKILL_ROWS_KEY] = commonKeys.map((key) => {
+    const row = rowByKey.get(key);
+    return __spreadProps(__spreadValues({}, row), { dimensioni: lessonSkillOnlyDimensions(row.dimensioni || {}), excludeIds: [] });
+  });
   presentIds.forEach((id) => {
     editingLezioneSkillRows[id] = (editingLezioneSkillRows[id] || []).filter((row) => !common.has(skillWorkKey(row)));
   });
@@ -7685,6 +11049,21 @@ function renderGroupSkillWorkspace() {
   if (savedGroupRows.length) savedGroupRows.forEach((row) => aggiungiSkillRow(GROUP_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, row.excludeIds || [], { collapseExisting: false }));
   Object.entries(editingLezioneSkillRows).filter(([id, rows]) => id !== GROUP_SKILL_ROWS_KEY && (rows == null ? void 0 : rows.length) && selectedLezioneAllieviIds().includes(id)).forEach(([id, rows]) => addIndividualSkillWork(id, rows));
   renderGroupIndividualControls();
+}
+function renderFreeLessonSkillWorkspace() {
+  const container = document.getElementById("lz-skills-container");
+  const savedRows = editingLezioneSkillRows[FREE_LESSON_SKILL_ROWS_KEY] || [];
+  container.innerHTML = `
+    <div class="allievo-block">
+      <h4>Skill da preparare</h4>
+      <div class="lesson-skill-tools">
+        <div class="lesson-skill-hint">Aggiungi skill o esercizi senza collegarli ancora a un allievo.</div>
+        ${renderLessonWorkButtons(FREE_LESSON_SKILL_ROWS_KEY)}
+      </div>
+      <div id="skill-rows-${FREE_LESSON_SKILL_ROWS_KEY}"></div>
+    </div>`;
+  if (savedRows.length) savedRows.forEach((row) => aggiungiSkillRow(FREE_LESSON_SKILL_ROWS_KEY, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }));
+  else if (lezioneFormMode === "prep") aggiungiSkillRow(FREE_LESSON_SKILL_ROWS_KEY, "", 1, {}, false, [], { collapseExisting: false });
 }
 function renderGroupIndividualControls() {
   const tools = document.getElementById("lz-individual-tools");
@@ -7769,9 +11148,10 @@ function creaSpecialGuestDaLezione() {
   showView("nuovo-allievo");
 }
 function collectLezioneDraft() {
-  var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j;
+  var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
   const skillRows = {};
-  const rowOwners = currentLessonTargetIsGroup() ? [GROUP_SKILL_ROWS_KEY, ...selectedLezioneAllieviIds()] : selectedLezioneAllieviIds();
+  const groupFeedback = currentLessonTargetIsGroup() ? collectGroupStudentFeedback() : {};
+  const rowOwners = currentLessonTargetIsGroup() ? [GROUP_SKILL_ROWS_KEY, ...selectedLezioneAllieviIds()] : currentLessonTargetIsFree() ? [FREE_LESSON_SKILL_ROWS_KEY] : selectedLezioneAllieviIds();
   rowOwners.forEach((id) => {
     skillRows[id] = [...document.querySelectorAll(`#skill-rows-${id} .skill-row`)].map((row) => {
       var _a3, _b3;
@@ -7785,26 +11165,36 @@ function collectLezioneDraft() {
     }).filter((row) => row.skillId);
   });
   return {
+    editingLezioneId: editingLezioneId || null,
+    savedAt: (/* @__PURE__ */ new Date()).toISOString(),
     data: ((_a2 = document.getElementById("lz-data")) == null ? void 0 : _a2.value) || "",
-    durata: ((_b2 = document.getElementById("lz-durata")) == null ? void 0 : _b2.value) || "",
-    stato: ((_c = document.getElementById("lz-stato")) == null ? void 0 : _c.value) || "aperta",
-    luogo: ((_d = document.getElementById("lz-luogo")) == null ? void 0 : _d.value) || "",
-    meteo: ((_e = document.getElementById("lz-meteo")) == null ? void 0 : _e.value) || "",
-    noteSpeciali: ((_f = document.getElementById("lz-note-speciali")) == null ? void 0 : _f.value) || "",
-    checkBene: ((_g = document.getElementById("lz-check-bene")) == null ? void 0 : _g.value) || "",
-    checkNonFatto: ((_h = document.getElementById("lz-check-non-fatto")) == null ? void 0 : _h.value) || "",
-    note: ((_i = document.getElementById("lz-note")) == null ? void 0 : _i.value) || "",
-    target: ((_j = document.getElementById("lz-tipo")) == null ? void 0 : _j.value) || "",
+    ora: ((_b2 = document.getElementById("lz-ora")) == null ? void 0 : _b2.value) || "",
+    durata: ((_c = document.getElementById("lz-durata")) == null ? void 0 : _c.value) || "",
+    stato: ((_d = document.getElementById("lz-stato")) == null ? void 0 : _d.value) || "aperta",
+    locationId: ((_e = document.getElementById("lz-location-id")) == null ? void 0 : _e.value) || "",
+    luogo: ((_f = document.getElementById("lz-luogo")) == null ? void 0 : _f.value) || "",
+    meteo: ((_g = document.getElementById("lz-meteo")) == null ? void 0 : _g.value) || "",
+    noteSpeciali: ((_h = document.getElementById("lz-note-speciali")) == null ? void 0 : _h.value) || "",
+    checkBene: ((_i = document.getElementById("lz-check-bene")) == null ? void 0 : _i.value) || "",
+    checkNonFatto: ((_j = document.getElementById("lz-check-non-fatto")) == null ? void 0 : _j.value) || "",
+    note: ((_k = document.getElementById("lz-note")) == null ? void 0 : _k.value) || "",
+    target: ((_l = document.getElementById("lz-tipo")) == null ? void 0 : _l.value) || "",
     selectedIds: selectedLezioneAllieviIds(),
     skillRows,
+    groupFeedback,
     lezioneBackAllievoId,
     lezioneBackGruppoNome,
     formMode: lezioneFormMode
   };
 }
 function saveLezioneDraft({ keep = false } = {}) {
-  safeStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(collectLezioneDraft()));
-  if (!keep) safeStorage.removeItem(LEZIONE_DRAFT_KEY);
+  if (!keep) {
+    safeStorage.removeItem(LEZIONE_DRAFT_KEY);
+    return null;
+  }
+  const draft = collectLezioneDraft();
+  safeStorage.setItem(LEZIONE_DRAFT_KEY, JSON.stringify(draft));
+  return draft;
 }
 function loadLezioneDraft() {
   try {
@@ -7814,11 +11204,13 @@ function loadLezioneDraft() {
   }
 }
 function restoreLezioneDraft(draft) {
-  if (draft.formMode) lezioneFormMode = draft.formMode;
+  if (draft.formMode) lezioneFormMode = draft.formMode === "prep" ? "prep" : "standard";
   document.getElementById("lz-data").value = draft.data || localDateIso();
+  document.getElementById("lz-ora").value = normalizeLessonTime(draft.ora || "");
   document.getElementById("lz-durata").value = draft.durata || "";
   setLessonStatus(draft.stato || "aperta");
   document.getElementById("lz-luogo").value = draft.luogo || "";
+  renderLezioneLocationSelect(draft.locationId || "", draft.luogo || "");
   document.getElementById("lz-meteo").value = draft.meteo || "";
   document.getElementById("lz-note-speciali").value = draft.noteSpeciali || "";
   document.getElementById("lz-check-bene").value = draft.checkBene || "";
@@ -7826,9 +11218,10 @@ function restoreLezioneDraft(draft) {
   document.getElementById("lz-note").value = draft.note || "";
   renderLezioneTargetOptions(draft.target || "");
   editingLezioneSkillRows = draft.skillRows || {};
+  editingLezioneGroupFeedback = draft.groupFeedback || {};
+  if (draft.editingLezioneId) editingLezioneId = draft.editingLezioneId;
   lezioneBackAllievoId = draft.lezioneBackAllievoId || lezioneBackAllievoId;
   lezioneBackGruppoNome = draft.lezioneBackGruppoNome || lezioneBackGruppoNome;
-  safeStorage.removeItem(LEZIONE_DRAFT_KEY);
   return draft.selectedIds || [];
 }
 function toggleAllievo(cb, nomeCompleto) {
@@ -7837,7 +11230,7 @@ function toggleAllievo(cb, nomeCompleto) {
   if (cb.checked) {
     const allievo = allieviSelezionabiliLezione().find((x) => x.id === cb.value) || allAllievi.find((x) => x.id === cb.value);
     const div = document.createElement("div");
-    div.className = lezioneFormMode === "prep" ? "allievo-block prep-skill-storage" : "allievo-block";
+    div.className = "allievo-block";
     div.id = `block-${cb.value}`;
     div.innerHTML = `
       <h4>${esc(nomeCompleto)}</h4>
@@ -7850,250 +11243,17 @@ function toggleAllievo(cb, nomeCompleto) {
     container.appendChild(div);
     const savedRows = editingLezioneSkillRows[cb.value] || [];
     if (savedRows.length) savedRows.forEach((row) => aggiungiSkillRow(cb.value, row.skillId, row.stadio, row.dimensioni || {}, !!row.fakie, [], { collapseExisting: false }));
+    else if (lezioneFormMode === "prep") aggiungiSkillRow(cb.value, "", 1, {}, false, [], { collapseExisting: false });
   } else {
     (_a2 = document.getElementById(`block-${cb.value}`)) == null ? void 0 : _a2.remove();
   }
-}
-function ultimaLezioneAllievo(allievoId) {
-  return __async(this, null, function* () {
-    if (!allievoId) return null;
-    let { data, error } = yield sb.from("lezioni_allievi").select("lezione_id, lezioni(id, data, durata_min, luogo, meteo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))").eq("allievo_id", allievoId);
-    if (isMissingLessonMeteoError(error)) {
-      ;
-      ({ data, error } = yield sb.from("lezioni_allievi").select("lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))").eq("allievo_id", allievoId));
-    }
-    if (isMissingLessonStatusError(error)) {
-      ;
-      ({ data, error } = yield sb.from("lezioni_allievi").select("lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, dimensioni, skills(nome)))").eq("allievo_id", allievoId));
-    }
-    if (isMissingDimensioniError(error)) {
-      ;
-      ({ data, error } = yield sb.from("lezioni_allievi").select("lezione_id, lezioni(id, data, durata_min, luogo, note, note_speciali, stato, lezioni_skills(allievo_id, skill_id, stadio_raggiunto, fakie, skills(nome)))").eq("allievo_id", allievoId));
-    }
-    if (error) return null;
-    const lezioni = (data || []).map((row) => row.lezioni).filter(Boolean).filter((l) => String(l.id) !== String(editingLezioneId || "")).sort((a, b) => {
-      const aClosed = lessonStatus(a) === "chiusa" ? 1 : 0;
-      const bClosed = lessonStatus(b) === "chiusa" ? 1 : 0;
-      return bClosed - aClosed || String(b.data || "").localeCompare(String(a.data || "")) || String(b.id).localeCompare(String(a.id));
-    });
-    return lezioni[0] || null;
-  });
-}
-function renderPrepInsightForAllievo(allievoId) {
-  return __async(this, null, function* () {
-    const panel = document.getElementById(`prep-insight-${allievoId}`);
-    if (!panel) return;
-    const lezione = yield ultimaLezioneAllievo(allievoId);
-    if (!lezione) {
-      panel.innerHTML = '<div class="lesson-prep-title">Ultima lezione</div><div class="lesson-prep-meta">Nessuna lezione precedente trovata.</div>';
-      return;
-    }
-    const rows = (lezione.lezioni_skills || []).filter((row) => String(row.allievo_id || allievoId) === String(allievoId)).filter((row) => {
-      var _a2;
-      return row.skill_id && ((_a2 = row.skills) == null ? void 0 : _a2.nome);
-    });
-    const parsed = lessonParsedNotes(lezione);
-    panel.innerHTML = `
-    <div class="lesson-prep-title">Ultima lezione</div>
-    <div class="lesson-prep-meta">${formatDateWithWeekday(lezione.data)}${lezione.luogo ? ` \xB7 ${esc(lezione.luogo)}` : ""}${lezione.note_speciali ? `<br>${esc(lezione.note_speciali)}` : ""}</div>
-    ${rows.length ? `<div class="lesson-prep-skills">${rows.map((row) => `<span class="st st${row.stadio_raggiunto || 1}">${esc(row.skills.nome)} \xB7 ${esc(lessonStadioLabel(row.stadio_raggiunto || 1))}</span>`).join("")}</div>` : '<div class="ripasso-empty">Nessuna skill registrata nell ultima lezione.</div>'}
-    ${parsed.nonFatto ? `<div class="lesson-prep-meta"><strong>Da riprendere:</strong> ${esc(parsed.nonFatto)}</div>` : ""}
-  `;
-    const container = document.getElementById(`skill-rows-${allievoId}`);
-    if (!container || container.querySelector(".skill-row")) return;
-    rows.forEach((row) => aggiungiSkillRow(allievoId, row.skill_id, row.stadio_raggiunto || 1, row.dimensioni || {}, !!row.fakie, [], { ripassoOnly: true, collapseExisting: false }));
-  });
-}
-function prepOwnerId() {
-  const ids = selectedLezioneAllieviIds();
-  return ids.length === 1 ? ids[0] : null;
-}
-function prepSkillItemFromLessonRow(row) {
-  return {
-    skillId: String(row.skill_id || ""),
-    stadio: Number(row.stadio_raggiunto || 1),
-    fakie: !!row.fakie,
-    dimensioni: row.dimensioni || {},
-    skill: row.skills || allSkills.find((skill) => String(skill.id) === String(row.skill_id)) || null
-  };
-}
-function prepSkillButtons(ownerId, items, stage, emptyText) {
-  const usable = (items || []).filter((item) => {
-    var _a2;
-    return item.skillId && ((_a2 = item.skill) == null ? void 0 : _a2.nome);
-  }).slice(0, 8);
-  if (!usable.length) return `<span class="prep-empty">${esc(emptyText)}</span>`;
-  return usable.map((item) => `
-    <button type="button" class="prep-suggest" onclick="addPrepSkill(${jsArg(ownerId)},${jsArg(item.skillId)},${jsArg(stage)},${Number(item.stadio || 1)},${jsArg(item.dimensioni || {})},${item.fakie ? "true" : "false"})">
-      ${esc(item.skill.nome)}
-    </button>`).join("");
-}
-function buildPrepPlanDraft(allievo, lastLesson, lastItems, groups) {
-  const lines = [];
-  lines.push("Piano operativo");
-  lines.push(`Allievo: ${allievoDisplayName(allievo.id)}`);
-  if (lastLesson == null ? void 0 : lastLesson.data) lines.push(`Ultima lezione: ${formatDateWithWeekday(lastLesson.data)}`);
-  if (lastItems.length) lines.push(`Ripasso iniziale: ${lastItems.map((item) => {
-    var _a2;
-    return (_a2 = item.skill) == null ? void 0 : _a2.nome;
-  }).filter(Boolean).join(", ")}`);
-  if (groups.work.length) lines.push(`Focus da lavorare: ${groups.work.slice(0, 3).map((item) => item.skill.nome).join(", ")}`);
-  if (groups.done.length) lines.push(`Richiamo breve: ${groups.done.slice(0, 2).map((item) => item.skill.nome).join(", ")}`);
-  lines.push("");
-  lines.push("Scaletta");
-  lines.push("1. Ingresso: valutare energia, equilibrio e confidenza.");
-  lines.push("2. Ripasso: riattivare l ultima lezione senza pressione.");
-  lines.push("3. Focus: un solo nodo tecnico, pulito e osservabile.");
-  lines.push("4. Uscita: mini test, gioco o percorso breve.");
-  return lines.join("\n");
-}
-function renderPrepSelectedSkills(ownerId = prepOwnerId()) {
-  const target = document.getElementById("prep-selected-skills");
-  if (!target || !ownerId) return;
-  const rows = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)].map((row) => {
-    var _a2, _b2, _c, _d, _e, _f;
-    const select = row.querySelector(".skill-select");
-    if (!(select == null ? void 0 : select.value)) return "";
-    const name = ((_c = (_b2 = (_a2 = select.selectedOptions) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.dataset) == null ? void 0 : _c.name) || ((_e = (_d = select.selectedOptions) == null ? void 0 : _d[0]) == null ? void 0 : _e.textContent) || "";
-    const stadio = Number(((_f = row.querySelector(".stadio-toggle")) == null ? void 0 : _f.dataset.stadio) || 1);
-    return `<span class="st st${stadio}">${esc(name)} \xB7 ${esc(lessonStadioLabel(stadio))}</span>`;
-  }).filter(Boolean);
-  target.innerHTML = rows.length ? rows.join("") : '<span class="prep-empty">Nessuna skill nel piano. Clicca una proposta nella scaletta.</span>';
-}
-function syncPrepPlanToNote() {
-  var _a2;
-  const text = ((_a2 = document.getElementById("prep-plan-text")) == null ? void 0 : _a2.value) || "";
-  const note = document.getElementById("lz-note");
-  if (note) note.value = text;
-}
-function appendPrepPlanLine(line) {
-  const textarea = document.getElementById("prep-plan-text");
-  const note = document.getElementById("lz-note");
-  const current = (textarea == null ? void 0 : textarea.value) || (note == null ? void 0 : note.value) || "";
-  const next = `${current.trim()}${current.trim() ? "\n" : ""}${line}`.trim();
-  if (textarea) textarea.value = next;
-  if (note) note.value = next;
-}
-function setPrepIntent(intent, detail) {
-  document.querySelectorAll(".prep-intent").forEach((btn) => btn.classList.toggle("is-on", btn.dataset.intent === intent));
-  const special = document.getElementById("lz-note-speciali");
-  if (special) special.value = `Obiettivo: ${detail}`;
-  appendPrepPlanLine(`Intenzione: ${detail}`);
-}
-function addPrepSkill(ownerId, skillId, stage = "Focus", stadio = 1, dimensioni = {}, fakie = false) {
-  const skill = allSkills.find((s) => String(s.id) === String(skillId));
-  if (!skill) return;
-  const alreadyPlanned = [...document.querySelectorAll(`#skill-rows-${ownerId} .skill-row`)].some((row) => {
-    var _a2;
-    return String(((_a2 = row.querySelector(".skill-select")) == null ? void 0 : _a2.value) || "") === String(skill.id);
-  });
-  if (!alreadyPlanned) aggiungiSkillRow(ownerId, skill.id, stadio || 1, dimensioni || {}, !!fakie, [], { ripassoOnly: true, collapseExisting: false });
-  appendPrepPlanLine(`${stage}: ${skill.nome}`);
-  renderPrepSelectedSkills(ownerId);
-}
-function togglePrepRawEditor(ownerId = prepOwnerId()) {
-  const block = ownerId ? document.getElementById(`block-${ownerId}`) : null;
-  if (!block) return;
-  block.classList.toggle("is-visible");
 }
 function renderPrepBoard() {
   return __async(this, null, function* () {
     const board = document.getElementById("lz-prep-board");
     if (!board) return;
-    if (lezioneFormMode !== "prep" || editingLezioneId) {
-      board.hidden = true;
-      board.innerHTML = "";
-      return;
-    }
-    const ids = selectedLezioneAllieviIds();
-    if (!ids.length) {
-      board.hidden = false;
-      board.innerHTML = `<div class="card prep-board"><div class="prep-empty">Scegli un allievo: preparo una scaletta viva partendo dal suo ultimo lavoro.</div></div>`;
-      return;
-    }
-    if (ids.length !== 1) {
-      board.hidden = false;
-      board.innerHTML = `<div class="card prep-board"><div class="prep-empty">La preparazione intelligente per ora ragiona su un allievo alla volta. Per i gruppi resta disponibile la lezione classica/postuma.</div></div>`;
-      return;
-    }
-    const ownerId = ids[0];
-    const allievo = allievoById(ownerId);
-    if (!allievo) return;
-    const lastLesson = yield ultimaLezioneAllievo(ownerId);
-    if (prepOwnerId() !== ownerId || lezioneFormMode !== "prep") return;
-    const lastItems = ((lastLesson == null ? void 0 : lastLesson.lezioni_skills) || []).filter((row) => String(row.allievo_id || ownerId) === String(ownerId)).map(prepSkillItemFromLessonRow).filter((item) => item.skillId && item.skill);
-    const groups = workedSkillGroupsForOwner(ownerId);
-    const note = document.getElementById("lz-note");
-    if (note && !note.value.trim()) note.value = buildPrepPlanDraft(allievo, lastLesson, lastItems, groups);
-    const rowsContainer = document.getElementById(`skill-rows-${ownerId}`);
-    if (!editingLezioneId && rowsContainer && !rowsContainer.querySelector(".skill-row") && lastItems.length) {
-      lastItems.forEach((item) => aggiungiSkillRow(ownerId, item.skillId, item.stadio || 1, item.dimensioni || {}, item.fakie, [], { ripassoOnly: true, collapseExisting: false }));
-    }
-    const parsed = lessonParsedNotes(lastLesson || {});
-    const workItems = groups.work.map((item) => __spreadProps(__spreadValues({}, item), { stadio: item.stadio || 1 }));
-    const doneItems = groups.done.map((item) => __spreadProps(__spreadValues({}, item), { stadio: 1 }));
-    board.hidden = false;
-    board.innerHTML = `
-    <div class="prep-board">
-      <div class="prep-hero">
-        <div class="prep-hero-top">
-          <div>
-            <div class="prep-kicker">Prepara senza fretta</div>
-            <div class="prep-headline">${esc(allievoDisplayName(ownerId))}</div>
-            <div class="prep-subline">Questa non e una registrazione: e una scaletta aperta. La chiuderai dopo, quando saprai cosa e successo davvero.</div>
-          </div>
-          <div class="prep-save-tag">salva come aperta</div>
-        </div>
-        <div class="prep-radar">
-          <div class="prep-radar-card"><strong>${(lastLesson == null ? void 0 : lastLesson.data) ? formatDate(lastLesson.data) : "\u2014"}</strong><span>ultima lezione</span><div class="prep-empty">${(lastLesson == null ? void 0 : lastLesson.luogo) ? esc(lastLesson.luogo) : "nessun luogo"}</div></div>
-          <div class="prep-radar-card"><strong>${workItems.length}</strong><span>richiedono lavoro</span><div class="prep-empty">${workItems.slice(0, 2).map((item) => esc(item.skill.nome)).join(", ") || "nessuna urgenza"}</div></div>
-          <div class="prep-radar-card"><strong>${doneItems.length}</strong><span>gia completate</span><div class="prep-empty">${doneItems.slice(0, 2).map((item) => esc(item.skill.nome)).join(", ") || "ancora niente"}</div></div>
-          <div class="prep-radar-card"><strong>${parsed.nonFatto ? "si" : "no"}</strong><span>da riprendere</span><div class="prep-empty">${parsed.nonFatto ? esc(parsed.nonFatto).slice(0, 80) : "nessuna nota"}</div></div>
-        </div>
-        <div class="prep-intents">
-          <button type="button" class="prep-intent" data-intent="consolidare" onclick="setPrepIntent('consolidare','consolidare una skill gia accesa')">Consolidare</button>
-          <button type="button" class="prep-intent" data-intent="sbloccare" onclick="setPrepIntent('sbloccare','sbloccare un punto che resiste')">Sbloccare</button>
-          <button type="button" class="prep-intent" data-intent="fiducia" onclick="setPrepIntent('fiducia','costruire fiducia e fluidita')">Fiducia</button>
-          <button type="button" class="prep-intent" data-intent="testare" onclick="setPrepIntent('testare','testare se il gesto regge in autonomia')">Testare</button>
-        </div>
-      </div>
-
-      <div class="prep-stage-grid">
-        <div class="prep-stage">
-          <h4>1. Riaccendi</h4>
-          <p>Parti da qualcosa che il corpo riconosce. L ultima lezione diventa ingresso, non verifica.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, lastItems, "Riaccendi", "Nessuna skill nell ultima lezione.")}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>2. Nodo tecnico</h4>
-          <p>Una cosa sola da lavorare bene. Se tutto e importante, niente e davvero osservabile.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, workItems, "Nodo tecnico", "Nessuna skill aperta nei progressi.")}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>3. Variazione</h4>
-          <p>Cambia superficie, lato, ritmo o piano. Qui capisci se la skill e solida.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, [...workItems, ...lastItems], "Variazione", "Aggiungi prima un ripasso o una skill.")}</div>
-        </div>
-        <div class="prep-stage">
-          <h4>4. Uscita</h4>
-          <p>Chiudi con qualcosa che lascia una sensazione chiara: mini percorso, gioco, test breve.</p>
-          <div class="prep-stage-actions">${prepSkillButtons(ownerId, doneItems, "Uscita", "Nessuna completata da usare come uscita sicura.")}</div>
-        </div>
-      </div>
-
-      <div class="card prep-plan-grid">
-        <div class="field prep-plan-note" style="margin:0">
-          <label>Piano operativo</label>
-          <textarea id="prep-plan-text" oninput="syncPrepPlanToNote()">${esc((note == null ? void 0 : note.value) || "")}</textarea>
-        </div>
-        <div>
-          <div class="lesson-prep-title" style="margin-bottom:.45rem">Dentro la lezione aperta</div>
-          <div class="prep-selected-list" id="prep-selected-skills"></div>
-          <button type="button" class="btn btn-outline btn-sm prep-raw-toggle" style="margin-top:.65rem" onclick="togglePrepRawEditor(${jsArg(ownerId)})">Editor dettagli</button>
-        </div>
-      </div>
-    </div>`;
-    renderPrepSelectedSkills(ownerId);
+    board.hidden = true;
+    board.innerHTML = "";
   });
 }
 function sortedSkillsForLesson() {
@@ -8109,13 +11269,35 @@ function lessonSkillHint(allievo) {
 }
 function renderLessonWorkButtons(allieviId) {
   const ownerArg = jsArg(allieviId);
+  const allowRipasso = allieviId !== FREE_LESSON_SKILL_ROWS_KEY;
   return `
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-      <button type="button" class="btn btn-outline btn-sm" onclick="aggiungiSkillRow(${ownerArg})">+ Nuova skill</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="toggleRipassoPanel(${ownerArg})">Ripasso</button>
+      <button type="button" class="btn btn-outline btn-sm" data-lesson-action="new-skill" data-owner-id="${esc(allieviId)}">+ Nuova skill</button>
+      ${allowRipasso ? `<button type="button" class="btn btn-outline btn-sm" onclick="toggleRipassoPanel(${ownerArg})">Ripasso</button>` : ""}
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo esercizio')">+ Nuovo esercizio</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="lezioneFeatureSoon('Nuovo percorso')">+ Nuovo percorso</button>
     </div>`;
+}
+function focusLessonSkillRow(row) {
+  if (!row) return;
+  row.classList.remove("is-collapsed");
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => {
+    var _a2;
+    return (_a2 = row.querySelector(".skill-select")) == null ? void 0 : _a2.focus();
+  }, 120);
+}
+function addNewLessonSkillRow(ownerId) {
+  const panel = document.getElementById(ripassoPanelId(ownerId));
+  if (panel) panel.hidden = true;
+  const row = aggiungiSkillRow(ownerId, "", 1, {}, false, [], { collapseExisting: true, scrollIntoView: true });
+  if (!row) {
+    const err = document.getElementById("lz-err");
+    if (err) {
+      err.textContent = "Non trovo il blocco dove aggiungere la skill. Ricarica la pagina e riprova.";
+      err.classList.add("show");
+    }
+  }
 }
 function lezioneFeatureSoon(label) {
   const err = document.getElementById("lz-err");
@@ -8156,18 +11338,53 @@ function workedSkillGroupsForOwner(ownerId) {
       bySkill.set(key, prev);
     });
   });
-  const list = [...bySkill.values()].map((item) => __spreadProps(__spreadValues({}, item), { skill: allSkills.find((skill) => String(skill.id) === item.skillId) })).filter((item) => item.skill).sort((a, b) => a.stadio - b.stadio || String(a.skill.nome || "").localeCompare(String(b.skill.nome || ""), "it", { sensitivity: "base" }));
+  const list = [...bySkill.values()].map((item) => __spreadProps(__spreadValues({}, item), { skill: allSkills.find((skill) => String(skill.id) === item.skillId) })).filter((item) => item.skill).sort(compareRipassoItems);
   return {
     work: list.filter((item) => item.stadio < 3),
     done: list.filter((item) => item.stadio >= 3)
   };
 }
+function compareRipassoItems(a, b) {
+  var _a2, _b2, _c, _d, _e, _f;
+  const branches = lessonSkillBranches();
+  const branchA = ((_a2 = a.skill) == null ? void 0 : _a2.ramo) || "Altro";
+  const branchB = ((_b2 = b.skill) == null ? void 0 : _b2.ramo) || "Altro";
+  return (branches.indexOf(branchA) === -1 ? 999 : branches.indexOf(branchA)) - (branches.indexOf(branchB) === -1 ? 999 : branches.indexOf(branchB)) || Number(((_c = a.skill) == null ? void 0 : _c.livello) || 0) - Number(((_d = b.skill) == null ? void 0 : _d.livello) || 0) || a.stadio - b.stadio || String(((_e = a.skill) == null ? void 0 : _e.nome) || "").localeCompare(String(((_f = b.skill) == null ? void 0 : _f.nome) || ""), "it", { sensitivity: "base" });
+}
+function ripassoRowsByBranch(rows = []) {
+  const grouped = /* @__PURE__ */ new Map();
+  rows.forEach((item) => {
+    var _a2;
+    const branch = ((_a2 = item.skill) == null ? void 0 : _a2.ramo) || "Altro";
+    if (!grouped.has(branch)) grouped.set(branch, []);
+    grouped.get(branch).push(item);
+  });
+  const branches = lessonSkillBranches();
+  return [...grouped.entries()].sort(([a], [b]) => (branches.indexOf(a) === -1 ? 999 : branches.indexOf(a)) - (branches.indexOf(b) === -1 ? 999 : branches.indexOf(b)) || a.localeCompare(b, "it", { sensitivity: "base" }));
+}
+function renderRipassoSkillButton(ownerId, item) {
+  var _a2, _b2;
+  const meta = [(_a2 = item.skill) == null ? void 0 : _a2.blocco, ((_b2 = item.skill) == null ? void 0 : _b2.livello) ? `Lv.${item.skill.livello}` : ""].filter(Boolean).join(" \xB7 ");
+  const stadio = Number(item.stadio) || 1;
+  return `<button type="button" class="skill-suggest ripasso-skill" onclick="aggiungiRipassoSkill(${jsArg(ownerId)},${jsArg(item.skillId)})" title="${esc(skillMetaLabel(item.skill))}">
+    <span class="ripasso-skill-name">${esc(item.skill.nome)}</span>
+    ${meta ? `<span class="ripasso-skill-meta">${esc(meta)}</span>` : ""}
+    <span class="ripasso-skill-stage st${stadio}">${esc(lessonStadioLabel(stadio))}</span>
+  </button>`;
+}
 function renderRipassoGroup(ownerId, title, rows) {
   return `<div class="ripasso-group">
     <div class="ripasso-title">${esc(title)}</div>
-    <div class="lesson-skill-suggestions">
-      ${rows.length ? rows.map((item) => `<button type="button" class="skill-suggest" onclick="aggiungiRipassoSkill(${jsArg(ownerId)},${jsArg(item.skillId)})">${esc(item.skill.nome)} \xB7 ${esc(lessonStadioLabel(item.stadio))}</button>`).join("") : '<span class="ripasso-empty">Nessuna skill in questo gruppo.</span>'}
-    </div>
+    ${rows.length ? ripassoRowsByBranch(rows).map(([branch, items]) => `
+      <section class="ripasso-branch">
+        <div class="ripasso-branch-title">
+          <span>${esc(branch)}</span>
+          <span>${items.length} skill</span>
+        </div>
+        <div class="lesson-skill-suggestions ripasso-skill-grid">
+          ${items.map((item) => renderRipassoSkillButton(ownerId, item)).join("")}
+        </div>
+      </section>`).join("") : '<span class="ripasso-empty">Nessuna skill in questo gruppo.</span>'}
   </div>`;
 }
 function toggleRipassoPanel(ownerId) {
@@ -8397,8 +11614,8 @@ function lessonStadioLabel(stadio) {
 }
 const LESSON_STADIO_COLORS = {
   1: { border: "rgba(251,191,36,.5)", color: "#facc15", background: "rgba(251,191,36,.08)" },
-  2: { border: "rgba(56,189,248,.55)", color: "#67e8f9", background: "rgba(56,189,248,.1)" },
-  3: { border: "rgba(52,211,153,.65)", color: "var(--success)", background: "rgba(52,211,153,.12)" }
+  2: { border: "rgba(52,211,153,.65)", color: "var(--success)", background: "rgba(52,211,153,.12)" },
+  3: { border: "rgba(56,189,248,.55)", color: "#67e8f9", background: "rgba(56,189,248,.1)" }
 };
 function lessonStadioInlineStyle(stadio) {
   const colors = LESSON_STADIO_COLORS[Number(stadio) || 1] || LESSON_STADIO_COLORS[1];
@@ -8435,7 +11652,9 @@ const LESSON_SIDE_FEEDBACK_OPTIONS = [
   { value: "male_dx", label: "Male dx", className: "side-issue" }
 ];
 function normalizedLessonResult(value) {
-  return LESSON_RESULT_OPTIONS.some((option) => option.value === value) ? value : "bene";
+  const aliases = { da_rifare: "da_rivedere", da_rivedere: "da_rivedere", buono: "bene", bene: "bene", ottimo: "ottimo" };
+  const normalized = aliases[value] || value;
+  return LESSON_RESULT_OPTIONS.some((option) => option.value === normalized) ? normalized : "bene";
 }
 function normalizedLessonSideFeedback(value) {
   return LESSON_SIDE_FEEDBACK_OPTIONS.some((option) => option.value === value) ? value : "bilaterale";
@@ -8443,34 +11662,89 @@ function normalizedLessonSideFeedback(value) {
 function lessonOption(options, value) {
   return options.find((option) => option.value === value) || options[0];
 }
-function renderLessonResultToggle(value = "bene") {
-  const option = lessonOption(LESSON_RESULT_OPTIONS, normalizedLessonResult(value));
-  return `<button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className}" data-result="${esc(option.value)}" onclick="toggleLessonResult(this)">${esc(option.label)}</button>`;
+function renderLessonResultButtons(value = "bene") {
+  const selected = normalizedLessonResult(value);
+  const option = lessonOption(LESSON_RESULT_OPTIONS, selected);
+  return `<div class="lesson-result-choice" role="group" aria-label="Valutazione" data-result="${esc(selected)}">
+    <button type="button" class="btn btn-outline btn-sm lesson-result-toggle ${option.className} is-selected" data-result="${esc(option.value)}" data-selected="on" aria-pressed="true" onclick="toggleLessonResult(this)">${esc(option.label)}</button>
+  </div>`;
 }
 function lessonFormIsOpen() {
   var _a2;
   return ((_a2 = document.getElementById("lz-stato")) == null ? void 0 : _a2.value) !== "chiusa";
 }
+function lessonFeedbackHiddenByState() {
+  return lezioneFormMode !== "prep" && lessonFormIsOpen();
+}
 function renderLessonFeedbackControls(result = "bene", sideFeedback = "bilaterale") {
-  return `<div class="lesson-feedback-controls" ${lessonFormIsOpen() ? "hidden" : ""}>
-    ${renderLessonResultToggle(result)}
+  return `<div class="lesson-feedback-controls" ${lessonFeedbackHiddenByState() ? "hidden" : ""}>
+    ${renderLessonResultButtons(result)}
     ${renderLessonSideFeedbackToggle(sideFeedback)}
   </div>`;
 }
 function syncLessonFeedbackVisibility() {
-  const hidden = lessonFormIsOpen();
+  const hidden = lessonFeedbackHiddenByState();
   document.querySelectorAll(".lesson-feedback-controls").forEach((el) => {
     el.hidden = hidden;
   });
 }
+function renderGroupStudentFeedbackControls(allievoId, selected = true) {
+  var _a2;
+  const result = ((_a2 = editingLezioneGroupFeedback == null ? void 0 : editingLezioneGroupFeedback[allievoId]) == null ? void 0 : _a2.esito) || "bene";
+  return `<div class="group-student-feedback lesson-feedback-controls${selected ? "" : " is-unselected"}" data-allievo-id="${esc(allievoId)}" ${lessonFeedbackHiddenByState() ? "hidden" : ""}>
+    ${renderLessonResultButtons(result)}
+  </div>`;
+}
+function syncGroupStudentFeedbackVisibility() {
+  const hidden = lessonFeedbackHiddenByState();
+  document.querySelectorAll(".group-student-feedback").forEach((el) => {
+    var _a2;
+    const row = el.closest(".group-presence-row");
+    const checked = (_a2 = row == null ? void 0 : row.querySelector("input[type=checkbox]")) == null ? void 0 : _a2.checked;
+    el.hidden = hidden;
+    el.classList.toggle("is-unselected", checked === false);
+  });
+}
+function collectGroupStudentFeedback() {
+  const feedback = {};
+  if (lessonFeedbackHiddenByState()) return feedback;
+  document.querySelectorAll(".group-student-feedback[data-allievo-id]").forEach((el) => {
+    var _a2;
+    if (el.classList.contains("is-unselected")) return;
+    const result = normalizedLessonResult((_a2 = el.querySelector('.lesson-result-toggle[data-selected="on"]')) == null ? void 0 : _a2.dataset.result);
+    feedback[el.dataset.allievoId] = { esito: result };
+  });
+  return feedback;
+}
+function groupStudentFeedbackDimensions(allievoId, feedback = collectGroupStudentFeedback()) {
+  var _a2;
+  const result = (_a2 = feedback == null ? void 0 : feedback[allievoId]) == null ? void 0 : _a2.esito;
+  return result ? { esito: normalizedLessonResult(result) } : {};
+}
 function toggleLessonResult(btn) {
-  const current = normalizedLessonResult(btn.dataset.result);
-  const index = LESSON_RESULT_OPTIONS.findIndex((option) => option.value === current);
-  const next = LESSON_RESULT_OPTIONS[(index + 1) % LESSON_RESULT_OPTIONS.length];
-  btn.dataset.result = next.value;
-  btn.textContent = next.label;
-  btn.classList.remove(...LESSON_RESULT_OPTIONS.map((option) => option.className).filter(Boolean));
-  btn.classList.add(next.className);
+  const choice = btn.closest(".lesson-result-choice");
+  if (!choice) return;
+  const buttons = [...choice.querySelectorAll(".lesson-result-toggle")];
+  if (buttons.length === 1) {
+    const current = normalizedLessonResult(btn.dataset.result);
+    const index = LESSON_RESULT_OPTIONS.findIndex((option) => option.value === current);
+    const next = LESSON_RESULT_OPTIONS[(index + 1) % LESSON_RESULT_OPTIONS.length];
+    btn.dataset.result = next.value;
+    btn.dataset.selected = "on";
+    btn.setAttribute("aria-pressed", "true");
+    btn.textContent = next.label;
+    btn.classList.remove(...LESSON_RESULT_OPTIONS.map((option) => option.className));
+    btn.classList.add(next.className, "is-selected");
+    choice.dataset.result = next.value;
+    return;
+  }
+  choice.dataset.result = normalizedLessonResult(btn.dataset.result);
+  buttons.forEach((option) => {
+    const active = option === btn;
+    option.dataset.selected = active ? "on" : "off";
+    option.setAttribute("aria-pressed", active ? "true" : "false");
+    option.classList.toggle("is-selected", active);
+  });
 }
 function renderLessonSideFeedbackToggle(value = "bilaterale") {
   const option = lessonOption(LESSON_SIDE_FEEDBACK_OPTIONS, normalizedLessonSideFeedback(value));
@@ -8488,7 +11762,7 @@ function toggleLessonSideFeedback(btn) {
 function skillRowResult(row) {
   var _a2, _b2;
   if ((_a2 = row == null ? void 0 : row.querySelector(".lesson-feedback-controls")) == null ? void 0 : _a2.hidden) return "";
-  return normalizedLessonResult((_b2 = row == null ? void 0 : row.querySelector(".lesson-result-toggle")) == null ? void 0 : _b2.dataset.result);
+  return normalizedLessonResult((_b2 = row == null ? void 0 : row.querySelector('.lesson-result-toggle[data-selected="on"]')) == null ? void 0 : _b2.dataset.result);
 }
 function skillRowSideFeedback(row) {
   var _a2, _b2;
@@ -8628,6 +11902,18 @@ function skillRowDimensions(row) {
   if (esercizi.length) dimensioni.esercizi = esercizi;
   return dimensioni;
 }
+function lessonSkillOnlyDimensions(dimensioni = {}) {
+  const clean = __spreadValues({}, dimensioni || {});
+  delete clean.esito;
+  delete clean.lato_feedback;
+  return clean;
+}
+function rememberGroupStudentFeedback(allievoId, dimensioni = {}) {
+  var _a2;
+  const esito = dimensioni == null ? void 0 : dimensioni.esito;
+  if (!allievoId || !esito || ((_a2 = editingLezioneGroupFeedback[allievoId]) == null ? void 0 : _a2.esito)) return;
+  editingLezioneGroupFeedback[allievoId] = { esito: normalizedLessonResult(esito) };
+}
 function mergeDimensionValue(a, b) {
   const values = [];
   [a, b].forEach((value) => {
@@ -8733,6 +12019,7 @@ function aggiungiSkillRow(allieviId, selectedSkillId = "", selectedStadio = 1, s
   const exercisesActive = selectedExercises.length > 0;
   const selectedResult = normalizedLessonResult(selectedDimensioni == null ? void 0 : selectedDimensioni.esito);
   const selectedSideFeedback = normalizedLessonSideFeedback(selectedDimensioni == null ? void 0 : selectedDimensioni.lato_feedback);
+  const useSkillFeedback = !currentLessonTargetIsGroup();
   row.innerHTML = `
     <button type="button" class="btn btn-outline btn-sm skill-row-summary" onclick="expandSkillRow(this)">Skill</button>
     <select class="skill-branch" onchange="filterSkillRow(this)">
@@ -8745,7 +12032,7 @@ function aggiungiSkillRow(allieviId, selectedSkillId = "", selectedStadio = 1, s
     ${renderFakieToggle(fakieActive)}
     ${renderDimensionToggle(dimensionsActive)}
     ${renderExerciseToggle(exercisesActive, selectedExercises.length)}
-    ${renderLessonFeedbackControls(selectedResult, selectedSideFeedback)}
+    ${useSkillFeedback ? renderLessonFeedbackControls(selectedResult, selectedSideFeedback) : ""}
     ${renderLessonStadioToggle(selectedStadio)}
     <button class="btn btn-ghost btn-sm" onclick="removeSkillRow(this)">\u2715</button>
     ${allieviId === GROUP_SKILL_ROWS_KEY ? renderGroupExclusionChips(selectedExcludedIds) : ""}
@@ -8753,6 +12040,8 @@ function aggiungiSkillRow(allieviId, selectedSkillId = "", selectedStadio = 1, s
     ${renderSkillExercises(selectedExercises, exercisesActive)}`;
   container.appendChild(row);
   compactSelectedSkillOption(row.querySelector(".skill-select"));
+  if (options.scrollIntoView) focusLessonSkillRow(row);
+  return row;
 }
 function snapshotLezioneRelazioni(lezioneId) {
   return __async(this, null, function* () {
@@ -8840,36 +12129,39 @@ function ripristinaRelazioniLezione(lezioneId, snapshot) {
 }
 function salvaLezione() {
   return __async(this, null, function* () {
-    var _a2, _b2, _c, _d;
+    var _a2, _b2, _c, _d, _e, _f;
     const data = document.getElementById("lz-data").value;
+    const ora = normalizeLessonTime(((_a2 = document.getElementById("lz-ora")) == null ? void 0 : _a2.value) || "");
     const durata = parseInt(document.getElementById("lz-durata").value) || null;
-    const stato = ((_a2 = document.getElementById("lz-stato")) == null ? void 0 : _a2.value) === "chiusa" ? "chiusa" : "aperta";
+    const stato = ((_b2 = document.getElementById("lz-stato")) == null ? void 0 : _b2.value) === "chiusa" ? "chiusa" : "aperta";
     const target = document.getElementById("lz-tipo").value;
     const tipo = target.startsWith("gruppo:") ? "gruppo" : target.startsWith("allievo:") ? "individuale" : "campo_libero";
-    const luogo = document.getElementById("lz-luogo").value.trim() || null;
-    const meteo = ((_b2 = document.getElementById("lz-meteo")) == null ? void 0 : _b2.value.trim()) || null;
+    const selectedLocationId = ((_c = document.getElementById("lz-location-id")) == null ? void 0 : _c.value) || null;
+    const selectedLocation = selectedLocationId ? locationRecordById(selectedLocationId) : null;
+    if ((selectedLocation == null ? void 0 : selectedLocation.nome) && !document.getElementById("lz-luogo").value.trim()) document.getElementById("lz-luogo").value = selectedLocation.nome;
+    const luogo = document.getElementById("lz-luogo").value.trim() || (selectedLocation == null ? void 0 : selectedLocation.nome) || null;
+    const meteo = ((_d = document.getElementById("lz-meteo")) == null ? void 0 : _d.value.trim()) || null;
     const noteSpeciali = document.getElementById("lz-note-speciali").value.trim() || null;
-    const checkBene = ((_c = document.getElementById("lz-check-bene")) == null ? void 0 : _c.value.trim()) || "";
-    const checkNonFatto = ((_d = document.getElementById("lz-check-non-fatto")) == null ? void 0 : _d.value.trim()) || "";
-    const note = composeLessonNotes(document.getElementById("lz-note").value.trim(), checkBene, checkNonFatto, noteSpeciali || "", stato, meteo || "");
-    const errEl = document.getElementById("lz-err");
-    errEl.classList.remove("show");
+    const checkBene = ((_e = document.getElementById("lz-check-bene")) == null ? void 0 : _e.value.trim()) || "";
+    const checkNonFatto = ((_f = document.getElementById("lz-check-non-fatto")) == null ? void 0 : _f.value.trim()) || "";
+    const note = composeLessonNotes(document.getElementById("lz-note").value.trim(), checkBene, checkNonFatto, noteSpeciali || "", stato, meteo || "", ora);
+    clearLezioneFormMessage();
     if (!data) {
-      errEl.textContent = "Inserisci la data.";
-      errEl.classList.add("show");
+      setLezioneFormMessage("Inserisci la data.");
       return;
     }
     if (!target) {
-      errEl.textContent = "Seleziona allievo, gruppo o campo libero.";
-      errEl.classList.add("show");
+      setLezioneFormMessage("Seleziona allievo, gruppo o campo libero.");
       return;
     }
     const checkedAllievi = [...document.querySelectorAll("#lz-hidden-checks input[type=checkbox]:checked")];
-    if (!checkedAllievi.length) {
-      errEl.textContent = "Seleziona almeno un allievo.";
-      errEl.classList.add("show");
+    if (!checkedAllievi.length && tipo !== "campo_libero") {
+      setLezioneFormMessage("Seleziona almeno un allievo.");
       return;
     }
+    const lezioneAllieviIds = checkedAllievi.map((cb) => cb.value);
+    const locationEntries = lessonLocationEntries(luogo, lezioneAllieviIds);
+    const effectiveLocationId = locationEntries.length === 1 ? selectedLocationId : null;
     const buttons = [document.getElementById("btn-salva-lz"), document.getElementById("btn-salva-lz-top")].filter(Boolean);
     const saveText = lezioneFormSaveLabel(!!editingLezioneId);
     buttons.forEach((btn) => {
@@ -8885,30 +12177,35 @@ function salvaLezione() {
     try {
       if (lezioneInModifica) snapshot = yield snapshotLezioneRelazioni(lezioneInModifica);
       let e1;
-      const payloadLezione = { data, durata_min: durata, tipo, luogo, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null };
+      const payloadLezione = { data, durata_min: durata, tipo, luogo, location_id: effectiveLocationId || null, meteo, note_speciali: noteSpeciali, note, stato, check_bene: checkBene || null, check_non_fatto: checkNonFatto || null };
       const payloadLezioneCompat = { data, durata_min: durata, tipo, luogo, note };
       const payloadLezioneNuova = __spreadProps(__spreadValues({}, payloadLezione), { maestro_id: currentUid || null });
       const payloadLezioneNuovaCompat = __spreadProps(__spreadValues({}, payloadLezioneCompat), { maestro_id: currentUid || null });
       if (lezioneInModifica) {
         let payloadCorrente = payloadLezione;
         ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
+        if (isMissingLessonLocationIdError(e1)) {
+          const _g = payloadCorrente, { location_id: _locationId } = _g, withoutLocationId = __objRest(_g, ["location_id"]);
+          payloadCorrente = withoutLocationId;
+          ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
+        }
         if (isMissingLessonMeteoError(e1)) {
-          const _e = payloadCorrente, { meteo: _meteo } = _e, withoutMeteo = __objRest(_e, ["meteo"]);
+          const _h = payloadCorrente, { meteo: _meteo } = _h, withoutMeteo = __objRest(_h, ["meteo"]);
           payloadCorrente = withoutMeteo;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
         }
         if (isMissingLessonCheckError(e1)) {
-          const _f = payloadCorrente, { check_bene, check_non_fatto } = _f, withoutCheck = __objRest(_f, ["check_bene", "check_non_fatto"]);
+          const _i = payloadCorrente, { check_bene, check_non_fatto } = _i, withoutCheck = __objRest(_i, ["check_bene", "check_non_fatto"]);
           payloadCorrente = withoutCheck;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
         }
         if (isMissingLessonStatusError(e1)) {
-          const _g = payloadCorrente, { stato: _stato } = _g, withoutStatus = __objRest(_g, ["stato"]);
+          const _j = payloadCorrente, { stato: _stato } = _j, withoutStatus = __objRest(_j, ["stato"]);
           payloadCorrente = withoutStatus;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
         }
         if (isMissingLessonCheckError(e1)) {
-          const _h = payloadCorrente, { stato: _stato, check_bene, check_non_fatto } = _h, withoutStatusAndCheck = __objRest(_h, ["stato", "check_bene", "check_non_fatto"]);
+          const _k = payloadCorrente, { stato: _stato, check_bene, check_non_fatto } = _k, withoutStatusAndCheck = __objRest(_k, ["stato", "check_bene", "check_non_fatto"]);
           payloadCorrente = withoutStatusAndCheck;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").update(payloadCorrente).eq("id", lezioneInModifica).select().single());
         }
@@ -8919,23 +12216,28 @@ function salvaLezione() {
       } else {
         let payloadCorrente = payloadLezioneNuova;
         ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
+        if (isMissingLessonLocationIdError(e1)) {
+          const _l = payloadCorrente, { location_id: _locationId } = _l, withoutLocationId = __objRest(_l, ["location_id"]);
+          payloadCorrente = withoutLocationId;
+          ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
+        }
         if (isMissingLessonMeteoError(e1)) {
-          const _i = payloadCorrente, { meteo: _meteo } = _i, withoutMeteo = __objRest(_i, ["meteo"]);
+          const _m = payloadCorrente, { meteo: _meteo } = _m, withoutMeteo = __objRest(_m, ["meteo"]);
           payloadCorrente = withoutMeteo;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
         }
         if (isMissingLessonCheckError(e1)) {
-          const _j = payloadCorrente, { check_bene, check_non_fatto } = _j, withoutCheck = __objRest(_j, ["check_bene", "check_non_fatto"]);
+          const _n = payloadCorrente, { check_bene, check_non_fatto } = _n, withoutCheck = __objRest(_n, ["check_bene", "check_non_fatto"]);
           payloadCorrente = withoutCheck;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
         }
         if (isMissingLessonStatusError(e1)) {
-          const _k = payloadCorrente, { stato: _stato } = _k, withoutStatus = __objRest(_k, ["stato"]);
+          const _o = payloadCorrente, { stato: _stato } = _o, withoutStatus = __objRest(_o, ["stato"]);
           payloadCorrente = withoutStatus;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
         }
         if (isMissingLessonCheckError(e1)) {
-          const _l = payloadCorrente, { stato: _stato, check_bene, check_non_fatto } = _l, withoutStatusAndCheck = __objRest(_l, ["stato", "check_bene", "check_non_fatto"]);
+          const _p = payloadCorrente, { stato: _stato, check_bene, check_non_fatto } = _p, withoutStatusAndCheck = __objRest(_p, ["stato", "check_bene", "check_non_fatto"]);
           payloadCorrente = withoutStatusAndCheck;
           ({ data: lz, error: e1 } = yield sb.from("lezioni").insert(payloadCorrente).select().single());
         }
@@ -8953,11 +12255,12 @@ function salvaLezione() {
         relazioniSostituite = true;
       }
       const pendingSkillsByAllievo = /* @__PURE__ */ new Map();
-      const queueSkillForAllievo = (aid, row) => {
+      const groupFeedback = tipo === "gruppo" ? collectGroupStudentFeedback() : {};
+      const queueSkillForAllievo = (aid, row, extraDimensioni = {}) => {
         var _a3, _b3;
         const skillId = (_a3 = row.querySelector(".skill-select")) == null ? void 0 : _a3.value;
         const stadio = parseInt(((_b3 = row.querySelector(".stadio-toggle")) == null ? void 0 : _b3.dataset.stadio) || "1", 10);
-        const dimensioni = skillRowDimensions(row);
+        const dimensioni = mergeLessonDimensions(skillRowDimensions(row), extraDimensioni);
         const fakie = skillRowFakie(row);
         if (!skillId) return;
         if (!pendingSkillsByAllievo.has(aid)) pendingSkillsByAllievo.set(aid, /* @__PURE__ */ new Map());
@@ -8969,9 +12272,9 @@ function salvaLezione() {
       const flushSkills = () => __async(null, null, function* () {
         for (const [aid, skillMap] of pendingSkillsByAllievo.entries()) {
           for (const item of skillMap.values()) {
-            const { error: skillError } = yield insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni });
+            const { error: skillError } = yield insertLezioneSkill({ lezione_id: lz.id, allievo_id: aid || null, skill_id: item.skillId, stadio_raggiunto: item.stadio, fakie: item.fakie, dimensioni: item.dimensioni });
             if (skillError) throw skillError;
-            if (stato === "chiusa") {
+            if (stato === "chiusa" && aid) {
               try {
                 yield aggiornaProgressiDaLezione(aid, item.skillId, item.stadio, { fakie: item.fakie });
               } catch (progressError) {
@@ -8986,25 +12289,30 @@ function salvaLezione() {
         const { error: allievoInsertError } = yield sb.from("lezioni_allievi").insert({ lezione_id: lz.id, allievo_id: aid });
         if (allievoInsertError) throw allievoInsertError;
       }
-      yield ensureLocationDaLezione(luogo, checkedAllievi.map((cb) => cb.value));
+      yield ensureLocationDaLezione(luogo, lezioneAllieviIds);
       if (tipo === "gruppo") {
         const checkedIds = checkedAllievi.map((cb) => cb.value);
         for (const row of document.querySelectorAll(`#skill-rows-${GROUP_SKILL_ROWS_KEY} .skill-row`)) {
           const excluded = new Set(skillRowExcludedIds(row));
           for (const aid of checkedIds.filter((id) => !excluded.has(id))) {
-            queueSkillForAllievo(aid, row);
+            queueSkillForAllievo(aid, row, groupStudentFeedbackDimensions(aid, groupFeedback));
           }
         }
         for (const aid of checkedIds) {
           const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`);
-          for (const row of rows) queueSkillForAllievo(aid, row);
+          for (const row of rows) queueSkillForAllievo(aid, row, groupStudentFeedbackDimensions(aid, groupFeedback));
         }
       } else {
-        for (const cb of checkedAllievi) {
-          const aid = cb.value;
-          const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`);
-          for (const row of rows) {
-            queueSkillForAllievo(aid, row);
+        if (tipo === "campo_libero") {
+          const rows = document.querySelectorAll(`#skill-rows-${FREE_LESSON_SKILL_ROWS_KEY} .skill-row`);
+          for (const row of rows) queueSkillForAllievo(null, row);
+        } else {
+          for (const cb of checkedAllievi) {
+            const aid = cb.value;
+            const rows = document.querySelectorAll(`#skill-rows-${aid} .skill-row`);
+            for (const row of rows) {
+              queueSkillForAllievo(aid, row);
+            }
           }
         }
       }
@@ -9030,8 +12338,11 @@ function salvaLezione() {
           console.error("Ripristino relazioni lezione fallito", restoreError);
         }
       }
-      errEl.textContent = e.message || "Errore nel salvataggio della lezione. Le presenze precedenti sono state mantenute quando possibile.";
-      errEl.classList.add("show");
+      saveLezioneDraft({ keep: true });
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const reason = e.message || "Errore nel salvataggio della lezione. Le presenze precedenti sono state mantenute quando possibile.";
+      const localNote = offline ? "Bozza salvata localmente su questo dispositivo: sei offline. Riprova il salvataggio quando torna la connessione." : "Bozza salvata localmente su questo dispositivo. Riprova il salvataggio quando il servizio online risponde.";
+      setLezioneFormMessage(`${reason} ${localNote}`);
     } finally {
       buttons.forEach((btn) => {
         btn.disabled = false;
@@ -9653,6 +12964,21 @@ function dateInputToIso(d) {
   }
   match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? raw : "";
+}
+function allievoEtaLabel(dataNascita) {
+  const iso = dateInputToIso(dataNascita) || String(dataNascita || "").slice(0, 10);
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const [y, m, d] = match.slice(1).map(Number);
+  const nascita = new Date(y, m - 1, d);
+  if (Number.isNaN(nascita.getTime()) || nascita.getFullYear() !== y || nascita.getMonth() !== m - 1 || nascita.getDate() !== d) return "";
+  const oggi = /* @__PURE__ */ new Date();
+  if (nascita > oggi) return "";
+  let anni = oggi.getFullYear() - y;
+  if (oggi.getMonth() < m - 1 || oggi.getMonth() === m - 1 && oggi.getDate() < d) anni--;
+  if (anni >= 2) return `${anni} anni`;
+  const mesi = Math.max(0, Math.floor((oggi - nascita) / (1e3 * 60 * 60 * 24 * 30.44)));
+  return `${mesi} mes${mesi === 1 ? "e" : "i"}`;
 }
 function stadioLabel(s) {
   var _a2;
