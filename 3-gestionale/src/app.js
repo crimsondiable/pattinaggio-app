@@ -95,7 +95,7 @@ const APPOINTMENT_HEAT_START_MIN = 13 * 60
 const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30
 const APPOINTMENT_CONSECUTIVE_PREFER = 'prefer'
 const APPOINTMENT_CONSECUTIVE_STRICT = 'strict'
-let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = '', appuntamentiGruppoFiltro = 'all'
+let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = ''
 let availabilityDragState = null
 let calendarioDragId = null
 let appointmentSelectedAllieviIds = null
@@ -1102,7 +1102,7 @@ function showView(name, id) {
   if (name === 'lezioni')       loadLezioni()
   if (name === 'percorsi')      ensureRouteBuilderMounted()
   if (name === 'calendario')    renderCalendario()
-  if (name === 'appuntamenti')  renderAppuntamenti()
+  if (name === 'appuntamenti')  loadAppuntamenti()
   if (name === 'mappa')         renderMappa(id || null)
   if (name === 'location' && id) loadLocation(id)
   if (name === 'lezione' && id) loadLezione(id)
@@ -1949,6 +1949,19 @@ function appointmentSelectionStats() {
   return { selected, total }
 }
 
+function appointmentFilteredStats(allievi = filteredAppointmentAllievi()) {
+  const stats = appointmentSelectionStats()
+  return {
+    filtered: allievi.length,
+    selected: stats.selected,
+  }
+}
+
+function appointmentFilteredStatusHtml(allievi = filteredAppointmentAllievi()) {
+  const stats = appointmentFilteredStats(allievi)
+  return `${stats.filtered} alliev${stats.filtered === 1 ? 'o' : 'i'} nel filtro corrente · ${stats.selected} selezionat${stats.selected === 1 ? 'o' : 'i'} per il planner.`
+}
+
 function appointmentSelectedAllievi() {
   ensureAppointmentSelectionDefaults()
   const selected = appointmentSelectedAllieviIds || new Set()
@@ -2115,18 +2128,29 @@ function appointmentWeeklyCountForTarget(target = selectedAppointmentTarget()) {
   return appointmentWeeklyCountForAllievo(target.allievo)
 }
 
+function lessonAllievoIds(lezione = {}) {
+  return (lezione.lezioni_allievi || [])
+    .map(row => row.allievo_id || row.allievi?.id)
+    .filter(Boolean)
+    .map(id => String(id))
+}
+
+function allievoHasIndividualLessonHistory(allievo) {
+  if (!allievo?.id || !lezioniCache) return false
+  const id = String(allievo.id)
+  return (lezioniCache || []).some(lezione => {
+    if (lezione?.tipo !== 'individuale') return false
+    const ids = lessonAllievoIds(lezione)
+    return ids.length === 1 && ids.includes(id)
+  })
+}
+
 function appointmentIndividualLessonsActiveForAllievo(allievo) {
   if (!allievo?.gruppo) return true
   const profilo = allievo.profilo || {}
   if (profilo.appuntamenti_individuali_attivi === false) return false
-  if (profilo.appuntamenti_individuali_attivi || profilo.disponibilita_individuale_attiva) return true
-  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, true)
-  if (logisticaHaValori(logisticaIndividuale)) return true
-  const personalSlots = availabilitySlotsForAllievo(allievo)
-  const groupSlots = appointmentGroupMembers(allievo.gruppo)
-    .map(member => availabilityGroupDedicatedSlotsForMember(member))
-    .find(slots => slots.length) || []
-  return !!(personalSlots.length && groupSlots.length && availabilitySlotsSignature(personalSlots) !== availabilitySlotsSignature(groupSlots))
+  if (profilo.appuntamenti_individuali_attivi === true) return true
+  return allievoHasIndividualLessonHistory(allievo)
 }
 
 function normalizeAppointmentConsecutiveMode(value, legacyAvoid = undefined) {
@@ -2270,13 +2294,45 @@ function availabilityModeControlsHtml(owner) {
   const availableActive = mode === 'available'
   const excludedActive = mode === 'excluded'
   const excludedOwner = `${owner}-excluded`
+  const availabilityCount = availabilitySlotsForOwner(owner).length
+  const excludedCount = availabilitySlotsForOwner(excludedOwner).length
   return `
     <div class="availability-card-actions">
       <button type="button" class="btn ${availableActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','available')">Inserisci disponibilita</button>
       <button type="button" class="btn ${excludedActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','excluded')">Inserisci fasce escluse</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? '' : 'disabled'}>Undo disp.</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? '' : 'disabled'}>Undo escl.</button>
+      <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${owner}')" ${availabilityCount ? '' : 'disabled'}>Cancella disp.</button>
+      <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${excludedOwner}')" ${excludedCount ? '' : 'disabled'}>Cancella escl.</button>
     </div>`
+}
+
+function availabilityDeleteTargetLabel(owner, target = selectedAppointmentTarget()) {
+  if (availabilityBaseOwner(owner) === 'maestro') return 'maestro'
+  if (target?.type === 'gruppo') return `gruppo ${target.gruppo}`
+  if (target?.type === 'allievo') return target.label
+  return 'selezione corrente'
+}
+
+function availabilityDeleteKindLabel(owner, singular = false) {
+  if (availabilityOwnerIsExcluded(owner)) return singular ? 'fascia esclusa' : 'fasce escluse'
+  return singular ? 'disponibilita' : 'disponibilita'
+}
+
+async function clearAvailabilitySlots(owner) {
+  const slots = availabilitySlotsForOwner(owner)
+  if (!slots.length) {
+    setAvailabilityStatus(owner, `Nessuna ${availabilityDeleteKindLabel(owner)} da cancellare.`)
+    return
+  }
+  const targetLabel = availabilityDeleteTargetLabel(owner)
+  const kind = availabilityDeleteKindLabel(owner)
+  if (!confirm(`Cancellare tutte le ${kind} per ${targetLabel}?\nVerranno rimosse ${slots.length} fasc${slots.length === 1 ? 'ia' : 'e'}.`)) return
+  try {
+    await saveAvailabilitySlotsForOwner(owner, [], `Tutte le ${kind} sono state cancellate.`)
+  } catch (e) {
+    setAvailabilityStatus(owner, e.message || `Errore cancellazione ${kind}.`, 'err')
+  }
 }
 
 async function undoAvailability(owner) {
@@ -2436,6 +2492,16 @@ function appointmentAgendaTypesHtml() {
     </div>`
 }
 
+async function loadAppuntamenti() {
+  const el = document.getElementById('appuntamenti-content')
+  if (!el) return
+  if (!lezioniCache) {
+    el.innerHTML = '<div class="loading">Caricamento…</div>'
+    await loadLezioni(true)
+  }
+  if (visibleViewName() === 'appuntamenti') renderAppuntamenti()
+}
+
 function renderAppuntamenti() {
   const el = document.getElementById('appuntamenti-content')
   if (!el) return
@@ -2451,9 +2517,7 @@ function renderAppuntamenti() {
   const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget)
   const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
-  const gruppi = appointmentGroups()
   const filteredAllievi = filteredAppointmentAllievi()
-  const selectedStats = appointmentSelectionStats()
 
   el.innerHTML = `
     <div class="appointments-grid">
@@ -2527,23 +2591,15 @@ function renderAppuntamenti() {
         <div class="appointments-toolbar">
           <div class="field">
             <label>Cerca allievo</label>
-            <input type="search" id="appointments-search" value="${esc(appuntamentiAllieviQuery)}" placeholder="Nome, nickname, gruppo" oninput="setAppuntamentiQuery(this.value)">
+            <input type="search" id="appointments-search" value="${esc(appuntamentiAllieviQuery)}" placeholder="Nome, nickname, gruppo" oninput="setAppuntamentiQuery(this)">
           </div>
           <div class="field">
-            <label>Gruppo</label>
-            <select id="appointments-group-filter" onchange="setAppuntamentiGroupFilter(this.value)">
-              <option value="all">Tutti</option>
-              ${gruppi.map(g => `<option value="${esc(g)}" ${appuntamentiGruppoFiltro === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}
-              <option value="__no_group__" ${appuntamentiGruppoFiltro === '__no_group__' ? 'selected' : ''}>Senza gruppo</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Durata fallback</label>
+            <label>Durata lezione se mancante (min)</label>
             <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="clearAppointmentAgendaPreview()">
           </div>
         </div>
-        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? 'o' : 'i'} nel filtro corrente · ${selectedStats.selected} selezionat${selectedStats.selected === 1 ? 'o' : 'i'} per il planner.</div>
-        ${appointmentSelectionPanelHtml(filteredAllievi)}
+        <div class="appointments-status" id="appointments-filter-status">${appointmentFilteredStatusHtml(filteredAllievi)}</div>
+        <div id="appointment-selection-panel-holder">${appointmentSelectionPanelHtml(filteredAllievi)}</div>
         <div class="appointments-explainer">
           <strong>Generazione agenda</strong>
           <span>Clicca una tipologia per generare una proposta. Ogni click sulla stessa tipologia prova un'alternativa diversa; le lezioni bloccate restano ferme.</span>
@@ -2561,17 +2617,21 @@ function setAppuntamentiAllievo(id) {
   renderAppuntamenti()
 }
 
-function setAppuntamentiQuery(value) {
-  appuntamentiAllieviQuery = value || ''
-  appointmentCurrentVariant = null
-  renderAppuntamenti()
-  document.getElementById('appointments-search')?.focus()
+function renderAppointmentSelectionOnly() {
+  const filteredAllievi = filteredAppointmentAllievi()
+  const status = document.getElementById('appointments-filter-status')
+  if (status) status.textContent = appointmentFilteredStatusHtml(filteredAllievi)
+  const holder = document.getElementById('appointment-selection-panel-holder')
+  if (holder) holder.innerHTML = appointmentSelectionPanelHtml(filteredAllievi)
+  renderAppointmentAgendaPreview()
 }
 
-function setAppuntamentiGroupFilter(value) {
-  appuntamentiGruppoFiltro = value || 'all'
+function setAppuntamentiQuery(inputOrValue) {
+  const input = inputOrValue && typeof inputOrValue === 'object' ? inputOrValue : null
+  const value = input ? input.value : inputOrValue
+  appuntamentiAllieviQuery = value || ''
   appointmentCurrentVariant = null
-  renderAppuntamenti()
+  renderAppointmentSelectionOnly()
 }
 
 function toggleAppointmentAllievoSelection(allievoId, checked) {
@@ -2636,10 +2696,6 @@ function clearAppointmentAgendaPreview() {
 function filteredAppointmentAllievi() {
   const query = normalizeText(appuntamentiAllieviQuery)
   return activeAppointmentAllievi().filter(a => {
-    if (appuntamentiGruppoFiltro !== 'all') {
-      if (appuntamentiGruppoFiltro === '__no_group__' && a.gruppo) return false
-      if (appuntamentiGruppoFiltro !== '__no_group__' && a.gruppo !== appuntamentiGruppoFiltro) return false
-    }
     if (!query) return true
     const haystack = normalizeText([a.nome, a.cognome, a.nickname, a.gruppo, a.profilo?.disponibilita].filter(Boolean).join(' '))
     return haystack.includes(query)
@@ -2884,8 +2940,14 @@ async function removeAvailabilitySlot(owner, slotId) {
     setAvailabilityStatus(owner, 'Attiva la modalita corretta prima di cambiare questa fascia.')
     return
   }
+  const slots = availabilitySlotsForOwner(owner)
+  const slot = slots.find(item => String(item.id) === String(slotId))
+  if (!slot) return
+  const kind = availabilityDeleteKindLabel(owner, true)
+  const details = `${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` · ${slot.note}` : ''}`
+  if (!confirm(`Cancellare questa ${kind}?\n${details}`)) return
   try {
-    const next = availabilitySlotsForOwner(owner).filter(slot => String(slot.id) !== String(slotId))
+    const next = slots.filter(slot => String(slot.id) !== String(slotId))
     await saveAvailabilitySlotsForOwner(owner, next, availabilityOwnerIsExcluded(owner) ? 'Fascia esclusa rimossa.' : 'Fascia rimossa.')
   } catch (e) {
     setAvailabilityStatus(owner, e.message || 'Errore rimozione fascia.', 'err')
@@ -7339,6 +7401,7 @@ async function loadScheda(id) {
             <div class="inline-action-panel" id="scheda-actions-${id}" hidden>
               <button class="btn btn-ghost btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
               ${canShareAllievo(allievo) ? `<button class="btn btn-ghost btn-sm" onclick="apriCondividiAllievo('${id}')">Condividi</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="toggleVacanzaAllievo('${id}')">${allievoInVacanzaDiretta(allievo) ? 'Togli vacanza' : 'Metti in vacanza'}</button>
               <button class="btn btn-ghost btn-sm" onclick="eliminaAllievo('${id}')">${allievo.stato === 'archiviato' ? 'Elimina definitivamente' : 'Archivia'}</button>
               <button class="btn btn-ghost btn-sm" onclick="esportaAllievo('${id}')">JSON</button>
               <button class="btn btn-ghost btn-sm" onclick="stampaScheda('${id}')">Stampa</button>
@@ -8782,6 +8845,29 @@ async function backupAllievoCompleto(id) {
     sb.from('lezioni_skills').select('*, skills(*)').eq('allievo_id', id),
   ])
   return { allievo, progressi: progressi || [], lezioniAllievi: lezioniAllievi || [], lezioniSkills: lezioniSkills || [] }
+}
+
+async function toggleVacanzaAllievo(id) {
+  const allievo = allAllievi.find(a => String(a.id) === String(id))
+  if (!allievo) return
+  const nextVacanza = !allievoInVacanzaDiretta(allievo)
+  const nome = allievoDisplayName(id)
+  if (nextVacanza && !confirm(`Mettere ${nome} in vacanza? Non comparira nelle liste operative e negli appuntamenti finche resta in vacanza.`)) return
+  try {
+    const profilo = { ...(allievo.profilo || {}), in_vacanza: nextVacanza }
+    let payload = { profilo, aggiornato_il: new Date().toISOString() }
+    let { data, error } = await sb.from('allievi').update(payload).eq('id', id).select().single()
+    if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+      payload = { profilo }
+      ;({ data, error } = await sb.from('allievi').update(payload).eq('id', id).select().single())
+    }
+    if (error) throw error
+    allAllievi = allAllievi.map(a => String(a.id) === String(id) ? (data || { ...a, profilo }) : a)
+    logModificaLocale('allievo', id, nextVacanza ? 'Messo in vacanza' : 'Tolto dalla vacanza')
+    await loadScheda(id)
+  } catch (e) {
+    alert('Errore aggiornamento vacanza: ' + (e.message || e))
+  }
 }
 
 async function eliminaAllievo(id) {
