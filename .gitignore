@@ -39,6 +39,8 @@ tmp/
 tmp/pdfs/
 
 # Private/local project material kept outside the public repository
+.codex-pet-runs/
+.worktrees/
 1-progetto/
 2-metodologia/
 4-lavoro-sul-campo/
@@ -48,6 +50,7 @@ _archivio/
 supabase/
 3-gestionale/db/
 3-gestionale/docs-tecnici/
+3-gestionale/scripts/generate-icon-variants.mjs
 3-gestionale/vite-test/
 3-gestionale/deploy.command
 3-gestionale/setup-github.command

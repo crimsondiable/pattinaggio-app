@@ -268,7 +268,7 @@
     .availability-slot-delete:hover { background: rgba(4,16,21,.32); }
     .availability-slot-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; background: rgba(4,16,21,.16); }
     .availability-empty { color: var(--muted); font-size: .84rem; line-height: 1.4; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); padding: .75rem; background: rgba(255,255,255,.012); }
-    .appointments-toolbar { display: grid; grid-template-columns: minmax(0,1fr) minmax(150px,.45fr) auto; gap: .5rem; align-items: end; margin-bottom: .75rem; }
+    .appointments-toolbar { display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.32fr); gap: .5rem; align-items: end; margin-bottom: .75rem; }
     .appointments-toolbar .field { margin-bottom: 0; }
     .appointments-explainer { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .65rem .75rem; display: grid; gap: .18rem; color: var(--muted); font-size: .82rem; line-height: 1.38; }
     .appointments-explainer strong { color: var(--testo); font-size: .86rem; }
@@ -1080,10 +1080,6 @@
           <h2>Appuntamenti</h2>
           <p class="appointments-subtitle">Disponibilita settimanali ricorrenti e incroci tra maestro e allievi.</p>
         </div>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="showView('lezioni')">Lezioni</button>
-          <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione','modo:prep')">+ Prepara lezione</button>
-        </div>
       </div>
       <div id="appuntamenti-content"><div class="loading">Caricamento…</div></div>
     </section>
@@ -1160,11 +1156,6 @@
         </div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
-        <p class="form-sec" id="lz-check-title">Check operativo</p>
-        <div class="form-grid" id="lz-check-grid">
-          <div class="field"><label>Cosa e andato bene</label><textarea id="lz-check-bene" placeholder="Cose riuscite, intuizioni, reazioni buone…"></textarea></div>
-          <div class="field"><label>Non fatto / da riprendere</label><textarea id="lz-check-non-fatto" placeholder="Cosa non e stato fatto o va rimandato…"></textarea></div>
-        </div>
         <div class="field" id="lz-note-field"><label>Descrizione lezione</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
       </div>
 
@@ -1175,6 +1166,13 @@
       <div id="lz-prep-board" hidden></div>
       <div id="lz-skills-container"></div>
       <div class="card" id="lz-special-guest-panel" hidden></div>
+      <div class="card" id="lz-check-card">
+        <p class="form-sec" id="lz-check-title" style="margin-top:0">Check operativo</p>
+        <div class="form-grid" id="lz-check-grid">
+          <div class="field"><label>Cosa e andato bene</label><textarea id="lz-check-bene" placeholder="Cose riuscite, intuizioni, reazioni buone…"></textarea></div>
+          <div class="field"><label>Non fatto / da riprendere</label><textarea id="lz-check-non-fatto" placeholder="Cosa non e stato fatto o va rimandato…"></textarea></div>
+        </div>
+      </div>
 
       <div id="lz-err" class="msg msg-err"></div>
       <button class="btn btn-primary btn-full" onclick="salvaLezione()" id="btn-salva-lz">Salva lezione</button>
@@ -1730,7 +1728,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260630-lesson-target-fix';
+  var appVersion = '20260701-vacation-toggle';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }
