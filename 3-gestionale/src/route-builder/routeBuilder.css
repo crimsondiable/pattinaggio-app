@@ -93,6 +93,16 @@ body.route-builder-active #screen-app main {
   flex-basis: 240px;
 }
 
+.route-surface-field {
+  min-width: 190px;
+  flex-basis: 210px;
+}
+
+.route-surface-name-field {
+  min-width: 150px;
+  flex-basis: 180px;
+}
+
 .route-dimension-field {
   max-width: 112px;
 }
@@ -354,11 +364,181 @@ body.route-builder-active #screen-app main {
   box-shadow: 0 12px 42px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
 }
 
+.route-canvas-stage[data-surface="basketball"] {
+  background: #163b35;
+}
+
+.route-canvas-stage[data-surface="futsal"] {
+  background: #163d2c;
+}
+
+.route-canvas-stage[data-surface="volleyball"] {
+  background: #31405a;
+}
+
+.route-canvas-stage[data-surface="figure_skating"] {
+  background: #dbeafe;
+}
+
+.route-canvas-stage[data-surface="school_gym"] {
+  background: #3c3327;
+}
+
+.route-canvas-stage[data-surface="open_area"] {
+  background: #26333a;
+}
+
 .route-canvas-stage.show-grid {
   background-image:
     linear-gradient(rgba(148,163,184,.16) 1px, transparent 1px),
     linear-gradient(90deg, rgba(148,163,184,.16) 1px, transparent 1px);
   background-size: var(--route-grid-size) var(--route-grid-size);
+}
+
+.route-surface-lines,
+.route-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+.route-surface-lines {
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  opacity: .7;
+}
+
+.route-line {
+  display: none;
+  border: 2px solid rgba(236,253,245,.58);
+  box-sizing: border-box;
+}
+
+.route-line-half {
+  display: block;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  border-width: 0 0 0 2px;
+}
+
+.route-line-center-circle {
+  display: block;
+  top: 50%;
+  left: 50%;
+  width: min(22%, 180px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.route-line-left-box,
+.route-line-right-box {
+  top: 22%;
+  bottom: 22%;
+  width: 13%;
+}
+
+.route-line-left-box {
+  display: block;
+  left: 0;
+  border-left-width: 0;
+}
+
+.route-line-right-box {
+  display: block;
+  right: 0;
+  border-right-width: 0;
+}
+
+.route-line-left-circle,
+.route-line-right-circle {
+  top: 50%;
+  width: min(16%, 120px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.route-line-left-circle {
+  display: block;
+  left: 8%;
+}
+
+.route-line-right-circle {
+  display: block;
+  right: 8%;
+}
+
+.route-surface-basketball .route-line-left-box,
+.route-surface-basketball .route-line-right-box {
+  width: 18%;
+}
+
+.route-surface-futsal .route-line-left-box,
+.route-surface-futsal .route-line-right-box {
+  top: 28%;
+  bottom: 28%;
+  width: 12%;
+  border-radius: 0 999px 999px 0;
+}
+
+.route-surface-futsal .route-line-right-box {
+  border-radius: 999px 0 0 999px;
+}
+
+.route-surface-volleyball .route-line-left-box,
+.route-surface-volleyball .route-line-right-box,
+.route-surface-volleyball .route-line-left-circle,
+.route-surface-volleyball .route-line-right-circle {
+  display: none;
+}
+
+.route-surface-volleyball .route-line-volley-left,
+.route-surface-volleyball .route-line-volley-right {
+  display: block;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-width: 0 0 0 2px;
+}
+
+.route-surface-volleyball .route-line-volley-left {
+  left: 33.333%;
+}
+
+.route-surface-volleyball .route-line-volley-right {
+  right: 33.333%;
+}
+
+.route-surface-figure_skating .route-line {
+  border-color: rgba(14,116,144,.42);
+}
+
+.route-surface-figure_skating .route-line-left-box,
+.route-surface-figure_skating .route-line-right-box {
+  display: none;
+}
+
+.route-surface-figure_skating .route-line-rink {
+  display: block;
+  inset: 8%;
+  border-radius: 999px;
+}
+
+.route-surface-school_gym .route-line {
+  border-color: rgba(252,211,77,.42);
+}
+
+.route-surface-open_area .route-line-left-box,
+.route-surface-open_area .route-line-right-box,
+.route-surface-open_area .route-line-left-circle,
+.route-surface-open_area .route-line-right-circle,
+.route-surface-open_area .route-line-center-circle,
+.route-surface-open_area .route-line-half,
+.route-surface-custom .route-line {
+  display: none;
 }
 
 .route-canvas-element {

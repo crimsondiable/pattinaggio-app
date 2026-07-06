@@ -142,13 +142,31 @@
       if (!this.route) return
       const canvas = this.route.canvas
       this.viewport.classList.toggle('is-pan-mode', this.panMode)
-      this.ruler.textContent = `${canvas.width} x ${canvas.height} px`
+      this.ruler.textContent = `${canvas.surfaceName} - ${canvas.width} larghezza x ${canvas.height} lunghezza`
       this.content.style.transform = `translate(${canvas.panX}px, ${canvas.panY}px) scale(${canvas.zoom})`
       this.stage.style.width = `${canvas.width}px`
       this.stage.style.height = `${canvas.height}px`
       this.stage.style.setProperty('--route-grid-size', `${canvas.gridSize || 24}px`)
       this.stage.classList.toggle('show-grid', !!canvas.showGrid)
-      this.stage.innerHTML = this.route.elements.map(element => this.renderElement(element)).join('')
+      this.stage.dataset.surface = canvas.surface || 'custom'
+      this.stage.innerHTML = `${this.renderSurface(canvas)}${this.route.elements.map(element => this.renderElement(element)).join('')}`
+    }
+
+    renderSurface(canvas) {
+      const surface = canvas.surface || 'custom'
+      return `
+        <div class="route-surface-lines route-surface-${surface}" aria-hidden="true">
+          <span class="route-line route-line-half"></span>
+          <span class="route-line route-line-center-circle"></span>
+          <span class="route-line route-line-left-box"></span>
+          <span class="route-line route-line-right-box"></span>
+          <span class="route-line route-line-left-circle"></span>
+          <span class="route-line route-line-right-circle"></span>
+          <span class="route-line route-line-volley-left"></span>
+          <span class="route-line route-line-volley-right"></span>
+          <span class="route-line route-line-rink"></span>
+        </div>
+      `
     }
 
     renderElement(element) {

@@ -44,8 +44,8 @@
       `
 
       this.toolbar = new window.RouteToolbar(this.root.querySelector('#route-toolbar-root'), {
-        onRouteChange: (field, value) => this.updateRouteField(field, value),
-        onCanvasChange: patch => this.updateCanvas(patch),
+        onRouteChange: (field, value, options) => this.updateRouteField(field, value, options),
+        onCanvasChange: (patch, options) => this.updateCanvas(patch, options),
         onSave: () => this.save(),
         onLoad: id => this.load(id),
         onExport: () => this.exportJson(),
@@ -61,11 +61,11 @@
       this.canvas = new window.CanvasArea(this.root.querySelector('#route-canvas-root'), {
         onAddElement: (type, point) => this.addElement(type, point),
         onSelect: id => this.selectElement(id),
-        onChangeElement: (id, patch) => this.updateElement(id, patch, { quiet: true }),
-        onCanvasChange: patch => this.updateCanvas(patch, { quiet: true }),
+        onChangeElement: (id, patch) => this.updateElement(id, patch, { quiet: true, live: true }),
+        onCanvasChange: patch => this.updateCanvas(patch, { quiet: true, live: true }),
       })
       this.properties = new window.ElementPropertiesPanel(this.root.querySelector('#route-properties-root'), {
-        onChange: (id, patch) => this.updateElement(id, patch),
+        onChange: (id, patch, options) => this.updateElement(id, patch, options),
         onDuplicate: id => this.duplicateElement(id),
         onDelete: id => this.deleteElement(id),
         onRotate: (id, delta) => this.rotateElement(id, delta),
@@ -102,6 +102,17 @@
       this.properties.setState(this.route, this.selectedId, this.skillOptions())
     }
 
+    renderLiveCanvas() {
+      this.canvas.setState(this.route, this.selectedId, { panMode: this.panMode })
+      this.toolbar.route = this.route
+      this.properties.route = this.route
+    }
+
+    clearTransientStatus() {
+      window.clearTimeout(this.statusTimer)
+      this.status = null
+    }
+
     setStatus(message, type = 'msg-info') {
       this.status = message ? { message, type } : null
       window.clearTimeout(this.statusTimer)
@@ -117,20 +128,36 @@
       this.route = window.RouteModels.normalizeRoute({ ...route, updatedAt: new Date().toISOString() })
     }
 
-    updateRouteField(field, value) {
+    updateRouteField(field, value, options = {}) {
       const next = { ...this.route, [field]: field === 'skills' ? window.RouteModels.parseList(value) : value }
       this.markUpdated(next)
+      if (options.live) {
+        this.clearTransientStatus()
+        return
+      }
       this.render()
     }
 
     updateCanvas(patch, options = {}) {
+      const changes = { ...patch }
+      if ((Object.prototype.hasOwnProperty.call(changes, 'width') || Object.prototype.hasOwnProperty.call(changes, 'height')) && !Object.prototype.hasOwnProperty.call(changes, 'surface')) {
+        changes.size = 'custom'
+        changes.surface = 'custom'
+      }
       let nextRoute = { ...this.route, canvas: { ...this.route.canvas, ...patch } }
-      if (Object.prototype.hasOwnProperty.call(patch, 'size')) {
-        nextRoute = window.RouteModels.applyCanvasSize(nextRoute, patch.size)
+      if (Object.prototype.hasOwnProperty.call(changes, 'surface') && patch.surface) {
+        nextRoute = window.RouteModels.applySurfacePreset(nextRoute, patch.surface)
+      } else if (Object.prototype.hasOwnProperty.call(changes, 'size')) {
+        nextRoute = window.RouteModels.applyCanvasSize({ ...this.route, canvas: { ...this.route.canvas, ...changes } }, changes.size)
       } else {
-        nextRoute = window.RouteModels.normalizeRoute(nextRoute)
+        nextRoute = window.RouteModels.normalizeRoute({ ...this.route, canvas: { ...this.route.canvas, ...changes } })
       }
       this.markUpdated(nextRoute)
+      if (options.live) {
+        this.clearTransientStatus()
+        this.renderLiveCanvas()
+        return
+      }
       if (!options.quiet) this.setStatus('Canvas aggiornato.', 'msg-info')
       this.render()
     }
@@ -160,6 +187,11 @@
         return window.RouteModels.normalizeElement({ ...element, ...patch })
       })
       this.markUpdated({ ...this.route, elements })
+      if (options.live) {
+        this.clearTransientStatus()
+        this.renderLiveCanvas()
+        return
+      }
       if (!options.quiet) this.setStatus('Elemento aggiornato.', 'msg-info')
       this.render()
     }

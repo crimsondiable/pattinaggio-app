@@ -429,7 +429,7 @@ function initialRouteFromHash(hashValue = window.location.hash) {
   } catch {
     return { name: 'allievi', id: null }
   }
-  const allowed = ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  const allowed = ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
   if (!allowed.includes(name)) return { name: 'allievi', id: null }
   if (routeNeedsId(name) && !id) return { name: 'allievi', id: null }
   return { name, id }
@@ -983,7 +983,7 @@ window.addEventListener('hashchange', () => {
 })
 
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
+  return ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
@@ -991,6 +991,7 @@ function syncNavActive(name) {
   const locationFromMap = name === 'location' && locationBackTarget?.name === 'mappa'
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name) || (name === 'location' && !locationFromMap))
+  document.getElementById('nav-lesson-radial-planner')?.classList.toggle('active', name === 'lesson-radial-planner')
   document.getElementById('nav-percorsi').classList.toggle('active', name === 'percorsi')
   document.getElementById('nav-calendar').classList.toggle('active', name === 'calendario')
   document.getElementById('nav-auto-orari').classList.toggle('active', name === 'appuntamenti')
@@ -1003,7 +1004,7 @@ function syncNavActive(name) {
 function isValidLocationBackTarget(target) {
   if (!target || target.name === 'location') return false
   if (target.name === 'scheda' || target.name === 'gruppo' || target.name === 'lezione') return !!target.id
-  return ['allievi','lezioni','percorsi','calendario','appuntamenti','mappa','skills','tuning','app-notes'].includes(target.name)
+  return ['allievi','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','mappa','skills','tuning','app-notes'].includes(target.name)
 }
 
 function readLocationBackTarget() {
@@ -1025,6 +1026,7 @@ function locationBackLabel(target = locationBackTarget) {
   const labels = {
     allievi: 'Allievi',
 	    lezioni: 'Lezioni',
+    'lesson-radial-planner': 'Planner',
 	    percorsi: 'Percorsi',
 	    calendario: 'Calendario',
 	    appuntamenti: 'Appuntamenti',
@@ -1056,7 +1058,7 @@ function currentReturnTarget() {
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
   if (view === 'location') return locationBackTarget || readLocationBackTarget() || { name: 'lezioni', id: null }
-  if (view === 'allievi' || view === 'lezioni' || view === 'percorsi' || view === 'calendario' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
+  if (view === 'allievi' || view === 'lezioni' || view === 'lesson-radial-planner' || view === 'percorsi' || view === 'calendario' || view === 'appuntamenti' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'app-notes') return { name: view, id: null }
   return null
 }
 
@@ -1089,17 +1091,19 @@ function showView(name, id) {
   }
   document.body.dataset.view = name
   document.body.classList.toggle('route-builder-active', name === 'percorsi')
+  document.body.classList.toggle('lesson-radial-active', name === 'lesson-radial-planner')
   if (['nuovo-allievo','nuovo-gruppo','nuova-lezione'].includes(name)) {
     const returnTarget = previousReturnTarget
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
+  ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','app-notes'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   syncNavActive(name)
 
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
+  if (name === 'lesson-radial-planner') ensureLessonRadialPlannerMounted()
   if (name === 'percorsi')      ensureRouteBuilderMounted()
   if (name === 'calendario')    renderCalendario()
   if (name === 'appuntamenti')  loadAppuntamenti()
@@ -1199,6 +1203,36 @@ function routeBuilderLoadErrorHtml(detail) {
     </div>`
 }
 
+function ensureLessonRadialPlannerMounted() {
+  const view = document.getElementById('view-lesson-radial-planner')
+  const root = document.getElementById('lesson-radial-planner-root')
+  if (!view || view.hidden || !root) return
+  if (typeof initLessonRadialPlannerPage === 'function') {
+    try {
+      initLessonRadialPlannerPage()
+    } catch (error) {
+      console.error('Errore inizializzazione planner radiale', error)
+      root.innerHTML = lessonRadialPlannerLoadErrorHtml(error?.message || 'Errore JavaScript durante il caricamento.')
+    }
+    return
+  }
+  root.innerHTML = lessonRadialPlannerLoadErrorHtml('Script lesson-radial-planner non caricati.')
+}
+
+function lessonRadialPlannerLoadErrorHtml(detail) {
+  return `
+    <div class="card">
+      <div class="msg msg-err show" style="display:block;margin-bottom:.7rem">
+        Planner radiale non caricato.
+      </div>
+      <div style="color:var(--muted);font-size:.86rem;line-height:1.45">
+        ${esc(detail || 'Errore non specificato.')}<br>
+        Apri il gestionale tramite server locale:
+        <a href="http://localhost:8027/#lesson-radial-planner" style="color:var(--blu);font-weight:800">http://localhost:8027/#lesson-radial-planner</a>
+      </div>
+    </div>`
+}
+
 function openAppNotes() {
   if (!godMode) return
   const current = visibleViewName()
@@ -1218,6 +1252,7 @@ function closeAppNotes() {
   targetEl.hidden = false
   document.body.dataset.view = target
   document.body.classList.toggle('route-builder-active', target === 'percorsi')
+  document.body.classList.toggle('lesson-radial-active', target === 'lesson-radial-planner')
   syncNavActive(target)
   requestAnimationFrame(() => motion.view(target))
 }
@@ -5962,16 +5997,67 @@ function renderGruppoActionMenu(gruppo, actionId = 'gruppo-actions', options = {
   const isArchiviato = !membriAttivi.length && gruppoMembri(gruppo, { includeArchived: true }).length > 0
   const showScheda = options.showScheda !== false
   const canShare = !isArchiviato && canShareGruppo(gruppo)
+  const inVacanza = gruppoInVacanza(gruppo)
   return `
     <div class="inline-action-menu">
       <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
       <div class="inline-action-panel" id="${esc(actionId)}" hidden>
         ${showScheda ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})">Scheda gruppo</button>` : ''}
         ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-gruppo',${jsArg(gruppo)})">${editIcon()} Modifica</button>` : ''}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); toggleVacanzaGruppo(${jsArg(gruppo)})">${inVacanza ? 'Togli vacanza' : 'Metti in vacanza'}</button>` : ''}
         ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(gruppo)})">Condividi</button>` : ''}
         ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); archiviaGruppo(${jsArg(gruppo)})">Archivia</button>` : '<div class="inline-action-meta">Gruppo archiviato</div>'}
       </div>
     </div>`
+}
+
+function profiloConVacanzaGruppo(profilo = {}, inVacanza = false) {
+  const dedicata = profilo.logistica_gruppo && typeof profilo.logistica_gruppo === 'object'
+    ? profilo.logistica_gruppo
+    : null
+  const logisticaBase = dedicata && (logisticaHaValori(dedicata) || hasVacationField(dedicata))
+    ? dedicata
+    : logisticaGruppoProfilo(profilo)
+  const logisticaGruppo = { ...logisticaBase, in_vacanza: inVacanza }
+  return { ...profilo, in_vacanza: inVacanza, logistica_gruppo: logisticaGruppo }
+}
+
+async function salvaProfiloAllievo(id, profilo) {
+  let payload = { profilo, aggiornato_il: new Date().toISOString() }
+  let { data, error } = await sb.from('allievi').update(payload).eq('id', id).select().single()
+  if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || '')) {
+    payload = { profilo }
+    ;({ data, error } = await sb.from('allievi').update(payload).eq('id', id).select().single())
+  }
+  if (error) throw error
+  return data
+}
+
+async function toggleVacanzaGruppo(gruppo) {
+  const membri = gruppoMembri(gruppo)
+  if (!membri.length) {
+    alert('Nessun allievo attivo da aggiornare in questo gruppo.')
+    return
+  }
+  const nextVacanza = !gruppoInVacanza(gruppo)
+  if (nextVacanza && !confirm(`Mettere il gruppo "${gruppo}" in vacanza? I ${membri.length} membri non compariranno nelle liste operative e negli appuntamenti finche resta in vacanza.`)) return
+
+  try {
+    const aggiornati = []
+    for (const membro of membri) {
+      const profilo = profiloConVacanzaGruppo(membro.profilo || {}, nextVacanza)
+      const data = await salvaProfiloAllievo(membro.id, profilo)
+      aggiornati.push(data || { ...membro, profilo })
+    }
+    const aggiornatiById = new Map(aggiornati.map(a => [String(a.id), a]))
+    allAllievi = allAllievi.map(a => aggiornatiById.get(String(a.id)) || a)
+    logModificaLocale('gruppo', gruppo, nextVacanza ? 'Gruppo messo in vacanza' : 'Gruppo tolto dalla vacanza')
+    await ricaricaAllievi()
+    if (document.body.dataset.view === 'gruppo' && currentGruppoNome === gruppo) await loadGruppo(gruppo)
+    else renderAllievi()
+  } catch (e) {
+    alert('Errore aggiornamento vacanza gruppo: ' + (e.message || e))
+  }
 }
 
 async function archiviaGruppo(gruppo) {

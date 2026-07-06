@@ -52,6 +52,8 @@
         <div class="route-props-actions">
           <button type="button" class="btn btn-outline btn-sm" data-action="rotate-left">Ruota -15</button>
           <button type="button" class="btn btn-outline btn-sm" data-action="rotate-right">Ruota +15</button>
+          <button type="button" class="btn btn-outline btn-sm" data-action="rotate-left-90">Ruota -90</button>
+          <button type="button" class="btn btn-outline btn-sm" data-action="rotate-right-90">Ruota +90</button>
           <button type="button" class="btn btn-outline btn-sm" data-action="duplicate">Duplica</button>
           <button type="button" class="btn btn-delete-soft btn-sm" data-action="delete">Elimina</button>
         </div>
@@ -76,8 +78,10 @@
       `
 
       this.root.querySelectorAll('[data-field]').forEach(input => {
-        input.addEventListener('input', () => this.emitChange(input, element))
-        input.addEventListener('change', () => this.emitChange(input, element))
+        const isSelect = input.tagName === 'SELECT'
+        const isCheckbox = input.type === 'checkbox'
+        if (!isSelect && !isCheckbox) input.addEventListener('input', () => this.emitChange(input, element, { live: true }))
+        input.addEventListener('change', () => this.emitChange(input, element, { live: false }))
       })
       this.root.querySelectorAll('[data-action]').forEach(button => {
         button.addEventListener('click', () => {
@@ -86,11 +90,13 @@
           if (action === 'delete') this.onDelete(element.id)
           if (action === 'rotate-left') this.onRotate(element.id, -15)
           if (action === 'rotate-right') this.onRotate(element.id, 15)
+          if (action === 'rotate-left-90') this.onRotate(element.id, -90)
+          if (action === 'rotate-right-90') this.onRotate(element.id, 90)
         })
       })
     }
 
-    emitChange(input, element) {
+    emitChange(input, element, options = {}) {
       const fieldName = input.dataset.field
       let value = input.type === 'checkbox' ? input.checked : input.value
       if (['x', 'y', 'rotation', 'width', 'height', 'difficulty', 'order'].includes(fieldName)) {
@@ -103,7 +109,7 @@
         patch.variant = nextDef.defaultVariant
         if (!element.label || element.label === previousDef.label) patch.label = nextDef.label
       }
-      this.onChange(element.id, patch)
+      this.onChange(element.id, patch, options)
     }
   }
 

@@ -26,6 +26,16 @@
     { key: 'custom', label: 'Personalizzato', width: 760, height: 480 },
   ]
 
+  const ROUTE_SURFACE_PRESETS = [
+    { key: 'basketball', label: 'Campetto da basket', width: 840, height: 450 },
+    { key: 'futsal', label: 'Campo calcio a 5', width: 1000, height: 500 },
+    { key: 'volleyball', label: 'Campo pallavolo', width: 720, height: 360 },
+    { key: 'figure_skating', label: 'Figure skating / pista', width: 1200, height: 600 },
+    { key: 'school_gym', label: 'Palestra scolastica', width: 760, height: 460 },
+    { key: 'open_area', label: 'Piazza / area libera', width: 900, height: 560 },
+    { key: 'custom', label: 'Custom salvato', width: 760, height: 480 },
+  ]
+
   const ROUTE_VARIANT_COLORS = {
     orange: '#f97316',
     yellow: '#facc15',
@@ -42,6 +52,8 @@
 
   const DEFAULT_ROUTE_CANVAS = Object.freeze({
     size: 'medium',
+    surface: 'custom',
+    surfaceName: 'Campo custom',
     width: 760,
     height: 480,
     showGrid: true,
@@ -75,6 +87,10 @@
 
   function getCanvasSize(size) {
     return ROUTE_CANVAS_SIZES.find(item => item.key === size) || ROUTE_CANVAS_SIZES[1]
+  }
+
+  function getSurfacePreset(surface) {
+    return ROUTE_SURFACE_PRESETS.find(item => item.key === surface) || ROUTE_SURFACE_PRESETS[ROUTE_SURFACE_PRESETS.length - 1]
   }
 
   function parseList(value) {
@@ -153,8 +169,12 @@
   function normalizeCanvas(canvas = {}) {
     const sizeDef = getCanvasSize(canvas.size || DEFAULT_ROUTE_CANVAS.size)
     const isCustom = (canvas.size || sizeDef.key) === 'custom'
+    const surfaceDef = getSurfacePreset(canvas.surface || DEFAULT_ROUTE_CANVAS.surface)
+    const surface = surfaceDef.key
     return {
       size: isCustom ? 'custom' : sizeDef.key,
+      surface,
+      surfaceName: String(canvas.surfaceName || surfaceDef.label || DEFAULT_ROUTE_CANVAS.surfaceName),
       width: clampNumber(canvas.width, 240, 4000, sizeDef.width),
       height: clampNumber(canvas.height, 180, 4000, sizeDef.height),
       showGrid: canvas.showGrid !== false,
@@ -203,20 +223,37 @@
     return normalizeRoute({ ...route, canvas })
   }
 
+  function applySurfacePreset(route, surfaceKey) {
+    const surface = getSurfacePreset(surfaceKey)
+    const isCustom = surface.key === 'custom'
+    const canvas = {
+      ...route.canvas,
+      size: 'custom',
+      surface: surface.key,
+      surfaceName: isCustom ? route.canvas.surfaceName || surface.label : surface.label,
+      width: isCustom ? route.canvas.width : surface.width,
+      height: isCustom ? route.canvas.height : surface.height,
+    }
+    return normalizeRoute({ ...route, canvas })
+  }
+
   window.RouteModels = {
     ROUTE_ELEMENT_TYPES,
     ROUTE_CANVAS_SIZES,
+    ROUTE_SURFACE_PRESETS,
     ROUTE_VARIANT_COLORS,
     DEFAULT_ROUTE_CANVAS,
     getElementType,
     hasElementType,
     getCanvasSize,
+    getSurfacePreset,
     createElement,
     createRoute,
     normalizeElement,
     normalizeRoute,
     parseList,
     applyCanvasSize,
+    applySurfacePreset,
     uid,
   }
   window.ROUTE_ELEMENT_TYPES = ROUTE_ELEMENT_TYPES

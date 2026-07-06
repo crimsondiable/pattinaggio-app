@@ -22,8 +22,8 @@
     render() {
       const route = this.route
       const canvas = route.canvas
-      const sizes = window.RouteModels.ROUTE_CANVAS_SIZES.map(size => `
-        <option value="${size.key}" ${size.key === canvas.size ? 'selected' : ''}>${size.label}</option>
+      const surfaces = window.RouteModels.ROUTE_SURFACE_PRESETS.map(surface => `
+        <option value="${surface.key}" ${surface.key === canvas.surface ? 'selected' : ''}>${surface.label}</option>
       `).join('')
       const savedOptions = this.savedRoutes.map(item => `
         <option value="${item.id}" ${item.id === route.id ? 'selected' : ''}>${escapeHtml(item.title)}</option>
@@ -48,9 +48,10 @@
               <option value="">Percorsi salvati</option>
               ${savedOptions}
             </select></label>
-            <label class="field"><span>Spazio</span><select data-canvas-field="size">${sizes}</select></label>
-            <label class="field route-dimension-field"><span>Larghezza</span><input type="number" min="240" data-canvas-field="width" value="${canvas.width}" ${canvas.size !== 'custom' ? 'readonly' : ''}></label>
-            <label class="field route-dimension-field"><span>Altezza</span><input type="number" min="180" data-canvas-field="height" value="${canvas.height}" ${canvas.size !== 'custom' ? 'readonly' : ''}></label>
+            <label class="field route-surface-field"><span>Fondo</span><select data-canvas-field="surface">${surfaces}</select></label>
+            <label class="field route-surface-name-field"><span>Nome fondo</span><input data-canvas-field="surfaceName" value="${escapeAttr(canvas.surfaceName)}" placeholder="Campo custom"></label>
+            <label class="field route-dimension-field"><span>Larghezza</span><input type="number" min="240" data-canvas-field="width" value="${canvas.width}"></label>
+            <label class="field route-dimension-field"><span>Lunghezza</span><input type="number" min="180" data-canvas-field="height" value="${canvas.height}"></label>
             <label class="route-check-field"><input type="checkbox" data-canvas-field="showGrid" ${canvas.showGrid ? 'checked' : ''}> Griglia</label>
             <div class="route-zoom-controls">
               <button type="button" class="btn btn-outline btn-sm" data-action="zoom-out">-</button>
@@ -80,17 +81,21 @@
 
     bind() {
       this.root.querySelectorAll('[data-route-field]').forEach(input => {
-        input.addEventListener('input', () => {
+        const emit = options => {
           const field = input.dataset.routeField
           let value = input.value
           if (['level', 'estimatedDurationMinutes'].includes(field)) value = Number(value)
-          this.handlers.onRouteChange?.(field, value)
-        })
+          this.handlers.onRouteChange?.(field, value, options)
+        }
+        input.addEventListener('input', () => emit({ live: true }))
+        input.addEventListener('change', () => emit({ live: false }))
       })
 
       this.root.querySelectorAll('[data-canvas-field]').forEach(input => {
-        input.addEventListener('input', () => this.emitCanvasChange(input))
-        input.addEventListener('change', () => this.emitCanvasChange(input))
+        const isSelect = input.tagName === 'SELECT'
+        const isCheckbox = input.type === 'checkbox'
+        if (!isSelect && !isCheckbox) input.addEventListener('input', () => this.emitCanvasChange(input, { live: true }))
+        input.addEventListener('change', () => this.emitCanvasChange(input, { live: false }))
       })
 
       this.root.querySelectorAll('[data-action]').forEach(control => {
@@ -112,11 +117,11 @@
       })
     }
 
-    emitCanvasChange(input) {
+    emitCanvasChange(input, options = {}) {
       const field = input.dataset.canvasField
       let value = input.type === 'checkbox' ? input.checked : input.value
       if (['width', 'height'].includes(field)) value = Number(value)
-      this.handlers.onCanvasChange?.({ [field]: value })
+      this.handlers.onCanvasChange?.({ [field]: value }, options)
     }
 
     dispatchAction(action) {

@@ -923,12 +923,16 @@
     .skill-tree-legend { font-size: .73rem; }
   </style>
   <link rel="stylesheet" href="./route-builder/routeBuilder.css">
+  <link rel="stylesheet" href="./lesson-radial-planner/lessonRadialPlanner.css">
   <style>
     body[data-view="appuntamenti"] #screen-app main,
     body[data-view="calendario"] #screen-app main { width: min(1180px, 100%); max-width: 1180px; padding-inline: .75rem; }
     body.route-builder-active #screen-app main { width: 100%; max-width: none; padding-inline: .75rem; }
+    body.lesson-radial-active #screen-app main { width: 100%; max-width: none; padding-inline: .75rem; }
     #view-percorsi { width: 100%; max-width: none; margin: 0; transform: none; }
     #view-percorsi .route-builder-page { width: min(1280px, 100%); margin: 0 auto; }
+    #view-lesson-radial-planner { width: 100%; max-width: none; margin: 0; transform: none; }
+    #view-lesson-radial-planner .lesson-radial-page { width: min(1280px, 100%); margin: 0 auto; }
     @media (max-width: 820px) {
       .appointment-preview-calendar { grid-template-columns: 54px repeat(7, minmax(96px,1fr)); min-width: 850px; overflow-x: auto; }
       .calendar-board-wrap { overflow-x: auto; }
@@ -958,6 +962,7 @@
     <nav>
       <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
       <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
+      <button id="nav-lesson-radial-planner" onclick="showView('lesson-radial-planner')">Planner</button>
       <button id="nav-percorsi" onclick="showView('percorsi')">Percorsi</button>
       <button id="nav-calendar" class="nav-icon-btn" onclick="showView('calendario')" title="Calendario" aria-label="Calendario">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1107,6 +1112,11 @@
     <!-- VIEW: scheda lezione -->
     <section id="view-lezione" hidden>
       <div id="lezione-content"><div class="loading">Caricamento…</div></div>
+    </section>
+
+    <!-- VIEW: lesson radial planner sperimentale -->
+    <section id="view-lesson-radial-planner" hidden>
+      <div id="lesson-radial-planner-root"><div class="loading">Caricamento planner radiale…</div></div>
     </section>
 
     <!-- VIEW: percorsi / campo esercizi -->
@@ -1728,7 +1738,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260701-vacation-toggle';
+  var appVersion = '20260705-radial-planner';
   function localScript(path) {
     return path + '?v=' + appVersion;
   }
@@ -1745,6 +1755,13 @@
     localScript('./route-builder/ElementPropertiesPanel.js'),
     localScript('./route-builder/RouteToolbar.js'),
     localScript('./route-builder/RouteBuilderPage.js'),
+    localScript('./lesson-radial-planner/lessonRadialModels.js'),
+    localScript('./lesson-radial-planner/mockLessonSchedule.js'),
+    localScript('./lesson-radial-planner/watchPayloadMapper.js'),
+    localScript('./lesson-radial-planner/RadialDayView.js'),
+    localScript('./lesson-radial-planner/LessonTimelineList.js'),
+    localScript('./lesson-radial-planner/LessonDetailPanel.js'),
+    localScript('./lesson-radial-planner/LessonRadialPlannerPage.js'),
     localScript('./app.js')
   ];
   var legacyScripts = [
