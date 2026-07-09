@@ -1,0 +1,18 @@
+{
+  "name": "Blading Manager BBoM",
+  "short_name": "Blading",
+  "description": "Gestionale per lezioni e allievi di pattinaggio.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#081116",
+  "theme_color": "#081116",
+  "icons": [
+    {
+      "src": "./logo.png",
+      "sizes": "739x739",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

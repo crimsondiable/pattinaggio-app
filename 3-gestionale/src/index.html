@@ -9,13 +9,18 @@
       window.location.replace('http://localhost:8027/' + (window.location.hash || ''))
     }
   </script>
-  <link rel="icon" type="image/png" href="./logo.png">
-  <link rel="apple-touch-icon" href="./logo.png">
+  <meta name="theme-color" content="#081116">
+  <meta property="og:image" content="./logo.png">
+  <meta name="twitter:image" content="./logo.png">
+  <link rel="icon" type="image/png" sizes="739x739" href="./logo.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./logo.png">
+  <link rel="manifest" href="./site.webmanifest">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --blu: #6ee7f9;
+      --blu-rgb: 110,231,249;
       --blu-scuro: #22b8cf;
       --blu-chiaro: rgba(110,231,249,.13);
       --testo: #eef7fb;
@@ -65,8 +70,8 @@
     .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.1rem; border-radius: var(--r); font-size: .88rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: opacity .15s, transform .1s, box-shadow .15s, background .15s; backdrop-filter: blur(10px); }
     .btn:active { transform: scale(.97); }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-primary { background: linear-gradient(135deg, rgba(34,184,207,.92), rgba(110,231,249,.9)); border-color: rgba(190,242,255,.28); color: #041015; box-shadow: 0 10px 24px rgba(34,184,207,.22), inset 0 1px 0 rgba(255,255,255,.24); }
-    .btn-primary:hover { background: linear-gradient(135deg, #16a4ba, #8bf1ff); }
+    .btn-primary { background: linear-gradient(135deg, var(--blu-scuro), rgba(var(--blu-rgb),.9)); border-color: rgba(190,242,255,.28); color: #041015; box-shadow: 0 10px 24px rgba(var(--blu-rgb),.22), inset 0 1px 0 rgba(255,255,255,.24); }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--blu-scuro), var(--blu)); filter: brightness(1.06); }
     .btn-full { width: 100%; justify-content: center; padding: .7rem; }
     .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
     .btn-outline { background: rgba(255,255,255,.035); border: 1.5px solid var(--bordo); color: var(--testo); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
@@ -391,6 +396,61 @@
     .calendar-status.ok { color: var(--success); }
     .calendar-status.err { color: var(--danger); }
     body.availability-dragging { user-select: none; }
+    /* ── Analisi ── */
+    .analysis-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .analysis-subtitle { color: var(--muted); font-size: .92rem; margin-top: .18rem; }
+    .analysis-filters { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .analysis-filters .field { margin: 0; }
+    .analysis-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: .6rem; margin-bottom: .8rem; }
+    .analysis-kpi { border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); padding: .62rem .7rem; min-height: 78px; }
+    .analysis-kpi-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: var(--blu); font-size: 1rem; }
+    .analysis-kpi-value { color: var(--testo); font-size: 1.38rem; font-weight: 850; line-height: 1.1; margin-top: .22rem; }
+    .analysis-kpi-label { color: var(--muted); font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; margin-top: .08rem; }
+    .analysis-kpi-note { color: var(--muted); font-size: .74rem; margin-top: .35rem; line-height: 1.25; }
+    .analysis-grid-2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 1rem; align-items: start; margin-bottom: 1rem; }
+    .analysis-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .75rem; }
+    .analysis-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .75rem; }
+    .analysis-section-head h3 { margin: 0; font-size: 1rem; }
+    .analysis-section-note { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+    .analysis-timeline-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.42fr); gap: .8rem; align-items: start; }
+    .analysis-timeline-chart { min-width: 0; overflow-x: auto; padding-top: .25rem; }
+    .analysis-heatmap-wrap { display: grid; grid-template-columns: auto max-content; gap: .16rem .18rem; align-items: start; width: max-content; max-width: none; overflow: visible; padding: .12rem 0 .05rem; }
+    .analysis-heatmap-weekdays { display: grid; grid-template-rows: repeat(7, 16px); gap: 3px; color: var(--muted); font-size: .56rem; font-weight: 800; text-align: center; text-transform: uppercase; }
+    .analysis-heatmap { display: grid; grid-template-rows: repeat(7, 16px); grid-template-columns: repeat(var(--analysis-weeks, 1), 16px); gap: 3px; align-content: start; justify-content: start; }
+    .analysis-day { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(148,163,184,.14); background: rgba(255,255,255,.025); cursor: default; display: inline-flex; align-items: center; justify-content: center; color: var(--testo); font-size: .58rem; font-weight: 900; line-height: 1; }
+    .analysis-day.has-lessons { border-color: rgba(110,231,249,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+    .analysis-day.gap-end { outline: 1px solid rgba(251,191,36,.55); outline-offset: 1px; }
+    .analysis-heatmap-note { color: var(--muted); font-size: .68rem; line-height: 1.25; margin-top: .35rem; max-width: 31rem; }
+    .analysis-timeline-meta { display: grid; grid-template-columns: 1fr; gap: .45rem; margin-top: 0; }
+    .analysis-meta-box { border: 1px solid rgba(148,163,184,.16); border-radius: calc(var(--r) - 2px); padding: .45rem .55rem; color: var(--muted); font-size: .76rem; line-height: 1.3; background: rgba(255,255,255,.018); }
+    .analysis-meta-box strong { display: block; color: var(--testo); font-size: .86rem; margin-bottom: .12rem; }
+    .analysis-bars { display: grid; gap: .58rem; }
+    .analysis-bar-row { display: grid; grid-template-columns: 86px minmax(0,1fr) 52px; gap: .55rem; align-items: center; font-size: .82rem; }
+    .analysis-bar-track { height: 9px; border-radius: 999px; background: rgba(148,163,184,.16); overflow: hidden; }
+    .analysis-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blu), var(--success)); }
+    .analysis-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .analysis-table th, .analysis-table td { padding: .32rem .35rem; border-bottom: 1px solid rgba(148,163,184,.14); vertical-align: middle; }
+    .analysis-table th { color: var(--muted); font-size: .68rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
+    .analysis-skill-line { display: flex; align-items: center; gap: .42rem; min-width: 0; }
+    .analysis-skill-line strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .analysis-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: .07rem .34rem; background: rgba(110,231,249,.1); color: var(--blu); font-size: .64rem; font-weight: 850; line-height: 1.15; white-space: nowrap; }
+    .analysis-critical-table td:last-child, .analysis-critical-table th:last-child { text-align: right; white-space: nowrap; }
+    .analysis-critical-table .analysis-stage { color: var(--muted); font-size: .7rem; white-space: nowrap; }
+    .analysis-insight-list, .analysis-student-timeline { display: grid; gap: .55rem; }
+    .analysis-insight { border-left: 3px solid var(--blu); padding: .42rem .6rem; background: rgba(110,231,249,.045); border-radius: 0 calc(var(--r) - 2px) calc(var(--r) - 2px) 0; color: var(--testo); font-size: .86rem; line-height: 1.35; }
+    .analysis-timeline-item { display: grid; grid-template-columns: 82px minmax(0,1fr); gap: .65rem; align-items: start; font-size: .84rem; }
+    .analysis-timeline-date { color: var(--blu); font-weight: 850; }
+    .analysis-timeline-body { border-left: 2px solid rgba(110,231,249,.28); padding-left: .65rem; color: var(--muted); line-height: 1.35; }
+    .analysis-timeline-body strong { display: block; color: var(--testo); margin-bottom: .08rem; }
+    .theme-color-form { display: grid; grid-template-columns: minmax(150px,1fr) 140px auto auto; gap: .55rem; align-items: end; }
+    .theme-color-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,.28); box-shadow: inset 0 1px 0 rgba(255,255,255,.16); display: inline-block; vertical-align: middle; }
+    .theme-color-table td, .theme-color-table th { vertical-align: middle; }
+    .theme-color-table td:last-child, .theme-color-table th:last-child { width: 1%; white-space: nowrap; }
+    .theme-color-actions { display: flex; gap: .22rem; justify-content: flex-end; flex-wrap: nowrap; }
+    .theme-color-icon-btn { width: 26px; min-width: 26px; height: 24px; padding: 0; align-items: center; justify-content: center; }
+    .theme-color-icon-btn .edit-icon { width: 14px; height: 14px; vertical-align: 0; }
+    .theme-color-icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .theme-color-active { color: var(--blu); font-size: .68rem; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; margin-left: .35rem; }
     @media (max-width: 980px) {
       .appointments-grid, .appointments-toolbar, .appointments-preferences, .appointment-plan-head, .appointment-schedule-grid, .appointment-schedule-head, .appointment-agenda-item, .calendar-form, .calendar-extra-row { grid-template-columns: 1fr; }
       .appointment-selector-list, .appointment-selector-head, .map-travel-form, .map-travel-row { grid-template-columns: 1fr; }
@@ -399,6 +459,24 @@
       .calendar-board { min-width: 850px; grid-template-columns: 54px repeat(7, minmax(108px, 1fr)); }
       .appointment-route-meta { grid-template-columns: 1fr; }
       .appointment-agenda-item span { white-space: normal; }
+      .analysis-filters, .analysis-kpi-grid, .analysis-grid-2, .analysis-grid-3 { grid-template-columns: 1fr; }
+      .analysis-kpi-grid { gap: .42rem; margin-bottom: .65rem; }
+      .analysis-kpi { min-height: 0; padding: .48rem .6rem; display: grid; grid-template-columns: 22px 58px minmax(0,1fr); grid-template-areas: "icon value label" "icon note note"; column-gap: .55rem; row-gap: .05rem; align-items: center; }
+      .analysis-kpi-top { grid-area: icon; font-size: .9rem; }
+      .analysis-kpi-value { grid-area: value; margin: 0; font-size: 1.12rem; }
+      .analysis-kpi-label { grid-area: label; margin: 0; font-size: .68rem; }
+      .analysis-kpi-note { grid-area: note; margin: 0; font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .analysis-timeline-layout { grid-template-columns: minmax(0,1fr) minmax(170px,.38fr); gap: .65rem; }
+      .theme-color-form { grid-template-columns: 1fr 120px; }
+      .theme-color-form button { width: 100%; justify-content: center; }
+      .analysis-heatmap-weekdays { grid-template-rows: repeat(7, 18px); }
+      .analysis-heatmap { grid-template-rows: repeat(7, 18px); grid-template-columns: repeat(var(--analysis-weeks, 1), 18px); }
+      .analysis-day { width: 18px; height: 18px; }
+    }
+    @media (max-width: 640px) {
+      .analysis-timeline-layout { grid-template-columns: 1fr; }
+      .analysis-timeline-meta { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .theme-color-form { grid-template-columns: 1fr; }
     }
     .global-search { position: relative; width: min(360px, 32vw); min-width: 220px; }
     .global-search input { width: 100%; padding: .42rem .65rem; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); color: var(--testo); font-size: .84rem; }
@@ -648,6 +726,13 @@
     .back-btn:hover { text-decoration: underline; }
     .scheda-nome { font-size: 1.35rem; font-weight: 700; margin-bottom: .2rem; }
     .scheda-meta { color: var(--muted); font-size: .86rem; margin-bottom: 1.4rem; }
+    .scheda-lesson-note { margin-top: .45rem; padding-top: .55rem; border-top: 1px solid rgba(148,163,184,.18); color: var(--testo); font-size: .88rem; line-height: 1.4; white-space: pre-wrap; }
+    .scheda-lesson-note span { display: inline-block; margin-right: .35rem; color: var(--blu); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .055em; }
+    .lesson-student-notes { margin-top: .65rem; border: 1px solid rgba(110,231,249,.28); border-radius: var(--r); background: rgba(110,231,249,.06); padding: .7rem .8rem; }
+    .lesson-student-notes-title { color: var(--blu); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .055em; margin-bottom: .4rem; }
+    .lesson-student-note-row { font-size: .88rem; line-height: 1.42; color: var(--testo); white-space: pre-wrap; }
+    .lesson-student-note-row + .lesson-student-note-row { border-top: 1px solid rgba(148,163,184,.16); margin-top: .45rem; padding-top: .45rem; }
+    .lesson-student-note-row strong { color: var(--blu); font-weight: 800; }
     .sec-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--bordo); padding-bottom: .35rem; margin-bottom: .75rem; margin-top: 1.5rem; }
     .ramo { display: inline-block; padding: .1rem .4rem; border-radius: 4px; font-size: .74rem; font-weight: 700; background: var(--blu-chiaro); color: var(--blu); }
 
@@ -977,6 +1062,7 @@
           <path d="M17 15v2l1.5 1"/>
         </svg>
       </button>
+      <button id="nav-analisi" onclick="showView('analisi')" title="Analisi didattica">▥ Analisi</button>
       <button id="nav-mappa" class="nav-icon-btn" onclick="showView('mappa')" title="Mappa location" aria-label="Mappa location">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/>
@@ -985,6 +1071,7 @@
       </button>
       <button id="nav-skills" onclick="showView('skills')">Skills</button>
       <button id="nav-tuning" class="god-only-nav" hidden onclick="showView('tuning')">Tuning</button>
+      <button id="nav-theme-colors" class="god-only-nav" hidden onclick="showView('theme-colors')">Colori</button>
       <button id="nav-questionario" class="god-only-nav" hidden onclick="location.href='./skill-questionario.html'">Questionario skill</button>
       <button id="nav-app-notes" class="god-only-nav" hidden onclick="openAppNotes()">Note x app</button>
     </nav>
@@ -1001,6 +1088,7 @@
       <div class="god-tools">
         <button type="button" class="btn btn-outline btn-sm" onclick="showView('app-notes')">Note app</button>
         <button type="button" class="btn btn-outline btn-sm" onclick="showView('tuning')">Tuning</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="showView('theme-colors')">Colori</button>
         <button type="button" class="btn btn-outline btn-sm" onclick="location.href='./skill-questionario.html'">Questionario</button>
       </div>
     </div>
@@ -1089,6 +1177,11 @@
       <div id="appuntamenti-content"><div class="loading">Caricamento…</div></div>
     </section>
 
+    <!-- VIEW: analisi -->
+    <section id="view-analisi" hidden>
+      <div id="analisi-content"><div class="loading">Caricamento analisi…</div></div>
+    </section>
+
     <!-- VIEW: location -->
     <section id="view-location" hidden>
       <div id="location-content"><div class="loading">Caricamento…</div></div>
@@ -1164,6 +1257,7 @@
           </div>
           <div class="field"><label>Meteo</label><input type="text" id="lz-meteo" placeholder="Sole, vento, fondo bagnato..."></div>
         </div>
+        <div id="lz-student-notes" class="lesson-student-notes" hidden></div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
         <div class="field" id="lz-note-field"><label>Descrizione lezione</label><textarea id="lz-note" placeholder="Annotazioni sulla seduta…"></textarea></div>
@@ -1331,6 +1425,7 @@
           <div class="field"><textarea id="na-note-salute" placeholder="Allergie, diabete, cuore, articolazioni, asimmetrie o altre attenzioni importanti…" style="min-height:76px"></textarea></div>
 
           <p class="form-sec">Note generali</p>
+          <div class="field"><label>Promemoria per lezione</label><input type="text" id="na-note-lezione" placeholder="Nota breve da mostrare quando crei una lezione per questo allievo"></div>
           <div class="field"><textarea id="na-note" placeholder="Carattere, dinamiche familiari, situazioni particolari…" style="min-height:80px"></textarea></div>
         </div><!-- /form-individuale -->
 
@@ -1521,6 +1616,41 @@
 
         <div class="card">
           <div class="tuning-stats" id="tuning-stats"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: colori tema -->
+    <section id="view-theme-colors" hidden>
+      <div class="section-header">
+        <div>
+          <h2>Colori</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:.25rem">Preset locali per il colore primario del gestionale.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="analysis-section-head">
+          <h3>Colore primario</h3>
+          <span class="analysis-section-note">God mode · hex code</span>
+        </div>
+        <div id="theme-color-status" class="msg"></div>
+        <div class="theme-color-form">
+          <div class="field" style="margin:0">
+            <label>Nome colore</label>
+            <input type="text" id="theme-color-name" placeholder="Es. Aymara">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Hex</label>
+            <input type="text" id="theme-color-hex" placeholder="#4FD8EB" maxlength="7" oninput="previewThemeColorHex(this.value)">
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="restoreDefaultPrimaryColor()">Ripristina default</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveThemeColorPreset()">Salva colore</button>
+        </div>
+        <div class="table-wrap" style="margin-top:.8rem">
+          <table class="theme-color-table">
+            <thead><tr><th>Nome</th><th>Hex</th><th>Anteprima</th><th></th></tr></thead>
+            <tbody id="theme-color-table-body"></tbody>
+          </table>
         </div>
       </div>
     </section>
