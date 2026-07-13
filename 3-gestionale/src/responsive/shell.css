@@ -1,0 +1,241 @@
+/*
+ * Responsive application shell.
+ * Canonical shell breakpoint: 760 logical/CSS pixels.
+ * Desktop keeps the existing header; compact widths use a bottom dock.
+ */
+
+:root {
+  --mobile-shell-height: 64px;
+}
+
+.brand-name-short,
+.nav-mobile-label {
+  display: none;
+}
+
+.mobile-primary-nav,
+.mobile-section-tabs {
+  display: none;
+}
+
+#nav-home,
+#nav-allievi,
+#nav-lezioni,
+#nav-lesson-radial-planner,
+#nav-percorsi,
+#nav-analisi,
+#nav-skills {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+@media (max-width: 760px) {
+  html {
+    scroll-padding-bottom: calc(var(--mobile-shell-height) + env(safe-area-inset-bottom));
+  }
+
+  body {
+    padding-bottom: calc(var(--mobile-shell-height) + env(safe-area-inset-bottom));
+  }
+
+  #screen-app {
+    min-height: 100vh;
+  }
+
+  header {
+    align-items: center;
+    padding: .45rem .65rem;
+    gap: .45rem;
+    flex-wrap: nowrap;
+    /* A backdrop-filter creates a containing block for fixed descendants. */
+    backdrop-filter: none;
+  }
+
+  .brand-name-long {
+    display: none;
+  }
+
+  .brand-name-short {
+    display: none;
+  }
+
+  header > .logo {
+    order: 1;
+    flex: 0 0 auto;
+    line-height: 0;
+  }
+
+  .header-brand-logo {
+    height: 1.55rem;
+    margin: 0;
+  }
+
+  header nav {
+    position: fixed;
+    z-index: 140;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    order: initial;
+    width: 100%;
+    height: calc(var(--mobile-shell-height) + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+    gap: .15rem;
+    margin: 0;
+    padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: hidden;
+    background: rgba(8,17,22,.96);
+    border-top: 1px solid rgba(148,163,184,.24);
+    box-shadow: 0 -14px 34px rgba(0,0,0,.38);
+    backdrop-filter: blur(20px);
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: none;
+  }
+
+  header nav button,
+  header nav .nav-icon-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 50px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: .28rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-size: .68rem;
+    line-height: 1.05;
+    white-space: nowrap;
+    scroll-snap-align: none;
+  }
+
+  header nav > button:not(.mobile-primary-nav) {
+    display: none !important;
+  }
+
+  header nav > .mobile-primary-nav {
+    display: inline-flex;
+    position: relative;
+    gap: .2rem;
+    font-size: .66rem;
+  }
+
+  header nav button.active {
+    border-color: rgba(110,231,249,.24);
+    background: rgba(110,231,249,.13);
+  }
+
+  .nav-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin: 0 auto;
+  }
+
+  .nav-mobile-label {
+    display: none;
+  }
+
+  header nav .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .global-search {
+    order: 2;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .global-search input {
+    min-height: 34px;
+    padding-block: .38rem;
+  }
+
+  header > .god-toggle,
+  header > .btn-ghost {
+    flex: 0 0 auto;
+    padding-inline: .48rem;
+  }
+
+  header > .god-toggle {
+    order: 3;
+    margin-left: 0;
+  }
+
+  header > .btn-ghost {
+    order: 4;
+  }
+
+  .god-panel {
+    order: 5;
+  }
+
+  #screen-app main {
+    width: 100%;
+    max-width: 100%;
+    padding: .9rem .65rem 1rem;
+  }
+
+  .mobile-section-tabs {
+    display: flex;
+    gap: .3rem;
+    margin: 0 0 .8rem;
+    padding: .25rem;
+    overflow-x: auto;
+    border: 1px solid rgba(148,163,184,.18);
+    border-radius: 10px;
+    background: rgba(16,27,34,.72);
+    scrollbar-width: none;
+  }
+
+  .mobile-section-tabs:empty {
+    display: none;
+  }
+
+  .mobile-section-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-section-tab {
+    flex: 1 0 auto;
+    min-height: 36px;
+    padding: .42rem .65rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .mobile-section-tab.active {
+    border-color: rgba(110,231,249,.24);
+    background: var(--blu-chiaro);
+    color: var(--blu);
+  }
+}
+
+@media (max-width: 380px) {
+  header nav button,
+  header nav .nav-icon-btn {
+    min-width: 0;
+    font-size: .66rem;
+  }
+}
