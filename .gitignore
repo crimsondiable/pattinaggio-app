@@ -48,6 +48,13 @@ tmp/pdfs/
 6-deliverable/
 _archivio/
 supabase/
+!supabase/
+supabase/*
+!supabase/config.toml
+!supabase/migrations/
+!supabase/migrations/*.sql
+!supabase/pending_migrations/
+!supabase/pending_migrations/**
 3-gestionale/db/
 3-gestionale/docs-tecnici/
 3-gestionale/scripts/generate-icon-variants.mjs
