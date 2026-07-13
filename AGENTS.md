@@ -1,15 +1,15 @@
 # AGENTS.md
 
 Guida operativa per agenti e manutentori che lavorano in questo repository.
-Descrive lo stato osservato del progetto al 2026-07-04, non una architettura
-desiderata.
+Descrive lo stato osservato del progetto al 2026-07-04, con aggiornamento
+operativo sulle migrazioni al 2026-07-13; non una architettura desiderata.
 
 ## Prima di modificare
 
 - Leggere `PROJECT.md` per il quadro generale.
 - Considerare `3-gestionale/src` la sorgente pubblicabile dell'app statica.
-- Considerare `supabase/migrations` la sorgente canonica del database, anche se
-  oggi e' ignorata da Git.
+- Considerare `supabase/migrations` la sorgente canonica versionata del
+  database. Stato locale, credenziali e proposte pending restano separati.
 - Non usare `gestionale-tabs-public` come sorgente: e' una copia/repo parallelo
   non allineato.
 - Non trattare `output`, `tmp`, `backups`, `.codex-pet-runs` o `.worktrees`
@@ -157,14 +157,16 @@ Funzioni/RLS note:
 - hardening di grant/execute;
 - `notify pgrst, 'reload schema'` in alcune migrazioni recenti.
 
-Le migrazioni hanno incongruenze:
+Le migrazioni attive sono state riconciliate il 2026-07-13:
 
-- `supabase/migrations` contiene sia file timestampati sia file numerati
-  `0018-0022`;
-- `3-gestionale/db/migrations` replica molte migrazioni numerate;
-- `supabase/pending_questionario` replica `0018-0021`;
-- alcune migrazioni creano/alterano le stesse tabelle in piu passaggi
-  (`locations`, `app_notes`, `skill_definizioni`).
+- `supabase migration list --linked` mostra 42 versioni locali e remote
+  corrispondenti;
+- i file canonici sono versionati dal commit `3852d0c`;
+- `supabase/pending_migrations` contiene proposte non attive e non va applicata
+  automaticamente;
+- `3-gestionale/db/migrations` e `supabase/pending_questionario` restano
+  copie/staging, non fonti da modificare;
+- manca ancora un test automatico di ricostruzione completa del database.
 
 ## Aree funzionali dell'app
 
@@ -256,7 +258,9 @@ Se una modifica richiede informazioni non presenti nel repo:
 - non assumere un modello dati definitivo fra `skills`, `skill_definizioni`,
   documenti metodologia e catalogo JS;
 - non assumere che `gestionale-tabs-public` sia aggiornato;
-- non assumere che tutte le migrazioni siano applicate al progetto remoto;
+- non assumere che una migrazione in `pending_migrations` sia applicata; le 42
+  migrazioni nella directory attiva risultano invece allineate al remoto al
+  2026-07-13;
 - non assumere che `app-legacy.js` sia rigenerato automaticamente;
 - non assumere che i prototipi in `output` siano sorgente viva;
 - non assumere che esistano test automatici.
@@ -275,4 +279,3 @@ Se una modifica richiede informazioni non presenti nel repo:
 - Il DB ha fallback di compatibilita nel frontend per colonne mancanti.
 - Alcuni output/report in `output/ordine` sono importanti come storico, ma non
   sono sorgente applicativa.
-

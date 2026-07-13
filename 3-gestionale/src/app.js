@@ -223,6 +223,13 @@ function supabaseErrorText(error) {
   return [error.message, error.details, error.hint, error.code].filter(Boolean).join(' · ')
 }
 
+function requiredQueryData(result, label) {
+  if (result?.error) {
+    throw new Error(`Caricamento ${label} fallito: ${supabaseErrorText(result.error) || 'errore Supabase sconosciuto'}`)
+  }
+  return result?.data || []
+}
+
 function saveBlockedByPolicy(error) {
   const text = supabaseErrorText(error)
   return /row-level security|violates.*policy|permission denied|42501/i.test(text)
@@ -369,15 +376,86 @@ document.addEventListener('click', e => {
 
 // ── Auth ──────────────────────────────────────────────────────────────
 
+let bootstrapState = 'signed-out'
+
+function clearBootstrapError() {
+  document.getElementById('app-bootstrap-error')?.remove()
+  const loginError = document.getElementById('login-err')
+  if (loginError?.dataset.bootstrapError === '1') {
+    loginError.textContent = ''
+    loginError.classList.remove('show')
+    delete loginError.dataset.bootstrapError
+  }
+}
+
+function showBootstrapError(error) {
+  bootstrapState = 'error'
+  const message = error?.message || 'Inizializzazione non riuscita.'
+  console.error('Bootstrap applicazione fallito', error)
+  const appScreen = document.getElementById('screen-app')
+  if (appScreen && !appScreen.hidden) {
+    document.getElementById('app-bootstrap-error')?.remove()
+    const banner = document.createElement('div')
+    banner.id = 'app-bootstrap-error'
+    banner.className = 'msg msg-err show'
+    banner.setAttribute('role', 'alert')
+    const text = document.createElement('span')
+    text.textContent = `${message} `
+    const retry = document.createElement('button')
+    retry.type = 'button'
+    retry.className = 'btn btn-outline btn-sm'
+    retry.textContent = 'Riprova'
+    retry.addEventListener('click', retryBootstrap)
+    banner.append(text, retry)
+    appScreen.querySelector('main')?.prepend(banner)
+    return
+  }
+  const loginError = document.getElementById('login-err')
+  if (loginError) {
+    loginError.textContent = ''
+    const text = document.createElement('span')
+    text.textContent = `${message} `
+    const retry = document.createElement('button')
+    retry.type = 'button'
+    retry.className = 'btn btn-outline btn-sm'
+    retry.textContent = 'Riprova'
+    retry.addEventListener('click', retryBootstrap)
+    loginError.append(text, retry)
+    loginError.dataset.bootstrapError = '1'
+    loginError.classList.add('show')
+  }
+}
+
+async function retryBootstrap() {
+  if (bootstrapState === 'loading') return
+  clearBootstrapError()
+  appInited = false
+  try {
+    await bootstrapAuth()
+  } catch (error) {
+    showBootstrapError(error)
+  }
+}
+
 async function handleAuthSession(session) {
   if (session) {
     document.getElementById('screen-login').hidden = true
     document.getElementById('screen-app').hidden   = false
     if (!appInited) {
+      bootstrapState = 'loading'
+      clearBootstrapError()
       appInited = true
-      await initApp()
+      try {
+        await initApp()
+        bootstrapState = 'ready'
+      } catch (error) {
+        appInited = false
+        throw error
+      }
     }
   } else {
+    bootstrapState = 'signed-out'
+    clearBootstrapError()
     appInited = false
     appHistoryStarted = false
     currentUid = null
@@ -389,7 +467,7 @@ async function handleAuthSession(session) {
 }
 
 sb?.auth?.onAuthStateChange?.((_e, session) => {
-  handleAuthSession(session)
+  void handleAuthSession(session).catch(showBootstrapError)
 })
 
 async function bootstrapAuth() {
@@ -398,7 +476,7 @@ async function bootstrapAuth() {
   await handleAuthSession(session)
 }
 
-bootstrapAuth()
+void bootstrapAuth().catch(showBootstrapError)
 
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim()
@@ -457,16 +535,20 @@ async function initApp() {
   maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata)
   calendarioItems = loadCalendarioItems(currentUserMetadata)
 
-  const [{ data: a }, { data: s }, { data: p }, { data: pr }] = await Promise.all([
+  const [allieviResult, skillsResult, prerequisitiResult, progressiResult] = await Promise.all([
     sb.from('allievi').select('*').eq('stato', 'attivo').order('nome'),
     sb.from('skills').select('*').order('livello'),
     sb.from('prerequisiti_skill').select('*'),
     sb.from('progressi_allievo').select('allievo_id, skill_id, stadio')
   ])
-  allAllievi = a || []
-  allSkills  = visibleCatalogSkills(s || [])
-  allPrereqs = p || []
-  allProgressi = pr || []
+  const a = requiredQueryData(allieviResult, 'allievi')
+  const s = requiredQueryData(skillsResult, 'skill')
+  const p = requiredQueryData(prerequisitiResult, 'prerequisiti')
+  const pr = requiredQueryData(progressiResult, 'progressi')
+  allAllievi = a
+  allSkills  = visibleCatalogSkills(s)
+  allPrereqs = p
+  allProgressi = pr
   skillDefinitions = await loadSkillDefinitions()
   loadLocations().catch(error => console.warn('locations non precaricate', error))
   renderGodPanel()
@@ -474,7 +556,7 @@ async function initApp() {
   const initialRoute = consumeInitialRoute()
   showView(initialRoute.name, initialRoute.id || undefined)
   scheduleNuovaLezioneRouteRepair()
-  refreshDashboardData()
+  await refreshDashboardData()
 }
 
 async function loadSkillDefinitions() {
@@ -799,8 +881,9 @@ async function persistLocationPayload(payload, originalName = null) {
 async function ricaricaAllievi() {
   let q = sb.from('allievi').select('*').order('nome')
   q = mostraArchiviati ? q.eq('stato', 'archiviato') : q.eq('stato', 'attivo')
-  const { data } = await q
-  allAllievi = data || []
+  const result = await q
+  const data = requiredQueryData(result, 'allievi')
+  allAllievi = data
   renderGodPanel()
   renderAllievi()
   refreshDashboardData()
@@ -9761,12 +9844,17 @@ function salvaBackupLocale(tipo, payload) {
 
 async function backupAllievoCompleto(id) {
   const allievo = allAllievi.find(a => a.id === id) || null
-  const [{ data: progressi }, { data: lezioniAllievi }, { data: lezioniSkills }] = await Promise.all([
+  const [progressiResult, lezioniAllieviResult, lezioniSkillsResult] = await Promise.all([
     sb.from('progressi_allievo').select('*').eq('allievo_id', id),
     sb.from('lezioni_allievi').select('*, lezioni(*)').eq('allievo_id', id),
     sb.from('lezioni_skills').select('*, skills(*)').eq('allievo_id', id),
   ])
-  return { allievo, progressi: progressi || [], lezioniAllievi: lezioniAllievi || [], lezioniSkills: lezioniSkills || [] }
+  return {
+    allievo,
+    progressi: requiredQueryData(progressiResult, 'progressi del backup allievo'),
+    lezioniAllievi: requiredQueryData(lezioniAllieviResult, 'presenze del backup allievo'),
+    lezioniSkills: requiredQueryData(lezioniSkillsResult, 'skill del backup allievo'),
+  }
 }
 
 async function toggleVacanzaAllievo(id) {
@@ -11271,7 +11359,7 @@ function renderAllieviGruppoLezione(gruppo, presentiSet = null) {
   }
   listEl.innerHTML = membri.map(a => `
     <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
-      <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? '' : 'checked'} onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(' '))}')">
+      <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? '' : 'checked'} onchange="toggleAllievo(this,${jsArg([a.nome, a.cognome].filter(Boolean).join(' '))})">
       ${esc([a.nome, a.cognome].filter(Boolean).join(' '))}
     </label>`).join('')
   ;[...listEl.querySelectorAll('input[type=checkbox]:checked')].forEach(cb => {
