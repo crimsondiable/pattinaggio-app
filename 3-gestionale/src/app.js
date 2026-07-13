@@ -1018,21 +1018,41 @@ function renderHome() {
   const now = new Date()
   const day = new Intl.DateTimeFormat('it-IT', { weekday: 'long' }).format(now)
   const date = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(now)
-  const lessons = [
-    { time: '09:00', title: 'Tecnica individuale · Coco', place: 'Parco Nord', people: 'Coco', status: 'Concluso', statusClass: 'is-done', last: 'T-stop e controllo velocita', goal: 'Consolidare il lato debole' },
-    { time: '14:30', title: 'Gruppo Viola', place: 'Piazza Gae Aulenti', people: '4 partecipanti', status: 'In corso', statusClass: 'is-current', last: 'Curve e cambi direzione', goal: 'Incrocio in curva assistito' },
-    { time: '18:00', title: 'Lezione individuale · Giulia', place: 'Parco Sempione', people: 'Giulia', status: 'Programmato', statusClass: '', last: 'Powerslide introduttivo', goal: 'Riprendere fiducia e continuita' },
-  ]
-  const alerts = [
-    { name: 'Giulia', note: 'Ferma da 4 lezioni sulla stessa skill' },
-    { name: 'Coco', note: 'Manca il report della scorsa lezione' },
-    { name: 'Dominika', note: 'Necessita rivalutazione' },
-  ]
-  const students = [
-    { initials: 'CO', name: 'Coco', level: 'Tier A', skill: 'T-stop', progress: 74, note: 'Oggi prova lato debole' },
-    { initials: 'GI', name: 'Giulia', level: 'Tier B', skill: 'Powerslide', progress: 56, note: 'Ridurre il carico e curare continuita' },
-    { initials: 'DO', name: 'Dominika', level: 'Tier VIP', skill: 'Cross step', progress: 82, note: 'Programmare rivalutazione' },
-  ]
+  const today = localDateIso(now)
+  const todayLessons = (lezioniCache || [])
+    .filter(lesson => String(lesson.data || '').slice(0, 10) === today)
+    .sort((a, b) => lessonSortToken(a).localeCompare(lessonSortToken(b)))
+  const lessons = todayLessons.map(lesson => {
+    const participants = lessonParticipantsFromLesson(lesson)
+    const open = lessonStatus(lesson) === 'aperta'
+    return {
+      id: lesson.id,
+      time: lessonTime(lesson) || '—',
+      title: labelPartecipantiLezione(lesson) || tipoLabel(lesson.tipo),
+      place: lesson.luogo || 'Luogo non indicato',
+      people: participants.length === 1 ? '1 partecipante' : `${participants.length} partecipanti`,
+      status: open ? 'Aperta' : 'Chiusa',
+      statusClass: open ? 'is-current' : 'is-done',
+      note: lessonSpecialNotes(lesson) || 'Nessuna nota speciale',
+    }
+  })
+  const involvedById = new Map()
+  todayLessons.forEach(lesson => lessonParticipantsFromLesson(lesson).forEach(student => involvedById.set(String(student.id), student)))
+  const students = [...involvedById.values()].slice(0, 3)
+  const nextLesson = lessons.find(lesson => lesson.statusClass === 'is-current') || lessons[0] || null
+  const weekStart = new Date(now)
+  const weekday = (weekStart.getDay() + 6) % 7
+  weekStart.setDate(weekStart.getDate() - weekday)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const weekLessons = (lezioniCache || []).filter(lesson => {
+    const lessonDate = new Date(`${String(lesson.data || '').slice(0, 10)}T12:00:00`)
+    return lessonDate >= weekStart && lessonDate < weekEnd
+  })
+  const weeklyStudentIds = new Set(weekLessons.flatMap(lesson => lessonParticipantsFromLesson(lesson).map(student => String(student.id))))
+  const weeklyMinutes = weekLessons.reduce((total, lesson) => total + (Number(lesson.durata_min) || 0), 0)
+  const weeklySkills = weekLessons.reduce((total, lesson) => total + (lesson.lezioni_skills?.length || 0), 0)
   el.innerHTML = `
     <div class="home-page">
       <div class="home-header">
@@ -1041,34 +1061,34 @@ function renderHome() {
           <button type="button" class="home-search-button" onclick="focusHomeGlobalSearch()">${homeIcon('search')}<span>Cerca allievi, gruppi, luoghi…</span></button>
           <button type="button" class="btn btn-primary" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
         </div>
-        <p class="home-summary">Oggi hai 3 lezioni, 7 allievi coinvolti e 2 criticita prioritarie.</p>
+        <p class="home-summary">Oggi hai ${lessons.length} lezion${lessons.length === 1 ? 'e' : 'i'} e ${involvedById.size} alliev${involvedById.size === 1 ? 'o' : 'i'} coinvolti.</p>
       </div>
 
       <div class="home-operational-grid">
         <section class="home-section" aria-labelledby="home-timeline-title">
-          <div class="home-section-head"><h3 id="home-timeline-title">Timeline giornata</h3><span>Dati dimostrativi</span></div>
+          <div class="home-section-head"><h3 id="home-timeline-title">Timeline giornata</h3><span>${esc(formatDateWithWeekday(today))}</span></div>
           <div class="home-timeline">
-            ${lessons.map(lesson => `<article class="home-lesson${lesson.statusClass === 'is-current' ? ' is-current' : ''}">
+            ${lessons.length ? lessons.map(lesson => `<article class="home-lesson${lesson.statusClass === 'is-current' ? ' is-current' : ''}">
               <div class="home-lesson-time">${esc(lesson.time)}</div>
               <div class="home-lesson-main">
                 <div class="home-lesson-title-row"><h4>${esc(lesson.title)}</h4><span class="home-status ${lesson.statusClass}">${esc(lesson.status)}</span></div>
                 <div class="home-lesson-meta"><span>⌖ ${esc(lesson.place)}</span><span>◎ ${esc(lesson.people)}</span></div>
-                <div class="home-lesson-context"><div class="home-context-item"><span>Ultima lezione</span>${esc(lesson.last)}</div><div class="home-context-item"><span>Obiettivo di oggi</span>${esc(lesson.goal)}</div></div>
-                <div class="home-lesson-actions"><button class="btn btn-ghost btn-sm" onclick="showView('lezioni')">Apri</button><button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">Avvia</button><button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione')">Modifica</button></div>
+                <div class="home-lesson-context"><div class="home-context-item"><span>Note</span>${esc(lesson.note)}</div></div>
+                <div class="home-lesson-actions"><button class="btn btn-primary btn-sm" onclick="openLezione(${jsArg(lesson.id)})">Apri lezione</button></div>
               </div>
-            </article>`).join('')}
+            </article>`).join('') : '<div class="empty">Nessuna lezione registrata per oggi.</div>'}
           </div>
         </section>
 
         <aside class="home-sidebar">
-          <section class="home-side-card home-next-card"><h3>Prossima lezione</h3><div class="home-next-time">14:30</div><h4>Gruppo Viola</h4><div class="home-detail-list"><div><span>Luogo</span><br>Piazza Gae Aulenti</div><div><span>Partecipanti</span><br>4 allievi</div><div><span>Obiettivo</span><br>Incrocio in curva</div><div><span>Materiale</span><br>Coni bassi, elastico</div><div><span>Note</span><br>Verificare lato debole di Alice</div></div><button class="btn btn-primary btn-full" onclick="showView('nuova-lezione')">Avvia lezione</button></section>
-          <section class="home-side-card"><h3>Criticita</h3><div class="home-alert-list">${alerts.map(alert => `<button class="home-alert" onclick="showView('allievi')"><span class="home-alert-icon">⚠</span><span><strong>${esc(alert.name)}</strong><span>${esc(alert.note)}</span></span></button>`).join('')}</div></section>
+          <section class="home-side-card home-next-card"><h3>Prima lezione di oggi</h3>${nextLesson ? `<div class="home-next-time">${esc(nextLesson.time)}</div><h4>${esc(nextLesson.title)}</h4><div class="home-detail-list"><div><span>Luogo</span><br>${esc(nextLesson.place)}</div><div><span>Partecipanti</span><br>${esc(nextLesson.people)}</div><div><span>Note</span><br>${esc(nextLesson.note)}</div></div><button class="btn btn-primary btn-full" onclick="openLezione(${jsArg(nextLesson.id)})">Apri lezione</button>` : '<div class="empty">Nessuna lezione prevista.</div>'}</section>
+          <section class="home-side-card"><h3>Stato dati</h3><div class="empty">La Home mostra soltanto dati reali caricati dal gestionale.</div></section>
         </aside>
       </div>
 
-      <section class="home-section"><div class="home-section-head"><h3>Allievi in evidenza</h3><span>Focus di oggi</span></div><div class="home-students">${students.map(student => `<article class="home-student"><div class="home-student-head"><div class="home-avatar">${esc(student.initials)}</div><div><strong>${esc(student.name)}</strong><span>${esc(student.level)} · ${esc(student.skill)}</span></div></div><div class="home-progress" aria-label="Progresso ${student.progress}%"><span style="width:${student.progress}%"></span></div><div class="home-student-meta"><span>Progresso</span><strong>${student.progress}%</strong></div><p class="home-student-note">${esc(student.note)}</p></article>`).join('')}</div></section>
+      <section class="home-section"><div class="home-section-head"><h3>Allievi di oggi</h3><span>${involvedById.size} coinvolti</span></div><div class="home-students">${students.length ? students.map(student => { const name = [student.nome, student.cognome].filter(Boolean).join(' '); const initials = [student.nome, student.cognome].filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase(); return `<button type="button" class="home-student" onclick="showView('scheda',${jsArg(student.id)})"><div class="home-student-head"><div class="home-avatar">${esc(initials)}</div><div><strong>${esc(name)}</strong><span>${esc(student.gruppo || allievoTier(student))}</span></div></div></button>` }).join('') : '<div class="empty">Nessun allievo coinvolto nelle lezioni di oggi.</div>'}</div></section>
 
-      <section class="home-section"><div class="home-section-head"><h3>Riepilogo settimana</h3><span>Completamento report 78%</span></div><div class="home-week"><div class="home-week-stat"><strong>8</strong><span>Lezioni svolte</span></div><div class="home-week-stat"><strong>10,5</strong><span>Ore insegnate</span></div><div class="home-week-stat"><strong>19</strong><span>Allievi allenati</span></div><div class="home-week-stat"><strong>14</strong><span>Skill lavorate</span></div><div class="home-week-stat"><strong>7/9</strong><span>Report completati</span></div><div class="home-week-progress" aria-label="Report completati 78%"><span></span></div></div></section>
+      <section class="home-section"><div class="home-section-head"><h3>Riepilogo settimana</h3><span>Dati registrati</span></div><div class="home-week"><div class="home-week-stat"><strong>${weekLessons.length}</strong><span>Lezioni</span></div><div class="home-week-stat"><strong>${String(Math.round(weeklyMinutes / 6) / 10).replace('.', ',')}</strong><span>Ore insegnate</span></div><div class="home-week-stat"><strong>${weeklyStudentIds.size}</strong><span>Allievi allenati</span></div><div class="home-week-stat"><strong>${weeklySkills}</strong><span>Skill lavorate</span></div></div></section>
     </div>`
   requestAnimationFrame(() => motion.cards(el))
 }
