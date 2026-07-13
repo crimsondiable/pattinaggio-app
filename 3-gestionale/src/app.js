@@ -1,7 +1,7 @@
 const SUPA_URL = 'https://mhioneawefsvagbccsum.supabase.co'
 const SUPA_KEY = 'sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH'
 
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroListaAllievi = 'attivi', filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = '', currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroListaAllievi = 'attivi', filtroLezioni = 'all', filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = new Set(), lezioniAnniEspansi = new Set(), schedaLezioniAnniEspansi = new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, catalogSkillBranchFilters = new Set(), pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false
 let luoghiLezioneCache = new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = 'standard'
 let mappaTipoFiltro = 'all', mappaSelectedLocationName = null, mappaSingleFocusName = null, mappaPuntiEspansi = false, mappaPuntiEspansiLoaded = false
 let calendarioSuggestTimer = null
@@ -87,8 +87,8 @@ const AVAILABILITY_DAYS = [
   { value: 6, label: 'Sabato', short: 'Sab' },
   { value: 0, label: 'Domenica', short: 'Dom' },
 ]
-const AVAILABILITY_START_MIN = 7 * 60
-const AVAILABILITY_END_MIN = 23 * 60
+let AVAILABILITY_START_MIN = 8 * 60
+let AVAILABILITY_END_MIN = 21 * 60
 const AVAILABILITY_STEP_MIN = 15
 const AVAILABILITY_HOUR_PX = 30
 const APPOINTMENT_BUFFER_MIN = 15
@@ -504,7 +504,7 @@ async function doLogout() {
 
 function initialRouteFromHash(hashValue = window.location.hash) {
   const raw = String(hashValue || '').replace(/^#/, '')
-  if (!raw) return { name: 'allievi', id: null }
+  if (!raw) return { name: 'home', id: null }
   const [encodedName, ...encodedRest] = raw.split('/')
   let name = ''
   let id = null
@@ -512,16 +512,16 @@ function initialRouteFromHash(hashValue = window.location.hash) {
     name = decodeURIComponent(encodedName || '')
     id = encodedRest.length ? decodeURIComponent(encodedRest.join('/')) : null
   } catch {
-    return { name: 'allievi', id: null }
+    return { name: 'home', id: null }
   }
-  const allowed = ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes']
-  if (!allowed.includes(name)) return { name: 'allievi', id: null }
-  if (routeNeedsId(name) && !id) return { name: 'allievi', id: null }
+  const allowed = ['home','allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes']
+  if (!allowed.includes(name)) return { name: 'home', id: null }
+  if (routeNeedsId(name) && !id) return { name: 'home', id: null }
   return { name, id }
 }
 
 function consumeInitialRoute() {
-  if (appBootRouteConsumed) return { name: 'allievi', id: null }
+  if (appBootRouteConsumed) return { name: 'home', id: null }
   appBootRouteConsumed = true
   return initialRouteFromHash(APP_BOOT_HASH)
 }
@@ -981,17 +981,9 @@ function renderDashboard() {
   const allieviDashboard = allieviVisibiliGod().filter(a => mostraArchiviati ? a.stato === 'archiviato' : a.stato !== 'archiviato')
   const allieviLabel = mostraArchiviati ? 'Allievi archiviati' : 'Allievi attivi'
   const allieviAction = mostraArchiviati ? 'setArchivio(true)' : "showView('allievi')"
-  const lezioni = lezioniCache || []
-  const oggi = localDateIso()
-  const todayLessons = lezioni.filter(l => String(l.data || '').slice(0, 10) === oggi)
-  const aperte = lezioni.filter(l => lessonStatus(l) === 'aperta')
-  const locations = locationNamesFromLessons()
   el.innerHTML = `
-    <div class="dashboard-grid">
+    <div class="dashboard-grid dashboard-compact">
       <div class="dashboard-tile" onclick="${allieviAction}"><strong>${allieviDashboard.length}</strong><span>${allieviLabel}</span></div>
-      <div class="dashboard-tile" onclick="showView('lezioni'); openDayLessonsWidget('${oggi}')"><strong>${todayLessons.length}</strong><span>Lezioni oggi</span></div>
-      <div class="dashboard-tile" onclick="showView('lezioni'); setFiltroLezioniAperte(true)"><strong>${aperte.length}</strong><span>Lezioni aperte</span></div>
-      <div class="dashboard-tile" onclick="showLocationsIndex()"><strong>${locations.length}</strong><span>Location</span></div>
     </div>`
 }
 
@@ -999,6 +991,86 @@ async function refreshDashboardData() {
   if (!lezioniCache) await loadLezioni(true)
   await loadLocations()
   renderDashboard()
+}
+
+function homeIcon(name) {
+  const paths = {
+    lesson: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+    person: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+    calendar: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>',
+    chart: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/>',
+    archive: '<path d="M3 6h18M5 6v14h14V6M8 3h8l2 3H6l2-3Z"/><path d="M9 11h6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.search}</svg>`
+}
+
+function focusHomeGlobalSearch() {
+  const input = document.getElementById('global-search-input')
+  input?.focus()
+  input?.scrollIntoView({ block: 'nearest' })
+  scheduleGlobalSearch()
+}
+
+function renderHome() {
+  const el = document.getElementById('home-content')
+  if (!el) return
+  const now = new Date()
+  const day = new Intl.DateTimeFormat('it-IT', { weekday: 'long' }).format(now)
+  const date = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(now)
+  const lessons = [
+    { time: '09:00', title: 'Tecnica individuale · Coco', place: 'Parco Nord', people: 'Coco', status: 'Concluso', statusClass: 'is-done', last: 'T-stop e controllo velocita', goal: 'Consolidare il lato debole' },
+    { time: '14:30', title: 'Gruppo Viola', place: 'Piazza Gae Aulenti', people: '4 partecipanti', status: 'In corso', statusClass: 'is-current', last: 'Curve e cambi direzione', goal: 'Incrocio in curva assistito' },
+    { time: '18:00', title: 'Lezione individuale · Giulia', place: 'Parco Sempione', people: 'Giulia', status: 'Programmato', statusClass: '', last: 'Powerslide introduttivo', goal: 'Riprendere fiducia e continuita' },
+  ]
+  const alerts = [
+    { name: 'Giulia', note: 'Ferma da 4 lezioni sulla stessa skill' },
+    { name: 'Coco', note: 'Manca il report della scorsa lezione' },
+    { name: 'Dominika', note: 'Necessita rivalutazione' },
+  ]
+  const students = [
+    { initials: 'CO', name: 'Coco', level: 'Tier A', skill: 'T-stop', progress: 74, note: 'Oggi prova lato debole' },
+    { initials: 'GI', name: 'Giulia', level: 'Tier B', skill: 'Powerslide', progress: 56, note: 'Ridurre il carico e curare continuita' },
+    { initials: 'DO', name: 'Dominika', level: 'Tier VIP', skill: 'Cross step', progress: 82, note: 'Programmare rivalutazione' },
+  ]
+  el.innerHTML = `
+    <div class="home-page">
+      <div class="home-header">
+        <div class="home-header-top">
+          <div><div class="home-date">${esc(day)} · ${esc(date)}</div><h2 class="home-title">La tua giornata</h2></div>
+          <button type="button" class="home-search-button" onclick="focusHomeGlobalSearch()">${homeIcon('search')}<span>Cerca allievi, gruppi, luoghi…</span></button>
+          <button type="button" class="btn btn-primary" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
+        </div>
+        <p class="home-summary">Oggi hai 3 lezioni, 7 allievi coinvolti e 2 criticita prioritarie.</p>
+      </div>
+
+      <div class="home-operational-grid">
+        <section class="home-section" aria-labelledby="home-timeline-title">
+          <div class="home-section-head"><h3 id="home-timeline-title">Timeline giornata</h3><span>Dati dimostrativi</span></div>
+          <div class="home-timeline">
+            ${lessons.map(lesson => `<article class="home-lesson${lesson.statusClass === 'is-current' ? ' is-current' : ''}">
+              <div class="home-lesson-time">${esc(lesson.time)}</div>
+              <div class="home-lesson-main">
+                <div class="home-lesson-title-row"><h4>${esc(lesson.title)}</h4><span class="home-status ${lesson.statusClass}">${esc(lesson.status)}</span></div>
+                <div class="home-lesson-meta"><span>⌖ ${esc(lesson.place)}</span><span>◎ ${esc(lesson.people)}</span></div>
+                <div class="home-lesson-context"><div class="home-context-item"><span>Ultima lezione</span>${esc(lesson.last)}</div><div class="home-context-item"><span>Obiettivo di oggi</span>${esc(lesson.goal)}</div></div>
+                <div class="home-lesson-actions"><button class="btn btn-ghost btn-sm" onclick="showView('lezioni')">Apri</button><button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione')">Avvia</button><button class="btn btn-outline btn-sm" onclick="showView('nuova-lezione')">Modifica</button></div>
+              </div>
+            </article>`).join('')}
+          </div>
+        </section>
+
+        <aside class="home-sidebar">
+          <section class="home-side-card home-next-card"><h3>Prossima lezione</h3><div class="home-next-time">14:30</div><h4>Gruppo Viola</h4><div class="home-detail-list"><div><span>Luogo</span><br>Piazza Gae Aulenti</div><div><span>Partecipanti</span><br>4 allievi</div><div><span>Obiettivo</span><br>Incrocio in curva</div><div><span>Materiale</span><br>Coni bassi, elastico</div><div><span>Note</span><br>Verificare lato debole di Alice</div></div><button class="btn btn-primary btn-full" onclick="showView('nuova-lezione')">Avvia lezione</button></section>
+          <section class="home-side-card"><h3>Criticita</h3><div class="home-alert-list">${alerts.map(alert => `<button class="home-alert" onclick="showView('allievi')"><span class="home-alert-icon">⚠</span><span><strong>${esc(alert.name)}</strong><span>${esc(alert.note)}</span></span></button>`).join('')}</div></section>
+        </aside>
+      </div>
+
+      <section class="home-section"><div class="home-section-head"><h3>Allievi in evidenza</h3><span>Focus di oggi</span></div><div class="home-students">${students.map(student => `<article class="home-student"><div class="home-student-head"><div class="home-avatar">${esc(student.initials)}</div><div><strong>${esc(student.name)}</strong><span>${esc(student.level)} · ${esc(student.skill)}</span></div></div><div class="home-progress" aria-label="Progresso ${student.progress}%"><span style="width:${student.progress}%"></span></div><div class="home-student-meta"><span>Progresso</span><strong>${student.progress}%</strong></div><p class="home-student-note">${esc(student.note)}</p></article>`).join('')}</div></section>
+
+      <section class="home-section"><div class="home-section-head"><h3>Riepilogo settimana</h3><span>Completamento report 78%</span></div><div class="home-week"><div class="home-week-stat"><strong>8</strong><span>Lezioni svolte</span></div><div class="home-week-stat"><strong>10,5</strong><span>Ore insegnate</span></div><div class="home-week-stat"><strong>19</strong><span>Allievi allenati</span></div><div class="home-week-stat"><strong>14</strong><span>Skill lavorate</span></div><div class="home-week-stat"><strong>7/9</strong><span>Report completati</span></div><div class="home-week-progress" aria-label="Report completati 78%"><span></span></div></div></section>
+    </div>`
+  requestAnimationFrame(() => motion.cards(el))
 }
 
 // ── Views ─────────────────────────────────────────────────────────────
@@ -1009,17 +1081,17 @@ function routeNeedsId(name) {
   return ['scheda', 'gruppo', 'location', 'lezione'].includes(name)
 }
 
-function normalizeRoute(name = 'allievi', id = null) {
-  const cleanName = name || 'allievi'
+function normalizeRoute(name = 'home', id = null) {
+  const cleanName = name || 'home'
   return { app: APP_HISTORY_KEY, name: cleanName, id: id || null }
 }
 
 function homeBoundaryRoute() {
-  return { ...normalizeRoute('allievi'), boundary: true }
+  return { ...normalizeRoute('home'), boundary: true }
 }
 
 function routeHash(route) {
-  const base = route.name || 'allievi'
+  const base = route.name || 'home'
   return route.id ? `#${encodeURIComponent(base)}/${encodeURIComponent(route.id)}` : `#${encodeURIComponent(base)}`
 }
 
@@ -1046,9 +1118,9 @@ function recordAppHistory(name, id = null) {
 
 function showHomeFromHistoryBoundary() {
   appHistoryApplying = true
-  showView('allievi')
+  showView('home')
   appHistoryApplying = false
-  const home = normalizeRoute('allievi')
+  const home = normalizeRoute('home')
   history.pushState(home, '', routeHash(home))
 }
 
@@ -1064,7 +1136,7 @@ window.addEventListener('popstate', event => {
     return
   }
   appHistoryApplying = true
-  showView(route.name || 'allievi', route.id || null)
+  showView(route.name || 'home', route.id || null)
   appHistoryApplying = false
 })
 
@@ -1073,12 +1145,13 @@ window.addEventListener('hashchange', () => {
 })
 
 function visibleViewName() {
-  return ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes']
+  return ['home','allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes']
     .find(v => !document.getElementById(`view-${v}`)?.hidden) || null
 }
 
 function syncNavActive(name) {
   const locationFromMap = name === 'location' && locationBackTarget?.name === 'mappa'
+  document.getElementById('nav-home')?.classList.toggle('active', name === 'home')
   document.getElementById('nav-allievi').classList.toggle('active', ['allievi','scheda','gruppo','nuovo-allievo','nuovo-gruppo'].includes(name))
   document.getElementById('nav-lezioni').classList.toggle('active', ['lezioni','lezione','nuova-lezione'].includes(name) || (name === 'location' && !locationFromMap))
   document.getElementById('nav-lesson-radial-planner')?.classList.toggle('active', name === 'lesson-radial-planner')
@@ -1091,12 +1164,13 @@ function syncNavActive(name) {
   document.getElementById('nav-tuning').classList.toggle('active', name === 'tuning')
   document.getElementById('nav-theme-colors')?.classList.toggle('active', name === 'theme-colors')
   document.getElementById('nav-app-notes').classList.toggle('active', name === 'app-notes')
+  window.ResponsiveShell?.revealActiveDestination()
 }
 
 function isValidLocationBackTarget(target) {
   if (!target || target.name === 'location') return false
   if (target.name === 'scheda' || target.name === 'gruppo' || target.name === 'lezione') return !!target.id
-  return ['allievi','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','mappa','skills','tuning','theme-colors','app-notes'].includes(target.name)
+  return ['home','allievi','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','mappa','skills','tuning','theme-colors','app-notes'].includes(target.name)
 }
 
 function readLocationBackTarget() {
@@ -1116,6 +1190,7 @@ function setLocationBackTarget(target) {
 
 function locationBackLabel(target = locationBackTarget) {
   const labels = {
+    home: 'Home',
     allievi: 'Allievi',
 	    lezioni: 'Lezioni',
     'lesson-radial-planner': 'Planner',
@@ -1152,7 +1227,7 @@ function currentReturnTarget() {
   if (view === 'gruppo' && currentGruppoNome) return { name: 'gruppo', id: currentGruppoNome }
   if (view === 'lezione' && currentLezioneId) return { name: 'lezione', id: currentLezioneId }
   if (view === 'location') return locationBackTarget || readLocationBackTarget() || { name: 'lezioni', id: null }
-  if (view === 'allievi' || view === 'lezioni' || view === 'lesson-radial-planner' || view === 'percorsi' || view === 'calendario' || view === 'appuntamenti' || view === 'analisi' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'theme-colors' || view === 'app-notes') return { name: view, id: null }
+  if (view === 'home' || view === 'allievi' || view === 'lezioni' || view === 'lesson-radial-planner' || view === 'percorsi' || view === 'calendario' || view === 'appuntamenti' || view === 'analisi' || view === 'mappa' || view === 'skills' || view === 'tuning' || view === 'theme-colors' || view === 'app-notes') return { name: view, id: null }
   return null
 }
 
@@ -1190,11 +1265,12 @@ function showView(name, id) {
     const returnTarget = previousReturnTarget
     if (returnTarget) editReturnTarget = returnTarget
   }
-  ['allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes'].forEach(v => {
+  ['home','allievi','scheda','gruppo','lezioni','lesson-radial-planner','percorsi','calendario','appuntamenti','analisi','location','mappa','lezione','nuova-lezione','nuovo-allievo','nuovo-gruppo','skills','tuning','theme-colors','app-notes'].forEach(v => {
     document.getElementById(`view-${v}`).hidden = (v !== name)
   })
   syncNavActive(name)
 
+  if (name === 'home')          renderHome()
   if (name === 'lezioni' && id) filtroLezioni = `allievo:${id}`
   if (name === 'lezioni')       loadLezioni()
   if (name === 'lesson-radial-planner') ensureLessonRadialPlannerMounted()
@@ -1834,7 +1910,7 @@ function analysisBranchId(raw) {
 }
 
 function analysisBranchLabel(id) {
-  return ANALYSIS_BRANCHES.find(branch => branch.id === id)?.label || 'ALTRO'
+  return ANALYSIS_BRANCHES.find(branch => branch.id === id)?.label || 'EXTRA'
 }
 
 function analysisSkillByName(name) {
@@ -2156,7 +2232,7 @@ async function renderAnalisi() {
     <div class="analysis-filters">
       <label class="field"><span>Periodo</span><select id="analysis-period" onchange="renderAnalisi()">${ANALYSIS_PERIODS.map(period => `<option value="${period.value}" ${period.value === previous.period ? 'selected' : ''}>${esc(period.label)}</option>`).join('')}</select></label>
       <label class="field"><span>Target</span><select id="analysis-target" onchange="renderAnalisi()">${analysisTargetOptions()}</select></label>
-      <label class="field"><span>Ramo</span><select id="analysis-branch" onchange="renderAnalisi()"><option value="all">Tutti i rami</option>${ANALYSIS_BRANCHES.map(branch => `<option value="${branch.id}" ${branch.id === previous.branch ? 'selected' : ''}>${esc(branch.label)}</option>`).join('')}<option value="other" ${previous.branch === 'other' ? 'selected' : ''}>ALTRO</option></select></label>
+      <label class="field"><span>Ramo</span><select id="analysis-branch" onchange="renderAnalisi()"><option value="all">Tutti i rami</option>${ANALYSIS_BRANCHES.map(branch => `<option value="${branch.id}" ${branch.id === previous.branch ? 'selected' : ''}>${esc(branch.label)}</option>`).join('')}<option value="other" ${previous.branch === 'other' ? 'selected' : ''}>EXTRA</option></select></label>
       <label class="field"><span>Stato lezioni</span><select id="analysis-status" onchange="renderAnalisi()"><option value="all">Tutte</option><option value="chiusa" ${previous.status === 'chiusa' ? 'selected' : ''}>Chiuse</option><option value="aperta" ${previous.status === 'aperta' ? 'selected' : ''}>Aperte</option></select></label>
     </div>
     ${renderAnalysisKpis(data)}
@@ -2989,8 +3065,8 @@ function availabilityModeControlsHtml(owner) {
     <div class="availability-card-actions">
       <button type="button" class="btn ${availableActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','available')">Inserisci disponibilita</button>
       <button type="button" class="btn ${excludedActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','excluded')">Inserisci fasce escluse</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? '' : 'disabled'}>Undo disp.</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? '' : 'disabled'}>Undo escl.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? '' : 'disabled'}>Annulla disp.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? '' : 'disabled'}>Annulla escl.</button>
       <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${owner}')" ${availabilityCount ? '' : 'disabled'}>Cancella disp.</button>
       <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${excludedOwner}')" ${excludedCount ? '' : 'disabled'}>Cancella escl.</button>
     </div>`
@@ -3045,7 +3121,28 @@ async function undoAvailability(owner) {
 }
 
 function availabilityGridHeight() {
-  return ((AVAILABILITY_END_MIN - AVAILABILITY_START_MIN) / 60) * AVAILABILITY_HOUR_PX
+  return ((AVAILABILITY_END_MIN - AVAILABILITY_START_MIN) / 60) * availabilityHourPx()
+}
+
+function availabilityHourPx() {
+  return window.ResponsiveShell?.isMobile() ? 24 : AVAILABILITY_HOUR_PX
+}
+
+function availabilityGridRangeHtml() {
+  return `<div class="availability-grid-range" aria-label="Orari visualizzati nella tabella">
+    <span>Orari tabella</span>
+    <label><span>Inizio</span><input type="time" value="${minutesToTime(AVAILABILITY_START_MIN)}" step="3600" onchange="setAvailabilityGridRange('start',this.value)"></label>
+    <label><span>Fine</span><input type="time" value="${minutesToTime(AVAILABILITY_END_MIN)}" step="3600" onchange="setAvailabilityGridRange('end',this.value)"></label>
+  </div>`
+}
+
+function setAvailabilityGridRange(bound, value) {
+  const minutes = timeToMinutes(value)
+  if (minutes == null) return
+  const snapped = Math.round(minutes / 60) * 60
+  if (bound === 'start') AVAILABILITY_START_MIN = Math.max(0, Math.min(AVAILABILITY_END_MIN - 60, snapped))
+  if (bound === 'end') AVAILABILITY_END_MIN = Math.min(24 * 60, Math.max(AVAILABILITY_START_MIN + 60, snapped))
+  renderAppuntamenti()
 }
 
 function availabilityHourLabels() {
@@ -3068,15 +3165,15 @@ function availabilitySnap(value) {
 
 function availabilityMinutesFromEvent(event, col) {
   const rect = col.getBoundingClientRect()
-  const raw = AVAILABILITY_START_MIN + ((event.clientY - rect.top) / AVAILABILITY_HOUR_PX) * 60
+  const raw = AVAILABILITY_START_MIN + ((event.clientY - rect.top) / availabilityHourPx()) * 60
   return Math.max(AVAILABILITY_START_MIN, Math.min(AVAILABILITY_END_MIN, availabilitySnap(raw)))
 }
 
 function availabilitySlotStyle(slot) {
   const startMin = timeToMinutes(slot.start)
   const endMin = timeToMinutes(slot.end)
-  const top = ((startMin - AVAILABILITY_START_MIN) / 60) * AVAILABILITY_HOUR_PX
-  const height = Math.max(18, ((endMin - startMin) / 60) * AVAILABILITY_HOUR_PX)
+  const top = ((startMin - AVAILABILITY_START_MIN) / 60) * availabilityHourPx()
+  const height = Math.max(18, ((endMin - startMin) / 60) * availabilityHourPx())
   return `top:${top}px;height:${height}px`
 }
 
@@ -3103,7 +3200,7 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
   normalized.forEach(slot => byDay.get(Number(slot.day))?.push({ owner, slot }))
   normalizedExcluded.forEach(slot => byDay.get(Number(slot.day))?.push({ owner: `${owner}-excluded`, slot }))
   byDay.forEach(items => items.sort((a, b) => timeToMinutes(a.slot.start) - timeToMinutes(b.slot.start) || timeToMinutes(a.slot.end) - timeToMinutes(b.slot.end) || (availabilityOwnerIsExcluded(a.owner) ? 1 : 0) - (availabilityOwnerIsExcluded(b.owner) ? 1 : 0)))
-  const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`
+  const style = `--availability-hour-px:${availabilityHourPx()}px;--availability-grid-height:${availabilityGridHeight()}px`
   const mode = availabilityPlannerMode(owner)
   const editable = !!mode
   return `
@@ -3116,7 +3213,7 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
         </div>
         <div class="availability-week-body">
           <div class="availability-time-axis">
-            ${availabilityHourLabels().map(min => `<div class="availability-time-label" style="top:${((min - AVAILABILITY_START_MIN) / 60) * AVAILABILITY_HOUR_PX}px">${minutesToTime(min)}</div>`).join('')}
+            ${availabilityHourLabels().map(min => `<div class="availability-time-label" style="top:${((min - AVAILABILITY_START_MIN) / 60) * availabilityHourPx()}px">${minutesToTime(min)}</div>`).join('')}
           </div>
           ${AVAILABILITY_DAYS.map(day => `
             <div class="availability-day-col" data-owner="${owner}" data-day="${day.value}" onpointerdown="startAvailabilityCreate(event,'${owner}',${day.value})">
@@ -3218,6 +3315,7 @@ function renderAppuntamenti() {
           </div>
           ${availabilityModeControlsHtml('maestro')}
         </div>
+        ${availabilityGridRangeHtml()}
         ${availabilityPlannerHtml('maestro', maestroAvailabilitySlots, maestroExcludedSlots)}
         <div class="appointments-status" id="maestro-availability-status"></div>
       </div>
@@ -5015,7 +5113,10 @@ async function loadLocation(luogo) {
 }
 
 function showLocationsIndex() {
-  showView('location', '__index__')
+  mappaPuntiEspansi = true
+  mappaPuntiEspansiLoaded = true
+  safeStorage.setItem(MAP_POINTS_EXPANDED_STORAGE_KEY, '1')
+  showView('mappa', mappaSelectedLocationName || null)
 }
 
 function formatMapCoordinate(value) {
@@ -6047,6 +6148,7 @@ function resetActionPanelPosition(panel) {
   panel.style.removeProperty('left')
   panel.style.removeProperty('top')
   panel.style.removeProperty('width')
+  panel.style.removeProperty('max-height')
 }
 
 function positionInlineActionPanel(panel) {
@@ -6057,26 +6159,26 @@ function positionInlineActionPanel(panel) {
   const trigger = menu?.querySelector('button')
   const viewportW = window.innerWidth || document.documentElement.clientWidth || 0
   const viewportH = window.innerHeight || document.documentElement.clientHeight || 0
-  const rect = panel.getBoundingClientRect()
-  const triggerRect = trigger?.getBoundingClientRect() || rect
-  const constrainedWidth = Math.min(Math.max(rect.width, 170), Math.max(170, viewportW - margin * 2))
-  const constrainedHeight = Math.min(rect.height, Math.max(140, viewportH - margin * 2))
-  const clippedByViewport = rect.left < margin || rect.right > viewportW - margin || rect.top < margin || rect.bottom > viewportH - margin
-  const clipParent = panel.closest('.table-wrap, .modal')
-  const parentRect = clipParent?.getBoundingClientRect()
-  const clippedByParent = !!parentRect && (rect.left < parentRect.left || rect.right > parentRect.right || rect.bottom > parentRect.bottom)
-  if (!clippedByViewport && !clippedByParent) return
+  if (!trigger || !viewportW || !viewportH) return
+  const triggerRect = trigger.getBoundingClientRect()
+  const measured = panel.getBoundingClientRect()
+  const constrainedWidth = Math.min(Math.max(measured.width, 170), Math.max(170, viewportW - margin * 2))
+  const naturalHeight = Math.min(measured.height, Math.max(140, viewportH - margin * 2))
+  const spaceBelow = viewportH - triggerRect.bottom - margin
+  const spaceAbove = triggerRect.top - margin
+  const openUp = spaceBelow < naturalHeight && spaceAbove > spaceBelow
+  const constrainedHeight = Math.min(naturalHeight, Math.max(80, openUp ? spaceAbove : spaceBelow))
 
   let left = Math.min(Math.max(margin, triggerRect.right - constrainedWidth), viewportW - constrainedWidth - margin)
   if (!Number.isFinite(left)) left = margin
-  let top = triggerRect.bottom + 6
-  if (top + constrainedHeight > viewportH - margin) top = triggerRect.top - constrainedHeight - 6
+  let top = openUp ? triggerRect.top - constrainedHeight - 6 : triggerRect.bottom + 6
   top = Math.min(Math.max(margin, top), Math.max(margin, viewportH - constrainedHeight - margin))
 
   panel.classList.add('is-fixed')
   panel.style.left = `${left}px`
   panel.style.top = `${top}px`
   panel.style.width = `${constrainedWidth}px`
+  panel.style.maxHeight = `${constrainedHeight}px`
 
   const placed = panel.getBoundingClientRect()
   const dx = left - placed.left
@@ -6691,17 +6793,18 @@ function setGodScope(scope) {
 
 function renderAllievi() {
   const el = document.getElementById('allievi-content')
+  el.dataset.mobileCards = 'true'
   renderDashboard()
   const listaVisibile = allieviVisibiliGod()
   const gruppiCorrenti = allieviGroupNamesForCurrentMode(listaVisibile)
   const mostraToggleGruppi = gruppiCorrenti.length > 0 && filtroListaAllievi !== 'tutti'
   const tuttiGruppiEspansi = mostraToggleGruppi && gruppiCorrenti.every(g => gruppiEspansi.has(g))
   const chipsHtml = `
-    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
+    <div class="allievi-filter-bar">
       <button type="button" onclick="setAllieviListMode('attivi')" class="chip${filtroListaAllievi === 'attivi' ? ' chip-on' : ''}">Attivi</button>
-      <button type="button" onclick="setAllieviListMode('tutti')" class="chip${filtroListaAllievi === 'tutti' ? ' chip-on' : ''}">Tutti</button>
+      <button type="button" onclick="setAllieviListMode('tutti')" class="chip${filtroListaAllievi === 'tutti' ? ' chip-on' : ''}">Tutti gli allievi</button>
       <button type="button" onclick="setAllieviListMode('gruppi')" class="chip${filtroListaAllievi === 'gruppi' ? ' chip-on' : ''}">Gruppi</button>
-      <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-left:auto;align-items:center">
+      <div class="allievi-filter-secondary">
         <button type="button" onclick="setAllieviListMode('vacanza')" class="chip${filtroListaAllievi === 'vacanza' ? ' chip-on' : ''}" title="Mostra solo chi e in vacanza">🏖 In vacanza</button>
         <button type="button" onclick="setAllieviListMode('archivio')" class="chip${filtroListaAllievi === 'archivio' ? ' chip-on' : ''}">Archivio</button>
         ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? 'Raggruppa tutti i gruppi' : 'Espandi tutti i gruppi'}">${tuttiGruppiEspansi ? '▴ Raggruppa' : '▾ Espandi'}</button>` : ''}
@@ -6719,14 +6822,21 @@ function renderAllievi() {
       <col>
       <col style="width:118px">
     </colgroup>`
+  const allievoBadgesHtml = (a, { mobile = false } = {}) => {
+    const margin = mobile ? '' : 'margin-left:4px;'
+    const vacationColor = mobile ? '#fbbf24' : '#b45309'
+    return `
+      ${a.tipo === 'associazione' ? `<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;${margin}">ass.</span>` : ''}
+      ${a.stato === 'archiviato' ? `<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;${margin}">arch.</span>` : ''}
+      ${allievoInVacanza(a) ? `<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:${vacationColor};padding:1px 5px;border-radius:10px;${margin}">vacanza</span>` : ''}`
+  }
+
   const renderAllievoRow = (a, extraClass = '') => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
       <td style="width:42px;text-align:center;white-space:nowrap">${allievoTier(a) === 'VIP' ? '<span class="vip-star">★</span>' : ''}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
         <strong>${esc(a.nome)}</strong>
-        ${a.tipo === 'associazione' ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ''}
-        ${a.stato === 'archiviato' ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ''}
-        ${allievoInVacanza(a) ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}
+        ${allievoBadgesHtml(a)}
       </td>
       <td>${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
       <td style="color:var(--muted);font-size:.84rem;white-space:nowrap">${esc(allievoEtaLabel(a.data_nascita) || '')}</td>
@@ -6739,6 +6849,28 @@ function renderAllievi() {
         </div>
       </td>
     </tr>`
+
+  const renderAllievoCard = (a, actionSuffix = '') => {
+    const fullName = [a.nome, a.tipo === 'associazione' ? '' : a.cognome].filter(Boolean).join(' ')
+    const actionId = `allievo-list-mobile-actions-${a.id}${actionSuffix ? `-${actionSuffix}` : ''}`
+    const age = String(allievoEtaLabel(a.data_nascita) || '').replace(/\s*anni?$/i, 'y')
+    return `
+      <article class="allievi-mobile-card${a.stato === 'archiviato' ? ' is-archived' : ''}">
+        <div class="allievi-mobile-card-head">
+          <a class="allievi-mobile-card-open" href="#scheda:${esc(a.id)}" onclick="event.preventDefault(); loadScheda('${a.id}')">
+            <div class="allievi-mobile-card-title">
+              ${allievoTier(a) === 'VIP' ? '<span class="vip-star" aria-label="VIP">★</span>' : ''}
+              <strong>${esc(fullName)}</strong>
+            </div>
+            <div class="allievi-mobile-meta">
+              ${age ? `<span>${esc(age)}</span>` : ''}
+              <span>Tier ${esc(allievoTierListLabel(a))}</span>
+            </div>
+          </a>
+          ${renderAllievoActionMenu(a, actionId)}
+        </div>
+      </article>`
+  }
 
   const renderGruppoRows = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
       const membri = ordinaAllieviLista(sourceList.filter(a => a.gruppo === gruppo))
@@ -6769,6 +6901,28 @@ function renderAllievi() {
         ].filter(Boolean).join(' '))).join('') : ''}`
     }).join('')
 
+  const renderGruppoCards = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
+      const membri = ordinaAllieviLista(sourceList.filter(a => a.gruppo === gruppo))
+      const expanded = gruppiEspansi.has(gruppo)
+      const actionId = `gruppo-list-mobile-actions-${filtroListaAllievi}-${index}`
+      return `
+        <article class="allievi-mobile-card is-group">
+          <div class="allievi-mobile-card-head">
+            <a class="allievi-mobile-card-open" href="#gruppo:${encodeURIComponent(gruppo)}" onclick="event.preventDefault(); showView('gruppo',${jsArg(gruppo)})">
+              <div class="allievi-mobile-card-title">
+                <strong>${esc(gruppo)}</strong>
+              </div>
+              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? 'allievo' : 'allievi'}</span></div>
+            </a>
+            <div class="allievi-mobile-group-tools">
+              <button class="btn btn-ghost btn-sm" type="button" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})">${expanded ? '▴' : '▾'}</button>
+              ${renderGruppoActionMenu(gruppo, actionId)}
+            </div>
+          </div>
+        </article>
+        ${expanded ? `<div class="allievi-mobile-members">${membri.map(m => renderAllievoCard(m, `group-${index}`)).join('')}</div>` : ''}`
+    }).join('')
+
   const groupNames = list => [...new Set(list.map(a => a.gruppo).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))
   const byVacation = list => ({
@@ -6782,33 +6936,34 @@ function renderAllievi() {
       vacanza: names.filter(g => groupRowInVacanza(g, list.filter(a => a.gruppo === g))),
     }
   }
-  const rowsForCurrentMode = () => {
+  const contentForCurrentMode = (renderStudent, renderGroups) => {
     if (filtroListaAllievi === 'tutti') {
       const split = byVacation(listaVisibile)
-      return [...split.presenti, ...split.vacanza].map(renderAllievoRow).join('')
+      return [...split.presenti, ...split.vacanza].map(a => renderStudent(a)).join('')
     }
     if (filtroListaAllievi === 'gruppi') {
       const split = groupsByVacation(listaVisibile)
-      return renderGruppoRows(split.presenti, listaVisibile) + renderGruppoRows(split.vacanza, listaVisibile)
+      return renderGroups(split.presenti, listaVisibile) + renderGroups(split.vacanza, listaVisibile)
     }
     if (filtroListaAllievi === 'vacanza') {
       const inVacanza = listaVisibile.filter(a => allievoInVacanza(a))
       const privati = ordinaAllieviLista(inVacanza.filter(a => !a.gruppo))
       const gruppiVacanza = groupNames(listaVisibile).filter(g => groupRowInVacanza(g, listaVisibile.filter(a => a.gruppo === g)))
-      return privati.map(renderAllievoRow).join('') + renderGruppoRows(gruppiVacanza, listaVisibile)
+      return privati.map(a => renderStudent(a)).join('') + renderGroups(gruppiVacanza, listaVisibile)
     }
     const privati = listaVisibile.filter(a => !a.gruppo)
     const privatiSplit = byVacation(privati)
     const gruppiSplit = groupsByVacation(listaVisibile)
     return [
-      privatiSplit.presenti.map(renderAllievoRow).join(''),
-      renderGruppoRows(gruppiSplit.presenti, listaVisibile),
-      privatiSplit.vacanza.map(renderAllievoRow).join(''),
-      renderGruppoRows(gruppiSplit.vacanza, listaVisibile),
+      privatiSplit.presenti.map(a => renderStudent(a)).join(''),
+      renderGroups(gruppiSplit.presenti, listaVisibile),
+      privatiSplit.vacanza.map(a => renderStudent(a)).join(''),
+      renderGroups(gruppiSplit.vacanza, listaVisibile),
     ].join('')
   }
 
-  const rowsHtml = rowsForCurrentMode()
+  const rowsHtml = contentForCurrentMode(renderAllievoRow, renderGruppoRows)
+  const cardsHtml = contentForCurrentMode(renderAllievoCard, renderGruppoCards)
   if (!rowsHtml) {
     const emptyText = filtroListaAllievi === 'archivio'
       ? 'Nessun allievo archiviato.'
@@ -6822,7 +6977,7 @@ function renderAllievi() {
   }
 
   el.innerHTML = chipsHtml + `
-    <div class="table-wrap">
+    <div class="table-wrap allievi-table-view">
       <table>
         ${allieviColgroup}
         <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Età</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
@@ -6830,6 +6985,9 @@ function renderAllievi() {
           ${rowsHtml}
         </tbody>
       </table>
+    </div>
+    <div class="allievi-mobile-list" aria-label="Elenco allievi">
+      ${cardsHtml}
     </div>`
   requestAnimationFrame(() => motion.tableRows(el))
 }
@@ -7054,7 +7212,7 @@ function initNuovoAllievo(id) {
   document.getElementById('na-nome').value        = allievo?.nome            || ''
   document.getElementById('na-cognome').value     = allievo?.cognome         || ''
   document.getElementById('na-nascita').value     = dateIsoToInput(allievo?.data_nascita)
-  document.getElementById('na-iscrizione').value  = dateIsoToInput(allievo?.data_iscrizione)
+  document.getElementById('na-iscrizione').value  = dateIsoToInput(allievo?.data_iscrizione || localDateIso())
   document.getElementById('na-email').value       = allievo?.email           || ''
   document.getElementById('na-tel').value         = allievo?.telefono        || ''
   document.getElementById('na-note').value        = allievo?.note_generali   || ''
@@ -7564,6 +7722,10 @@ async function salvaAllievo() {
     return
   }
 
+  const savedId = editingAllieviId
+  const originalAllievo = savedId ? (allAllievi.find(a => String(a.id) === String(savedId)) || {}) : {}
+  const dataIscrizioneInput = dateInputToIso(document.getElementById('na-iscrizione').value)
+  const dataIscrizione = dataIscrizioneInput || originalAllievo.data_iscrizione || localDateIso()
   const payload = {
     nome, cognome, tipo,
     nickname:        isAss ? (document.getElementById('ass-nick').value.trim() || null) : (document.getElementById('na-nickname').value.trim() || null),
@@ -7571,7 +7733,7 @@ async function salvaAllievo() {
     blocco_attuale:  isAss ? 'Base' : document.getElementById('na-blocco').value,
     gruppo:          isAss ? (document.getElementById('ass-gruppo').value.trim() || null) : (gruppoAttivo ? (document.getElementById('na-gruppo').value.trim() || null) : null),
     data_nascita:    isAss ? null : (dateInputToIso(document.getElementById('na-nascita').value) || null),
-    data_iscrizione: isAss ? null : (dateInputToIso(document.getElementById('na-iscrizione').value) || null),
+    data_iscrizione: dataIscrizione,
     email:           isAss ? null : (document.getElementById('na-email').value.trim() || null),
     telefono:        isAss ? null : (document.getElementById('na-tel').value.trim() || null),
     note_generali:   isAss ? (document.getElementById('ass-note').value.trim() || null) : (document.getElementById('na-note').value.trim() || null),
@@ -7580,8 +7742,6 @@ async function salvaAllievo() {
     ...(editingAllieviId ? {} : { maestro_id: writeUid }),
   }
 
-  const savedId = editingAllieviId
-  const originalAllievo = savedId ? (allAllievi.find(a => String(a.id) === String(savedId)) || {}) : {}
   try {
     let data, error
     if (savedId) {
@@ -8327,7 +8487,7 @@ async function loadScheda(id) {
   // Raggruppa progressi per ramo
   const byRamo = {}
   ;(progressi || []).forEach(p => {
-    const r = p.skills?.ramo || 'Altro'
+    const r = skillBranchName(p.skills?.ramo)
     if (!byRamo[r]) byRamo[r] = []
     byRamo[r].push(p)
   })
@@ -8547,6 +8707,12 @@ function renderSkillsCatalog() {
   if (!el) return
   const total = allSkills?.length || 0
   const required = (allSkills || []).filter(skill => skill.obbligatoria).length
+  const preferredBranches = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+  const foundBranches = [...new Set((allSkills || []).map(skill => skillBranchName(skill.ramo)))]
+  const branches = preferredBranches.filter(branch => branch === 'Extra' || foundBranches.includes(branch))
+  catalogSkillBranchFilters.forEach(branch => {
+    if (!branches.includes(branch)) catalogSkillBranchFilters.delete(branch)
+  })
   el.innerHTML = `
     <div class="skill-tree-head">
       <div class="skill-tree-legend">
@@ -8555,21 +8721,35 @@ function renderSkillsCatalog() {
         <span>${allPrereqs?.length || 0} prerequisiti</span>
       </div>
       <div class="skill-tree-actions">
-        ${catalogSkillEditMode
-          ? `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(false)">Fine modifica</button>
-             <button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('catalog')">+ Skill</button>`
-          : `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(true)">${editIcon()} Modifica catalogo</button>`}
+        <div class="skill-catalog-filter" aria-label="Filtra per ramo">
+          <button type="button" class="chip${catalogSkillBranchFilters.size === 0 ? ' chip-on' : ''}" aria-pressed="${catalogSkillBranchFilters.size === 0}" onclick="setCatalogSkillBranchFilter('all')">Tutti</button>
+          <div class="skill-catalog-branch-buttons">
+            ${branches.map(branch => `<button type="button" class="chip${catalogSkillBranchFilters.has(branch) ? ' chip-on' : ''}" aria-pressed="${catalogSkillBranchFilters.has(branch)}" onclick="toggleCatalogSkillBranchFilter(${jsArg(branch)})">${esc(branch)}</button>`).join('')}
+          </div>
+        </div>
       </div>
     </div>
     <div id="skills-catalog-status" class="msg" style="display:none"></div>
-    ${renderCatalogSkillTree()}`
+    ${renderCatalogSkillTree(catalogSkillBranchFilters)}`
   const btn = document.getElementById('skills-edit-toggle')
   if (btn) {
-    btn.textContent = catalogSkillEditMode ? 'Fine modifica' : 'Modifica'
+    btn.textContent = catalogSkillEditMode ? 'Fine modifica' : 'Modifica catalogo'
     btn.classList.toggle('btn-primary', catalogSkillEditMode)
     btn.classList.toggle('btn-outline', !catalogSkillEditMode)
   }
   requestAnimationFrame(() => motion.cards(el))
+}
+
+function setCatalogSkillBranchFilter(branch) {
+  if (!branch || branch === 'all') catalogSkillBranchFilters.clear()
+  renderSkillsCatalog()
+}
+
+function toggleCatalogSkillBranchFilter(branch) {
+  if (!branch) return
+  if (catalogSkillBranchFilters.has(branch)) catalogSkillBranchFilters.delete(branch)
+  else catalogSkillBranchFilters.add(branch)
+  renderSkillsCatalog()
 }
 
 function setCatalogSkillEditMode(on) {
@@ -8577,14 +8757,14 @@ function setCatalogSkillEditMode(on) {
   renderSkillsCatalog()
 }
 
-function renderCatalogSkillTree() {
-  const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air']
-  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Altro: [] }
+function renderCatalogSkillTree(branchFilters = new Set()) {
+  const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Extra: [] }
   ;(allSkills || []).forEach(skill => {
-    const ramo = RAMI.includes(skill.ramo) ? skill.ramo : 'Altro'
+    const ramo = skillBranchName(skill.ramo)
     byRamo[ramo].push(skill)
   })
-  const cols = [...RAMI, 'Altro'].filter(ramo => byRamo[ramo].length)
+  const cols = RAMI.filter(ramo => byRamo[ramo].length && (!branchFilters.size || branchFilters.has(ramo)))
   if (!cols.length) return '<div class="empty">Nessuna skill nel catalogo.</div>'
 
   const colsHtml = cols.map(ramo => {
@@ -8617,17 +8797,17 @@ function renderCatalogSkillTree() {
 }
 
 function renderSkillTree(allSkills, progressiMap, allievoId, fakieProgressMap = {}) {
-  const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air']
+  const RAMI = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
   const ICONS = ['○', '◐', '●', '★']
   const ICON_COLORS = ['color:var(--muted)', 'color:#facc15', 'color:var(--blu)', 'color:var(--success)']
 
-  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Altro: [] }
+  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Extra: [] }
   ;(allSkills || []).forEach(s => {
-    const r = RAMI.includes(s.ramo) ? s.ramo : 'Altro'
+    const r = skillBranchName(s.ramo)
     byRamo[r].push(s)
   })
 
-  const cols = [...RAMI, 'Altro'].filter(r => byRamo[r].length)
+  const cols = RAMI.filter(r => byRamo[r].length)
   const acquired = (allSkills || []).filter(s => (progressiMap[s.id] ?? 0) >= 2).length
   const total = allSkills?.length ?? 0
   const pct = total ? Math.round(acquired / total * 100) : 0
@@ -8718,7 +8898,7 @@ function stageLabelShort(stadio) {
 
 function skillDetailMeta(skill) {
   return [
-    skill.ramo || 'Altro',
+    skillBranchName(skill.ramo),
     skill.blocco,
     skill.livello ? `Livello ${skill.livello}` : '',
     openClosedLabel(skill.open_closed),
@@ -9061,10 +9241,17 @@ async function salvaSkillTreeManuale(allievoId) {
 // ── Gestione catalogo skill ──────────────────────────────────────────
 
 function skillCatalogBranchOptions(selected = '') {
-  const preferred = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Altro']
-  const found = [...new Set((allSkills || []).map(skill => skill.ramo || 'Altro').filter(Boolean))]
+  const preferred = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+  const normalizedSelected = skillBranchName(selected)
+  const found = [...new Set((allSkills || []).map(skill => skillBranchName(skill.ramo)))]
   const branches = [...preferred, ...found.filter(branch => !preferred.includes(branch)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))]
-  return branches.map(branch => `<option value="${esc(branch)}" ${branch === selected ? 'selected' : ''}>${esc(branch)}</option>`).join('')
+  return branches.map(branch => `<option value="${esc(branch)}" ${branch === normalizedSelected ? 'selected' : ''}>${esc(branch)}</option>`).join('')
+}
+
+function skillBranchName(raw) {
+  const branch = String(raw || '').trim()
+  const known = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+  return known.includes(branch) ? branch : 'Extra'
 }
 
 function setSkillCatalogStatus(text, kind = '') {
@@ -9244,7 +9431,7 @@ async function creaSkillCatalogo() {
   const btn = document.getElementById('btn-create-skill')
   const oldText = btn?.textContent
   const nome = document.getElementById('skill-new-name')?.value.trim()
-  const ramo = document.getElementById('skill-new-branch')?.value || 'Altro'
+  const ramo = document.getElementById('skill-new-branch')?.value || 'Extra'
   const livello = parseInt(document.getElementById('skill-new-level')?.value || '1', 10) || 1
   const blocco = document.getElementById('skill-new-block')?.value || 'Base'
   const openClosed = document.getElementById('skill-new-open-closed')?.value || 'OPEN'
@@ -9601,7 +9788,7 @@ async function salvaDefinizioneVarianteSkill(skill, parentSkill, variants = []) 
   const payload = {
     skill_id: skill.id,
     skill_nome: skill.nome,
-    ramo: skill.ramo || 'Altro',
+    ramo: skillBranchName(skill.ramo),
     fascia_livello: skill.blocco || '',
     livello_num: Number(skill.livello || 0) || null,
     prerequisiti: [],
@@ -10282,15 +10469,18 @@ function renderLezioni({ animate = false } = {}) {
   aggiornaFiltroLezioni()
   aggiornaToggleDettagliLezioni()
 
-  if (!lezioniCache?.length) {
+  const sourceLezioni = lezioniCache || []
+  const scopeIds = new Set(allieviVisibiliGod().map(a => a.id))
+  const lezioni = godMode && godScope !== 'all'
+    ? sourceLezioni.filter(l => l.lezioni_allievi?.some(la => scopeIds.has(la.allievi?.id)))
+    : sourceLezioni
+  renderLezioniSummary(lezioni)
+
+  if (!lezioni.length) {
     el.innerHTML = '<div class="empty">Nessuna lezione ancora.</div>'
     return
   }
 
-  const scopeIds = new Set(allieviVisibiliGod().map(a => a.id))
-  const lezioni = godMode && godScope !== 'all'
-    ? lezioniCache.filter(l => l.lezioni_allievi?.some(la => scopeIds.has(la.allievi?.id)))
-    : lezioniCache
   const lezioniFiltrate = filtraLezioniPerSelezione(lezioni)
     .filter(l => !filtroLezioniAperte || lessonStatus(l) === 'aperta')
 
@@ -10301,6 +10491,25 @@ function renderLezioni({ animate = false } = {}) {
 
   el.innerHTML = renderLezioniTable(lezioniFiltrate)
   if (animate) requestAnimationFrame(() => motion.tableRows(el))
+}
+
+function renderLezioniSummary(lezioni = []) {
+  const el = document.getElementById('lezioni-summary')
+  if (!el) return
+  const oggi = localDateIso()
+  const todayLessons = lezioni.filter(l => String(l.data || '').slice(0, 10) === oggi)
+  const aperte = lezioni.filter(l => lessonStatus(l) === 'aperta')
+  el.innerHTML = `
+    <div class="view-summary-grid">
+      <button type="button" class="summary-tile" onclick="openDayLessonsWidget('${oggi}')">
+        <strong>${todayLessons.length}</strong>
+        <span>Lezioni oggi</span>
+      </button>
+      <button type="button" class="summary-tile" onclick="setFiltroLezioniAperte(true)">
+        <strong>${aperte.length}</strong>
+        <span>Lezioni aperte</span>
+      </button>
+    </div>`
 }
 
 function renderLezioniTable(lezioni, { showYearGroups = true, variant = 'lista', schedaId = null, gruppoNome = null } = {}) {
@@ -10461,38 +10670,23 @@ function renderLezioneListaRow(l, { variant = 'lista', schedaId = null, gruppoNo
   const nomi = labelPartecipantiLezione(l)
   const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : ''
   const status = lessonStatus(l) === 'aperta' ? '<span class="lesson-status-badge">Aperta</span>' : ''
-  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || '').slice(0, 10))}')">${formatLessonDate(l)}</span>`
-  const luogoLink = l.luogo ? `<span class="linkish" onclick="event.stopPropagation(); openLocation(${jsArg(l.luogo)})">${esc(l.luogo)}</span>` : '—'
+  const dataLabel = formatLessonDate(l)
+  const luogoLabel = l.luogo ? esc(l.luogo) : '—'
   const noteSpeciali = lessonSpecialNotes(l)
   if (variant === 'scheda') {
     return `<tr onclick="openLezione('${l.id}','${schedaId}')" style="cursor:pointer">
-      ${lessonColumnCell('data', `<strong>${dataLink}</strong> ${status}`)}
+      ${lessonColumnCell('data', `<strong>${dataLabel}</strong> ${status}`)}
       <td style="font-size:.84rem">${renderSkillChipsLezione(l, schedaId)}</td>
       ${lessonColumnCell('note', `<div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : '—'}</div>`)}
-      ${lessonColumnCell('luogo', luogoLink)}
+      ${lessonColumnCell('luogo', luogoLabel)}
     </tr>`
   }
   return `<tr onclick="openLezione(${jsArg(l.id)},null,${jsArg(gruppoNome)})" style="cursor:pointer">
-    ${lessonColumnCell('data', `<strong>${dataLink}</strong> ${status}`)}
-    <td style="font-size:.84rem"><span class="linkish" onclick="event.stopPropagation(); openLessonParticipantTarget(${jsArg(l.id)})">${esc(nomi)}</span></td>
+    ${lessonColumnCell('data', `<strong>${dataLabel}</strong> ${status}`)}
+    <td style="font-size:.84rem">${esc(nomi)}</td>
     ${lessonColumnCell('note', `<div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : '—'}</div>`)}
-    ${lessonColumnCell('luogo', luogoLink)}
+    ${lessonColumnCell('luogo', luogoLabel)}
   </tr>${detail}`
-}
-
-function openLessonParticipantTarget(lezioneId) {
-  const l = (lezioniCache || []).find(item => String(item.id) === String(lezioneId))
-  const partecipanti = (l?.lezioni_allievi || []).map(la => la.allievi).filter(Boolean)
-  if (partecipanti.length === 1) {
-    loadScheda(partecipanti[0].id)
-    return
-  }
-  const gruppi = [...new Set(partecipanti.map(a => a.gruppo).filter(Boolean))]
-  if (l?.tipo === 'gruppo' && gruppi.length === 1) {
-    showView('gruppo', gruppi[0])
-    return
-  }
-  openLezione(lezioneId)
 }
 
 function openDayLessonsWidget(date) {
@@ -10609,6 +10803,7 @@ function toggleFiltroLezioniAperte() {
 function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || []
   const isGroupLesson = lezione?.tipo === 'gruppo'
+  const skillSectionTitle = lezione?.tipo === 'campo_libero' ? 'Skill pianificate' : 'Skill lavorate'
   const viste = new Set()
   const skills = skillRows
     .map(ls => ({ nome: ls.skills?.nome, stadio: ls.stadio_raggiunto || 0, esercizi: normalizeExerciseList(ls.dimensioni?.esercizi), esito: ls.dimensioni?.esito, latoFeedback: ls.dimensioni?.lato_feedback, originale: latestSkillReplacementName(ls.dimensioni) }))
@@ -10636,7 +10831,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
       <td colspan="4" class="lezione-detail-cell">
         <div class="lezione-detail-grid">
           <div>
-            <div class="lezione-detail-title">Skill lavorate</div>
+            <div class="lezione-detail-title">${skillSectionTitle}</div>
             <div class="lezione-skill-list">${skillsHtml}</div>
           </div>
           <div>
@@ -10797,6 +10992,9 @@ async function loadLezione(id) {
   const titoloLezione = lezione.tipo === 'gruppo' && gruppiLezione.length === 1
     ? gruppiLezione[0]
     : labelPartecipantiLezione(lezione)
+  const titoloLezioneHtml = lezione.tipo === 'gruppo' && gruppiLezione.length === 1
+    ? `<button type="button" class="linkish lezione-read-title" onclick="showView('gruppo',${jsArg(gruppiLezione[0])})">${esc(titoloLezione)}</button>`
+    : `<div class="lezione-read-title">${esc(titoloLezione)}</div>`
   const dettagliQuando = [
     lezione.durata_min ? `${lezione.durata_min} min` : '',
     lezione.luogo ? esc(lezione.luogo) : '',
@@ -10822,6 +11020,7 @@ async function loadLezione(id) {
     : '<div class="empty">Nessun allievo collegato.</div>'
 
   const skillsByAllievo = {}
+  const skillSectionTitle = lezione.tipo === 'campo_libero' ? 'Skill pianificate' : 'Skill lavorate'
   ;(lezione.lezioni_skills || []).forEach(row => {
     if (isFakieSkillName(row.skills?.nome)) return
     const key = row.allievo_id || 'generale'
@@ -10832,7 +11031,7 @@ async function loadLezione(id) {
   const skillsHtml = Object.keys(skillsByAllievo).length
     ? Object.entries(skillsByAllievo).map(([allievoId, rows]) => {
         const allievo = partecipanti.find(a => a.id === allievoId)
-        const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(' ') : 'Skill lavorate'
+        const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(' ') : skillSectionTitle
         const studentResult = lezione.tipo === 'gruppo' ? lessonStudentResultFromRows(rows) : ''
         const titoloFeedback = studentResult ? ` · ${lessonResultLabel(studentResult)}` : ''
         const chips = rows
@@ -10893,14 +11092,14 @@ async function loadLezione(id) {
     <div class="card">
       <div class="lezione-read-head">
         <div>
-          <div class="lezione-read-title">${esc(titoloLezione)}</div>
+          ${titoloLezioneHtml}
           ${lessonStatus(lezione) === 'aperta' ? '<div style="margin-top:.4rem"><span class="lesson-status-badge">Aperta</span></div>' : ''}
         </div>
         <div class="lezione-read-when">
           <div class="lezione-when-nav">
             ${navArrow(navStessoAllievo.prev, 'prev')}
             <div class="lezione-when-main">
-              <div class="lezione-read-date">${formatLessonDateWithWeekday(lezione)}</div>
+              <button type="button" class="linkish lezione-read-date" onclick="openDayLessonsWidget(${jsArg(String(lezione.data || '').slice(0, 10))})">${formatLessonDateWithWeekday(lezione)}</button>
               ${dettagliQuando || '<span>Orario e luogo non indicati</span>'}
             </div>
             ${navArrow(navStessoAllievo.next, 'next')}
@@ -10927,7 +11126,7 @@ async function loadLezione(id) {
       </div>
       <div>
         ${pianoLezioneHtml}
-        <p class="sec-title">Skill lavorate</p>
+        <p class="sec-title">${skillSectionTitle}</p>
         <div class="card">${skillsHtml}</div>
       </div>
     </div>
@@ -10969,6 +11168,7 @@ async function initNuovaLezione(presetAllievoId = null) {
   editingLezioneAllieviIds = []
   editingLezioneSkillRows = {}
   lezioneFormMode = 'standard'
+  let editingLezioneTipo = ''
   let explicitLezioneMode = false
   if (typeof presetAllievoId === 'string' && presetAllievoId.startsWith('modo:prep')) {
     lezioneFormMode = 'prep'
@@ -11084,6 +11284,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     }
 
     editingLezioneId = editId
+    editingLezioneTipo = lezione.tipo || ''
     editingLezioneAllieviIds = (lezione.lezioni_allievi || []).map(r => r.allievo_id).filter(Boolean)
     ;(lezione.lezioni_skills || []).forEach(r => {
       const ownerId = r.allievo_id || FREE_LESSON_SKILL_ROWS_KEY
@@ -11117,11 +11318,11 @@ async function initNuovaLezione(presetAllievoId = null) {
   if (editId) {
     const draft = loadLezioneDraft()
     if (draft?.editingLezioneId && String(draft.editingLezioneId) === String(editId)) {
-      restoredDraft = draft
-      draftSelectedIds = restoreLezioneDraft(draft)
+      restoredDraft = normalizeEditingLessonDraft(draft, editingLezioneTipo, editingLezioneAllieviIds)
+      draftSelectedIds = restoreLezioneDraft(restoredDraft)
       setLezioneFormMessage(`Bozza locale ripristinata: il salvataggio online precedente non era riuscito. Riprova quando sei online.`, 'msg-info')
     } else {
-      setLezioneTargetFromEditing()
+      setLezioneTargetFromEditing(editingLezioneTipo)
     }
   } else if (groupPreset) {
     document.getElementById('lz-tipo').value = `gruppo:${groupPreset}`
@@ -11145,7 +11346,9 @@ async function initNuovaLezione(presetAllievoId = null) {
   if (!editId) renderLezioneLocationSelect('', document.getElementById('lz-luogo')?.value || '')
   renderLezionePartecipanti()
   if (editId) {
-    editingLezioneAllieviIds
+    const desiredParticipantIds = draftSelectedIds.length ? draftSelectedIds : editingLezioneAllieviIds
+    restoreEditingLessonParticipantSelection(desiredParticipantIds)
+    desiredParticipantIds
       .filter(id => !selectedLezioneAllieviIds().includes(id))
       .forEach(id => addSpecialGuestToLesson(id))
   }
@@ -11306,25 +11509,69 @@ function renderLezioneTargetOptions(selected = '') {
   sel.value = [...sel.options].some(option => option.value === selected) ? selected : ''
 }
 
-function setLezioneTargetFromEditing() {
+function lessonGroupTargetFromParticipants(ids = []) {
+  const counts = new Map()
+  ids.forEach(id => {
+    const gruppo = allievoById(id)?.gruppo
+    if (gruppo) counts.set(gruppo, (counts.get(gruppo) || 0) + 1)
+  })
+  if (lezioneBackGruppoNome && counts.has(lezioneBackGruppoNome)) return lezioneBackGruppoNome
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'it', { sensitivity: 'base' }))[0]?.[0] || ''
+}
+
+function editingLessonTarget(savedType = '', ids = editingLezioneAllieviIds) {
+  const participantIds = [...new Set((ids || []).filter(Boolean))]
+  if (!participantIds.length) return 'campo_libero'
+  if (savedType === 'gruppo') {
+    const gruppo = lessonGroupTargetFromParticipants(participantIds)
+    if (gruppo) return `gruppo:${gruppo}`
+  }
+  if (savedType === 'individuale' || participantIds.length === 1) return `allievo:${participantIds[0]}`
+  const gruppo = lessonGroupTargetFromParticipants(participantIds)
+  return gruppo ? `gruppo:${gruppo}` : `allievo:${participantIds[0]}`
+}
+
+function setLezioneTargetFromEditing(savedType = '') {
   const sel = document.getElementById('lz-tipo')
   if (!sel) return
-  if (!editingLezioneAllieviIds.length) {
-    sel.value = 'campo_libero'
-    return
+  const target = editingLessonTarget(savedType)
+  sel.value = [...sel.options].some(option => option.value === target) ? target : (editingLezioneAllieviIds.length ? `allievo:${editingLezioneAllieviIds[0]}` : 'campo_libero')
+}
+
+function normalizeEditingLessonDraft(draft, savedType, participantIds) {
+  const canonicalTarget = editingLessonTarget(savedType, participantIds)
+  if (!canonicalTarget || draft.target !== 'campo_libero' || canonicalTarget === 'campo_libero') return draft
+  const skillRows = { ...(draft.skillRows || {}) }
+  const freeRows = skillRows[FREE_LESSON_SKILL_ROWS_KEY] || []
+  if (freeRows.length) {
+    const ownerId = canonicalTarget.startsWith('gruppo:')
+      ? GROUP_SKILL_ROWS_KEY
+      : canonicalTarget.slice('allievo:'.length)
+    skillRows[ownerId] = [...(skillRows[ownerId] || []), ...freeRows]
+    delete skillRows[FREE_LESSON_SKILL_ROWS_KEY]
   }
-  const gruppo = gruppoDaAllieviLezione(editingLezioneAllieviIds)
-  const membriGruppo = gruppo ? allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo).map(a => a.id).sort() : []
-  const editingIds = [...editingLezioneAllieviIds].sort()
-  if (gruppo && membriGruppo.length && membriGruppo.every(id => editingIds.includes(id))) {
-    sel.value = `gruppo:${gruppo}`
-    return
+  return {
+    ...draft,
+    target: canonicalTarget,
+    selectedIds: (draft.selectedIds || []).length ? draft.selectedIds : [...participantIds],
+    skillRows,
   }
-  if (editingLezioneAllieviIds.length === 1) {
-    sel.value = `allievo:${editingLezioneAllieviIds[0]}`
-    return
-  }
-  sel.value = 'campo_libero'
+}
+
+function restoreEditingLessonParticipantSelection(ids = []) {
+  if (!currentLessonTargetIsGroup()) return
+  const selected = new Set(ids)
+  document.querySelectorAll('#lz-hidden-checks input[type=checkbox]').forEach(input => {
+    input.checked = selected.has(input.value)
+  })
+  document.querySelectorAll('#lz-gruppo-panel input[type=checkbox][value]').forEach(input => {
+    input.checked = selected.has(input.value)
+    input.closest('.group-presence-row')?.querySelector('.group-student-feedback')?.classList.toggle('is-unselected', !input.checked)
+  })
+  refreshGroupExclusionControls()
+  renderGroupIndividualControls()
+  renderLessonStudentNotes()
 }
 
 function gruppiSelezionabiliLezione({ includeArchived = false } = {}) {
@@ -11674,7 +11921,7 @@ function renderFreeLessonSkillWorkspace() {
     <div class="allievo-block">
       <h4>Skill da preparare</h4>
       <div class="lesson-skill-tools">
-        <div class="lesson-skill-hint">Aggiungi skill o esercizi senza collegarli ancora a un allievo.</div>
+      <div class="lesson-skill-hint">Prepara skill o esercizi per una lezione futura. Restano pianificati, senza allievo e senza aggiornare i progressi.</div>
         ${renderLessonWorkButtons(FREE_LESSON_SKILL_ROWS_KEY)}
       </div>
       <div id="skill-rows-${FREE_LESSON_SKILL_ROWS_KEY}"></div>
@@ -11898,11 +12145,11 @@ function sortedSkillsForLesson() {
 }
 
 function skillMetaLabel(skill) {
-  return [skill.ramo || 'Altro', skill.blocco, skill.livello ? `Lv.${skill.livello}` : ''].filter(Boolean).join(' · ')
+  return [skillBranchName(skill.ramo), skill.blocco, skill.livello ? `Lv.${skill.livello}` : ''].filter(Boolean).join(' · ')
 }
 
 function lessonSkillHint(allievo) {
-  return allievo ? 'Aggiungi solo il lavoro effettivamente fatto in questa lezione.' : 'Aggiungi le skill lavorate in questa lezione.'
+  return allievo ? 'Aggiungi solo il lavoro effettivamente fatto in questa lezione.' : 'Aggiungi le skill da preparare per una lezione futura.'
 }
 
 function renderLessonWorkButtons(allieviId) {
@@ -12248,8 +12495,8 @@ function renderLessonSkillSuggestionGroups(allieviId, groups) {
 }
 
 function lessonSkillBranches() {
-  const preferred = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air']
-  const found = [...new Set((allSkills || []).map(skill => skill.ramo || 'Altro').filter(Boolean))]
+  const preferred = ['Equilibrio', 'Andatura', 'Frenata', 'Rotazione', 'Air', 'Extra']
+  const found = [...new Set((allSkills || []).map(skill => skillBranchName(skill.ramo)))]
   return [...preferred.filter(branch => found.includes(branch)), ...found.filter(branch => !preferred.includes(branch)).sort((a, b) => a.localeCompare(b))]
 }
 
@@ -12264,7 +12511,7 @@ function renderLessonSkillOptions(selectedSkillId = '', filter = '', branch = ''
   const allowedSkillIds = options.allowedSkillIds || null
   const list = sortedSkillsForLesson().filter(skill => {
     if (allowedSkillIds && !allowedSkillIds.has(String(skill.id)) && String(skill.id) !== String(selectedSkillId)) return false
-    if (selectedBranch && (skill.ramo || 'Altro') !== selectedBranch) return false
+    if (selectedBranch && skillBranchName(skill.ramo) !== selectedBranch) return false
     if (!q) return true
     return normalizeText(skill.nome).includes(q)
   })
@@ -12847,7 +13094,7 @@ function lessonHistoryChanges(originalLesson, payloadLezione, relationSnapshot, 
     if (beforeAllievi !== afterAllievi) changes.push('allievi')
     const beforeSkills = historySetSignature((relationSnapshot.skills || []).map(skillHistorySignature))
     const afterSkills = historySetSignature(pendingSkillHistorySignatures(pendingSkillsByAllievo))
-    if (beforeSkills !== afterSkills) changes.push('skill lavorate')
+    if (beforeSkills !== afterSkills) changes.push(payloadLezione?.tipo === 'campo_libero' ? 'skill pianificate' : 'skill lavorate')
   }
   return changes
 }
@@ -12888,7 +13135,6 @@ async function salvaLezione() {
 
   if (!data) { setLezioneFormMessage('Inserisci la data.'); return }
   if (!target) { setLezioneFormMessage('Seleziona allievo, gruppo o campo libero.'); return }
-
   const checkedAllievi = [...document.querySelectorAll('#lz-hidden-checks input[type=checkbox]:checked')]
   if (!checkedAllievi.length && tipo !== 'campo_libero') { setLezioneFormMessage('Seleziona almeno un allievo.'); return }
   const lezioneAllieviIds = checkedAllievi.map(cb => cb.value)
@@ -13193,7 +13439,7 @@ function setTuningMode(mode, keepCard = false) {
 function tuningSkills() {
   const scope = document.getElementById('tune-scope')?.value || ''
   return (allSkills || [])
-    .filter(s => !scope || (scope === 'Altro' ? !s.ramo : s.ramo === scope))
+    .filter(s => !scope || skillBranchName(s.ramo) === scope)
     .sort((a, b) => (a.livello - b.livello) || String(a.nome).localeCompare(String(b.nome)))
 }
 
@@ -13218,7 +13464,7 @@ function skillById(id) {
 
 function shortSkillMeta(skill) {
   if (!skill) return ''
-  return `${skill.ramo || 'Altro'} · Lv.${skill.livello}`
+  return `${skillBranchName(skill.ramo)} · Lv.${skill.livello}`
 }
 
 function getRequirementContext(skill) {
@@ -13414,7 +13660,7 @@ function renderTuningCard() {
       <span>${tuningCount}/10</span>
     </div>
     <div id="tune-status" class="msg" style="display:none;margin-bottom:.65rem"></div>
-    <div class="tuning-kicker"><span>${card.tipo}</span><span>·</span><span>${esc(card.skill?.ramo || 'Altro')}</span></div>
+    <div class="tuning-kicker"><span>${card.tipo}</span><span>·</span><span>${esc(skillBranchName(card.skill?.ramo))}</span></div>
     <h3 class="tuning-title">${esc(card.title)}</h3>
     <p class="tuning-context">${esc(card.context)} Le risposte non chiudono la skill: potra tornare nei ripassi.</p>
     ${paramContext}
