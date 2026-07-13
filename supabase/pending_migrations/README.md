@@ -21,3 +21,16 @@ revisione, test e decisione esplicita.
   riutilizzare automaticamente il vecchio timestamp.
 
 Decisione di riferimento: TDR-004 nel Tourach Vault.
+
+## Progressi per modalità e provenienza
+
+- Specifica: `progress_modes_and_sources.md`.
+- Simulazione read-only: `progress_modes_simulation.sql`.
+- Stato: progettazione; nessuna migrazione SQL applicabile è stata generata.
+- Ambito: separazione Frontale/Fakie, data evento uguale a `lezioni.data`,
+  conservazione delle evidenze manuali/legacy e ricalcolo atomico.
+- Vincolo: la simulazione contiene soltanto `SELECT`; la futura migrazione deve
+  essere creata con `supabase migration new` solo dopo revisione e test su una
+  copia isolata.
+
+Decisioni di riferimento: TDR-003, TDR-010 e TDR-011 nel Tourach Vault.
