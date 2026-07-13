@@ -142,7 +142,9 @@ left join lesson_fakie l using (allievo_id, skill_id)
 left join manual_fakie m using (allievo_id, skill_id)
 order by allievo, skill;
 
--- 3. Record potenzialmente duplicato fra Frontale e Fakie.
+-- 3. Controllo della baseline Frontale senza lezioni Frontali.
+-- Il caso rilevato è stato confermato come progresso manuale/legacy valido,
+-- distinto dal corrispondente progresso Fakie e quindi da preservare.
 with front_pairs as (
   select distinct ls.allievo_id, ls.skill_id
   from public.lezioni_skills ls

@@ -29,8 +29,9 @@ allievo/skill/modalità coinvolte senza perdere progressi manuali o legacy.
   - 159 progressi Frontale finali nella simulazione conservativa;
   - 131 invariati e 28 con date/stato da riallineare;
   - 5 progressi Fakie finali ottenuti unendo lezioni e JSON;
-  - un record Frontale è ambiguo perché non ha lezioni Frontali e coincide con
-    il corrispondente dato Fakie: richiede conferma manuale prima del backfill.
+  - il solo record Frontale inizialmente ambiguo è stato confermato come
+    progresso manuale/legacy derivato da attività precedente non ancora
+    caricata come lezione: deve essere preservato separatamente dal Fakie.
 
 ## Modello target
 
@@ -125,8 +126,9 @@ La funzione interna deve:
 5. Copiare i quattro progressi Fakie JSON come evidenze manuali/legacy e unirli
    alle quattro coppie Fakie ricostruite dalle lezioni, ottenendo cinque
    progressi Fakie finali.
-6. Sottoporre a conferma il singolo record Frontale ambiguo prima di preservarlo
-   o classificarlo come duplicazione Fakie.
+6. Preservare anche il singolo record Frontale inizialmente ambiguo come
+   baseline manuale/legacy: l'utente ha confermato che deriva da attività
+   precedente non ancora caricata come lezione e non è una duplicazione Fakie.
 7. Ricalcolare la proiezione e confrontare conteggi, stadi e date con la
    simulazione read-only.
 8. Aggiornare il frontend: lettura per modalità, editor manuale sulle evidenze,
@@ -154,5 +156,4 @@ viene eliminato. Il passaggio è accettabile soltanto se:
 - applicazione al database remoto;
 - eliminazione dei dati JSON esistenti;
 - modifica immediata del frontend;
-- scelta automatica sul singolo record Frontale/Fakie ambiguo;
 - migrazione attiva con timestamp definitivo.
