@@ -4,11 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blading Manager Big Ball of Mud</title>
-  <script>
-    if (window.location.protocol === 'file:') {
-      window.location.replace('http://localhost:8027/' + (window.location.hash || ''))
-    }
-  </script>
   <meta name="theme-color" content="#081116">
   <meta property="og:image" content="./logo.png">
   <meta name="twitter:image" content="./logo.png">
@@ -267,10 +262,19 @@
     .card.action-menu-open { position: relative; z-index: 80; overflow: visible; }
     .inline-action-menu.action-menu-open { z-index: 90; }
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .65rem; margin-bottom: 1rem; }
+    .dashboard-grid.dashboard-compact { grid-template-columns: minmax(0, 170px); margin-bottom: .7rem; }
     .dashboard-tile { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: var(--panel-soft); padding: .75rem; display: grid; gap: .18rem; cursor: pointer; }
     .dashboard-tile:hover { border-color: var(--blu); background: var(--blu-chiaro); }
     .dashboard-tile strong { font-size: 1.25rem; line-height: 1; }
     .dashboard-tile span { color: var(--muted); font-size: .76rem; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
+    .dashboard-compact .dashboard-tile { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; padding: .42rem .6rem; gap: .45rem; }
+    .dashboard-compact .dashboard-tile strong { font-size: 1rem; }
+    .dashboard-compact .dashboard-tile span { font-size: .66rem; white-space: nowrap; }
+    .view-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .55rem; margin-bottom: .7rem; }
+    .summary-tile { border: 1px solid rgba(148,163,184,.16); border-radius: var(--r); background: var(--panel-soft); padding: .62rem .7rem; display: grid; gap: .18rem; cursor: pointer; text-align: left; color: var(--testo); font: inherit; }
+    .summary-tile:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .summary-tile strong { font-size: 1.15rem; line-height: 1; }
+    .summary-tile span { color: var(--muted); font-size: .72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
     .appointments-subtitle { color: var(--muted); font-size: .88rem; margin-top: .24rem; line-height: 1.35; }
     .appointments-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
     .appointments-full { grid-column: 1 / -1; }
@@ -280,7 +284,8 @@
     .appointments-card-title span { color: var(--muted); font-size: .78rem; line-height: 1.35; }
     .appointments-availability-updated { margin: -.15rem 0 .7rem; color: var(--muted); font-size: .76rem; font-weight: 760; }
     .appointments-availability-updated strong { color: var(--testo); font-size: .78rem; }
-    .availability-card-actions { display: inline-flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
+    .availability-card-actions { width: min(100%, 390px); display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .35rem; align-items: stretch; }
+    .availability-card-actions .btn { width: 100%; min-width: 0; justify-content: center; text-align: center; }
     .availability-card-actions .btn:disabled { opacity: .42; cursor: not-allowed; }
     .appointments-preferences { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; align-items: end; margin-bottom: .75rem; }
     .appointments-preferences .field { margin-bottom: 0; }
@@ -289,6 +294,10 @@
     .appointments-consecutive-mode { display: grid; gap: .16rem; align-self: end; }
     .appointments-consecutive-mode .appointments-check { min-height: 30px; justify-content: flex-start; }
     .availability-planner { display: grid; gap: .42rem; }
+    .availability-grid-range { display: flex; align-items: end; gap: .45rem; flex-wrap: wrap; margin: -.15rem 0 .65rem; }
+    .availability-grid-range > span { align-self: center; color: var(--muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .availability-grid-range label { display: grid; gap: .14rem; color: var(--muted); font-size: .66rem; font-weight: 750; }
+    .availability-grid-range input { width: 105px; min-height: 34px; padding: .34rem .45rem; font-size: .76rem; }
     .availability-planner-help { color: var(--muted); font-size: .72rem; line-height: 1.28; }
     .availability-grid-wrap { position: relative; border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); overflow-x: auto; background: rgba(255,255,255,.014); }
     .availability-edit-cover { position: absolute; inset: 0; z-index: 12; border: 0; border-radius: calc(var(--r) - 1px); background: rgba(3,11,17,.58); color: var(--testo); display: grid; place-content: center; gap: .12rem; text-align: center; cursor: pointer; backdrop-filter: blur(1px); }
@@ -316,6 +325,18 @@
     .availability-slot-delete:hover { background: rgba(4,16,21,.32); }
     .availability-slot-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; background: rgba(4,16,21,.16); }
     .availability-empty { color: var(--muted); font-size: .84rem; line-height: 1.4; border: 1px dashed rgba(148,163,184,.22); border-radius: var(--r); padding: .75rem; background: rgba(255,255,255,.012); }
+    @media (max-width: 640px) {
+      .availability-grid-range { display: grid; grid-template-columns: auto 1fr 1fr; align-items: end; gap: .35rem; margin-bottom: .5rem; }
+      .availability-grid-range > span { font-size: .62rem; }
+      .availability-grid-range input { width: 100%; min-width: 0; }
+      .availability-grid-wrap { overflow-x: hidden; }
+      .availability-week-head, .availability-week-body { min-width: 0; grid-template-columns: 30px repeat(7, minmax(0,1fr)); }
+      .availability-week-head div { padding: .22rem .04rem; font-size: .56rem; letter-spacing: 0; }
+      .availability-week-body { height: min(330px, var(--availability-grid-height)); }
+      .availability-time-label { right: .12rem; font-size: .5rem; }
+      .availability-slot-block, .availability-drag-preview { left: .05rem; right: .05rem; padding: .14rem .1rem .3rem; font-size: .54rem; border-radius: 4px; }
+      .availability-slot-delete { width: 14px; height: 14px; font-size: .65rem; }
+    }
     .appointments-toolbar { display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.32fr); gap: .5rem; align-items: end; margin-bottom: .75rem; }
     .appointments-toolbar .field { margin-bottom: 0; }
     .appointments-explainer { border: 1px solid rgba(148,163,184,.18); border-radius: var(--r); background: rgba(255,255,255,.018); padding: .65rem .75rem; display: grid; gap: .18rem; color: var(--muted); font-size: .82rem; line-height: 1.38; }
@@ -502,7 +523,10 @@
       .calendar-board { min-width: 850px; grid-template-columns: 54px repeat(7, minmax(108px, 1fr)); }
       .appointment-route-meta { grid-template-columns: 1fr; }
       .appointment-agenda-item span { white-space: normal; }
-      .analysis-filters, .analysis-kpi-grid, .analysis-grid-2, .analysis-grid-3 { grid-template-columns: 1fr; }
+      .analysis-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; margin-bottom: .7rem; }
+      .analysis-filters .field > span { display: block; margin-bottom: .18rem; font-size: .68rem; color: var(--muted); }
+      .analysis-filters select { min-height: 34px; padding: .36rem .48rem; font-size: .76rem; }
+      .analysis-kpi-grid, .analysis-grid-2, .analysis-grid-3 { grid-template-columns: 1fr; }
       .analysis-kpi-grid { gap: .42rem; margin-bottom: .65rem; }
       .analysis-kpi { min-height: 0; padding: .48rem .6rem; display: grid; grid-template-columns: 22px 58px minmax(0,1fr); grid-template-areas: "icon value label" "icon note note"; column-gap: .55rem; row-gap: .05rem; align-items: center; }
       .analysis-kpi-top { grid-area: icon; font-size: .9rem; }
@@ -517,6 +541,7 @@
       .analysis-day { width: 18px; height: 18px; }
     }
     @media (max-width: 640px) {
+      .analysis-filters { gap: .38rem; }
       .analysis-timeline-layout { grid-template-columns: 1fr; }
       .analysis-timeline-meta { grid-template-columns: repeat(2, minmax(0,1fr)); }
       .theme-color-form { grid-template-columns: 1fr; }
@@ -726,6 +751,7 @@
     .lezione-empty-detail { color: var(--muted); font-size: .8rem; }
     .lezione-read-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1.25rem; align-items: start; }
     .lezione-read-title { font-size: 1.45rem; font-weight: 750; margin-bottom: .25rem; line-height: 1.15; }
+    button.lezione-read-title, button.lezione-read-date { appearance: none; border: 0; background: none; padding: 0; font-family: inherit; text-align: left; }
     .lezione-read-kicker { color: var(--muted); font-size: .86rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
     .lezione-read-when { text-align: right; color: var(--muted); font-size: .88rem; line-height: 1.45; }
     .lezione-when-nav { display: grid; grid-template-columns: 34px minmax(0,auto) 34px; gap: .38rem; align-items: center; }
@@ -875,6 +901,9 @@
     .skill-tree-legend { display: flex; gap: .75rem 1.2rem; flex-wrap: wrap; margin-bottom: .9rem; font-size: .78rem; }
     .skill-tree-legend span { display: flex; align-items: center; gap: .3rem; color: var(--muted); }
     .skill-tree-head, .lesson-years-tools { display: flex; align-items: center; justify-content: space-between; gap: .7rem; flex-wrap: wrap; margin-bottom: .8rem; }
+    .skill-catalog-filter { display: grid; gap: .4rem; min-width: min(100%, 320px); }
+    .skill-catalog-filter > .chip { justify-self: start; }
+    .skill-catalog-branch-buttons { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
     .skill-tree-actions, .lesson-years-actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
     .skill-col-header { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-bottom: .35rem; margin-bottom: .6rem; border-bottom: 1px solid var(--bordo); }
     .skill-node { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: .18rem; padding: .45rem .6rem; border-radius: var(--r); border: 1px solid var(--bordo); background: var(--panel-soft); color: var(--testo); margin-bottom: .4rem; text-align: left; position: relative; cursor: pointer; }
@@ -1070,6 +1099,10 @@
       .calendar-board { min-width: 850px; grid-template-columns: 54px repeat(7, minmax(108px, 1fr)); }
     }
   </style>
+  <link rel="stylesheet" href="./responsive/shell.css?v=20260712-operational-home">
+  <link rel="stylesheet" href="./responsive/allievi.css?v=20260711-mobile-compact-students">
+  <link rel="stylesheet" href="./responsive/home.css?v=20260712-home-without-quick-actions">
+  <script src="./responsive/shell.js?v=20260712-operational-home" defer></script>
 </head>
 <body data-design-system="ds.glassy">
 
@@ -1089,16 +1122,24 @@
 <div id="screen-app" hidden>
 
   <header>
-    <span class="logo" onclick="showView('allievi')" style="cursor:pointer"><img src="./logo.png" alt="" class="brand-logo header-brand-logo"> Blading Manager BBoM</span>
-    <nav>
-      <button id="nav-allievi" class="active" onclick="showView('allievi')">Allievi</button>
-      <button id="nav-lezioni" onclick="showView('lezioni')">Lezioni</button>
-      <button id="nav-lesson-radial-planner" onclick="showView('lesson-radial-planner')">Planner</button>
-      <button id="nav-percorsi" onclick="showView('percorsi')">Percorsi</button>
+    <span class="logo" onclick="showView('home')" style="cursor:pointer"><img src="./logo.png" alt="" class="brand-logo header-brand-logo"> <span class="brand-name-long">Blading Manager BBoM</span><span class="brand-name-short">BBoM</span></span>
+    <nav aria-label="Navigazione principale">
+      <button class="mobile-primary-nav active" data-mobile-area="home" onclick="showView('home')" aria-label="Home"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg><span>Home</span></button>
+      <button class="mobile-primary-nav" data-mobile-area="allievi" onclick="showView('allievi')" aria-label="Allievi"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Allievi</span></button>
+      <button class="mobile-primary-nav" data-mobile-area="lezioni" onclick="showView('lezioni')" aria-label="Lezioni"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg><span>Lezioni</span></button>
+      <button class="mobile-primary-nav" data-mobile-area="pianifica" onclick="showView('calendario')" aria-label="Pianifica"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg><span>Pianifica</span></button>
+      <button class="mobile-primary-nav" data-mobile-area="skills" onclick="showView('skills')" aria-label="Skills"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><path d="M12 16v-4M6 8v4h12V8M12 12V8"/></svg><span>Skills</span></button>
+      <button class="mobile-primary-nav" data-mobile-area="mappa" onclick="showView('mappa')" aria-label="Mappa"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg><span>Mappa</span></button>
+      <button id="nav-home" class="active" onclick="showView('home')" title="Home" aria-label="Home"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg><span class="nav-label">Home</span></button>
+      <button id="nav-allievi" onclick="showView('allievi')" title="Allievi" aria-label="Allievi"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Allievi</span></button>
+      <button id="nav-lezioni" onclick="showView('lezioni')" title="Lezioni" aria-label="Lezioni"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg><span class="nav-label">Lezioni</span></button>
+      <button id="nav-lesson-radial-planner" onclick="showView('lesson-radial-planner')" title="Planner" aria-label="Planner"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3"/></svg><span class="nav-label">Planner</span></button>
+      <button id="nav-percorsi" onclick="showView('percorsi')" title="Percorsi" aria-label="Percorsi"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h3a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3"/></svg><span class="nav-label">Percorsi</span></button>
       <button id="nav-calendar" class="nav-icon-btn" onclick="showView('calendario')" title="Calendario" aria-label="Calendario">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
         </svg>
+        <span class="nav-mobile-label" aria-hidden="true">Calendario</span>
       </button>
       <button id="nav-auto-orari" class="nav-icon-btn" onclick="showView('appuntamenti')" title="Appuntamenti automatici" aria-label="Appuntamenti automatici">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1107,15 +1148,17 @@
           <circle cx="17" cy="17" r="4"/>
           <path d="M17 15v2l1.5 1"/>
         </svg>
+        <span class="nav-mobile-label" aria-hidden="true">Orari</span>
       </button>
-      <button id="nav-analisi" onclick="showView('analisi')" title="Analisi didattica">▥ Analisi</button>
+      <button id="nav-analisi" onclick="showView('analisi')" title="Analisi didattica" aria-label="Analisi"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg><span class="nav-label">Analisi</span></button>
       <button id="nav-mappa" class="nav-icon-btn" onclick="showView('mappa')" title="Mappa location" aria-label="Mappa location">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/>
           <path d="M9 3v15M15 6v15"/>
         </svg>
+        <span class="nav-mobile-label" aria-hidden="true">Mappa</span>
       </button>
-      <button id="nav-skills" onclick="showView('skills')">Skills</button>
+      <button id="nav-skills" onclick="showView('skills')" title="Skills" aria-label="Skills"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><path d="M12 16v-4M6 8v4h12V8M12 12V8"/></svg><span class="nav-label">Skills</span></button>
       <button id="nav-tuning" class="god-only-nav" hidden onclick="showView('tuning')">Tuning</button>
       <button id="nav-theme-colors" class="god-only-nav" hidden onclick="showView('theme-colors')">Colori</button>
       <button id="nav-questionario" class="god-only-nav" hidden onclick="location.href='./skill-questionario.html'">Questionario skill</button>
@@ -1142,18 +1185,23 @@
 
   <main>
 
+    <!-- VIEW: home operativa -->
+    <section id="view-home">
+      <div id="home-content"><div class="loading">Preparazione giornata…</div></div>
+    </section>
+
     <!-- VIEW: lista allievi -->
-    <section id="view-allievi">
+    <section id="view-allievi" hidden>
       <div class="section-header">
         <div style="display:flex;align-items:center;gap:.75rem">
           <h2>Allievi</h2>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center">
-          <label class="btn btn-outline btn-sm" style="cursor:pointer" title="Importa allievo da file JSON">
+          <label class="btn btn-outline btn-sm allievi-desktop-utility" style="cursor:pointer" title="Importa allievo da file JSON">
             ⬆ Importa
             <input type="file" accept=".json" onchange="importaAllievo(this)" style="display:none">
           </label>
-          <button class="btn btn-outline btn-sm" onclick="esportaAllievi()" title="Esporta allievi in JSON">⬇ Esporta</button>
+          <button class="btn btn-outline btn-sm allievi-desktop-utility" onclick="esportaAllievi()" title="Esporta allievi in JSON">⬇ Esporta</button>
           <button class="btn btn-outline btn-sm" onclick="showView('nuovo-gruppo')">+ Nuovo gruppo</button>
           <button class="btn btn-primary btn-sm" onclick="showView('nuovo-allievo')">+ Nuovo allievo</button>
         </div>
@@ -1193,6 +1241,7 @@
           <button class="btn btn-primary btn-sm" onclick="showView('nuova-lezione','modo:prep')">+ Prepara lezione</button>
         </div>
       </div>
+      <div id="lezioni-summary"></div>
       <div class="card">
         <div id="lezioni-content"><div class="loading">Caricamento…</div></div>
       </div>
@@ -1364,7 +1413,7 @@
             <div class="field"><label>Cognome *</label><input type="text" id="na-cognome" placeholder="Rossi"></div>
             <div class="field"><label>Data di nascita</label><input type="text" id="na-nascita" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this); calcolaEtaForm()"></div>
             <div class="field"><label>Età</label><input type="text" id="na-eta" readonly placeholder="—" style="background:#e8f0fc;color:var(--blu);font-weight:600"></div>
-            <div class="field"><label>Data iscrizione</label><input type="text" id="na-iscrizione" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this)"></div>
+            <div class="field"><label>Data iscrizione *</label><input type="text" id="na-iscrizione" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this)"></div>
             <div class="field"><label>Scad. certificato medico</label><input type="text" id="na-cert" placeholder="gg/mm/aaaa" inputmode="numeric" oninput="formatDateField(this)"></div>
             <div class="field">
               <label>Blocco</label>
@@ -1613,7 +1662,7 @@
         </div>
         <div style="display:flex;gap:.45rem;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('catalog')">+ Nuova skill</button>
-          <button class="btn btn-outline btn-sm" id="skills-edit-toggle" onclick="setCatalogSkillEditMode(!catalogSkillEditMode)">Modifica</button>
+          <button class="btn btn-outline btn-sm" id="skills-edit-toggle" onclick="setCatalogSkillEditMode(!catalogSkillEditMode)">Modifica catalogo</button>
         </div>
       </div>
       <div class="card">
@@ -1651,7 +1700,7 @@
               <option value="Frenata">Frenata</option>
               <option value="Rotazione">Rotazione</option>
               <option value="Air">Air</option>
-              <option value="Altro">Altro</option>
+              <option value="Extra">Extra</option>
             </select>
           </div>
         </div>
@@ -1914,8 +1963,9 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20260709-mobile-header';
+  var appVersion = '20260712-free-lesson-planning';
   function localScript(path) {
+    if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;
   }
 
