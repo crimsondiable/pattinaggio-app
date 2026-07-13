@@ -9,4 +9,3 @@ alter table public.lezioni_skills
 
 alter table public.lezioni_skills
   add column if not exists dimensioni jsonb not null default '{}'::jsonb;
-
