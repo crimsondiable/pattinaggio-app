@@ -147,6 +147,8 @@ function isSuperMaestro() {
   return currentEmail === SUPER_MAESTRO_EMAIL
 }
 let tuningMode = 'parametri', tuningCard = null, tuningCount = 0, tuningAlertCount = 0, tuningLocal = [], tuningRecentSkillIds = []
+let skillLabView = 'overview', skillLabUsageRows = [], skillLabLoaded = false, skillLabLoading = false
+let skillLabFilters = { query: '', branch: '', usage: '', quality: '' }
 
 function supabaseClientIsV2(client = sb) {
   return !!(client && client.auth && typeof client.auth.getSession === 'function')
@@ -13440,17 +13442,362 @@ const TUNING_PARAMS = [
   }
 ]
 
-function initTuning() {
+async function initTuning() {
   tuningLocal = JSON.parse(safeStorage.getItem('tuningLocal') || '[]')
   tuningAlertCount = Number(safeStorage.getItem('tuningAlertCount') || 0)
-  renderTuningStats()
-  setTuningMode(tuningMode, true)
+  renderSkillLab()
+  if (!skillLabLoaded && !skillLabLoading) await loadSkillLabUsage()
+}
+
+function setSkillLabStatus(text, kind = '') {
+  const el = document.getElementById('skill-lab-status')
+  if (!el) return
+  el.className = `msg ${kind}`.trim()
+  el.style.display = text ? 'block' : 'none'
+  el.textContent = text || ''
+}
+
+async function loadSkillLabUsage({ force = false } = {}) {
+  if (skillLabLoading || (skillLabLoaded && !force)) return
+  skillLabLoading = true
+  renderSkillLab()
+  setSkillLabStatus('Aggiornamento degli utilizzi reali in corso…', 'msg-info')
+  try {
+    const { data, error } = await sb.from('lezioni_skills').select('skill_id,allievo_id,lezione_id')
+    if (error) throw error
+    skillLabUsageRows = data || []
+    skillLabLoaded = true
+    setSkillLabStatus(`Analisi aggiornata: ${skillLabUsageRows.length} registrazioni lezione esaminate.`, 'msg-ok')
+  } catch (error) {
+    skillLabUsageRows = []
+    setSkillLabStatus(`Utilizzo nelle lezioni non disponibile: ${error.message || error}. Le altre analisi restano valide.`, 'msg-err')
+  } finally {
+    skillLabLoading = false
+    renderSkillLab()
+  }
+}
+
+function refreshSkillLab() {
+  loadSkillLabUsage({ force: true })
+}
+
+function setSkillLabView(view) {
+  skillLabView = view
+  ;['overview', 'inventory', 'quality', 'anomalies', 'guided'].forEach(name => {
+    document.getElementById(`skill-lab-tab-${name}`)?.classList.toggle('chip-on', name === view)
+  })
+  renderSkillLab()
+}
+
+function skillLabDefinitionQuality(skill) {
+  const def = skillDefinitionForSkill(skill)
+  const checks = [
+    ['livello', Number(skill.livello || 0) > 0, 10],
+    ['ramo', !!String(skill.ramo || '').trim(), 10],
+    ['descrizione', !!String(skill.descrizione || '').trim(), 15],
+    ['scheda definizione', !!def, 10],
+    ['cosa fa', !!String(def?.cosa_fa || '').trim(), 20],
+    ['come si fa', !!String(def?.come_si_fa || '').trim(), 20],
+    ['prerequisiti', Number(skill.livello || 0) <= 1 || allPrereqs.some(row => String(row.skill_id) === String(skill.id)), 10],
+    ['metadati essenziali', !!String(skill.blocco || '').trim(), 5],
+  ]
+  return {
+    score: checks.reduce((sum, [, ok, weight]) => sum + (ok ? weight : 0), 0),
+    missing: checks.filter(([, ok]) => !ok).map(([label]) => label),
+    definition: def,
+  }
+}
+
+function skillLabNameBigrams(value) {
+  const text = ` ${normalizeText(value).replace(/[^a-z0-9à-ÿ]+/g, ' ').replace(/\s+/g, ' ').trim()} `
+  const grams = new Set()
+  for (let i = 0; i < text.length - 1; i++) grams.add(text.slice(i, i + 2))
+  return grams
+}
+
+function skillLabNameSimilarity(a, b) {
+  const left = skillLabNameBigrams(a)
+  const right = skillLabNameBigrams(b)
+  if (!left.size || !right.size) return 0
+  let common = 0
+  left.forEach(gram => { if (right.has(gram)) common++ })
+  return (2 * common) / (left.size + right.size)
+}
+
+function skillLabCycles(outgoing) {
+  const found = new Map()
+  const visiting = new Set()
+  const visited = new Set()
+  const path = []
+  const canonical = ids => {
+    const ring = ids.slice(0, -1)
+    const rotations = ring.map((_, index) => [...ring.slice(index), ...ring.slice(0, index)])
+    rotations.sort((a, b) => a.join('|').localeCompare(b.join('|')))
+    return rotations[0]
+  }
+  const walk = id => {
+    if (visiting.has(id)) {
+      const start = path.indexOf(id)
+      if (start >= 0) {
+        const cycle = canonical([...path.slice(start), id])
+        found.set(cycle.join('|'), cycle)
+      }
+      return
+    }
+    if (visited.has(id)) return
+    visiting.add(id)
+    path.push(id)
+    ;(outgoing.get(id) || []).forEach(walk)
+    path.pop()
+    visiting.delete(id)
+    visited.add(id)
+  }
+  allSkills.forEach(skill => walk(String(skill.id)))
+  return [...found.values()]
+}
+
+function buildSkillLabAnalysis() {
+  const outgoing = new Map()
+  const incoming = new Map()
+  allSkills.forEach(skill => {
+    outgoing.set(String(skill.id), [])
+    incoming.set(String(skill.id), [])
+  })
+  allPrereqs.forEach(row => {
+    const skillId = String(row.skill_id)
+    const requirementId = String(row.richiede_skill_id)
+    if (outgoing.has(skillId) && outgoing.has(requirementId)) {
+      outgoing.get(skillId).push(requirementId)
+      incoming.get(requirementId).push(skillId)
+    }
+  })
+
+  const progressStudents = new Map()
+  allProgressi.forEach(row => {
+    const id = String(row.skill_id)
+    if (!progressStudents.has(id)) progressStudents.set(id, new Set())
+    if (row.allievo_id) progressStudents.get(id).add(String(row.allievo_id))
+  })
+  const actualLessons = new Map()
+  const plannedLessons = new Map()
+  skillLabUsageRows.forEach(row => {
+    const id = String(row.skill_id)
+    const target = row.allievo_id ? actualLessons : plannedLessons
+    if (!target.has(id)) target.set(id, new Set())
+    target.get(id).add(String(row.lezione_id || `${id}:${target.get(id).size}`))
+  })
+
+  const cycles = skillLabCycles(outgoing)
+  const cycleIds = new Set(cycles.flat())
+  const similarPairs = []
+  for (let i = 0; i < allSkills.length; i++) {
+    for (let j = i + 1; j < allSkills.length; j++) {
+      const left = allSkills[i]
+      const right = allSkills[j]
+      const similarity = skillLabNameSimilarity(left.nome, right.nome)
+      if (similarity >= .78) similarPairs.push({ left, right, similarity })
+    }
+  }
+  similarPairs.sort((a, b) => b.similarity - a.similarity)
+  const similarIds = new Set(similarPairs.flatMap(pair => [String(pair.left.id), String(pair.right.id)]))
+  const inconsistentEdges = allPrereqs.map(row => {
+    const skill = allSkills.find(item => String(item.id) === String(row.skill_id))
+    const requirement = allSkills.find(item => String(item.id) === String(row.richiede_skill_id))
+    return { row, skill, requirement }
+  }).filter(item => item.skill && item.requirement && Number(item.requirement.livello || 0) > Number(item.skill.livello || 0))
+
+  const records = allSkills.map(skill => {
+    const id = String(skill.id)
+    const prerequisites = outgoing.get(id)?.length || 0
+    const children = incoming.get(id)?.length || 0
+    const assigned = progressStudents.get(id)?.size || 0
+    const lessons = actualLessons.get(id)?.size || 0
+    const planned = plannedLessons.get(id)?.size || 0
+    const quality = skillLabDefinitionQuality(skill)
+    const anomalies = []
+    if (!prerequisites && !children) anomalies.push('isolata')
+    if (cycleIds.has(id)) anomalies.push('ciclo')
+    if (similarIds.has(id)) anomalies.push('nome simile')
+    if (prerequisites + children >= 8) anomalies.push('molti collegamenti')
+    if (inconsistentEdges.some(edge => String(edge.skill.id) === id || String(edge.requirement.id) === id)) anomalies.push('livelli incoerenti')
+    return {
+      skill, id, prerequisites, children, assigned, lessons, planned, quality, anomalies,
+      unused: assigned === 0 && lessons === 0,
+    }
+  }).sort((a, b) => Number(a.skill.livello || 0) - Number(b.skill.livello || 0) || String(a.skill.nome).localeCompare(String(b.skill.nome), 'it', { sensitivity: 'base' }))
+
+  return { records, outgoing, incoming, cycles, cycleIds, similarPairs, inconsistentEdges }
+}
+
+function skillLabKpi(value, label) {
+  return `<div class="skill-lab-kpi"><strong>${value}</strong><span>${esc(label)}</span></div>`
+}
+
+function skillLabBadge(label, tone = '') {
+  return `<span class="skill-lab-badge ${tone}">${esc(label)}</span>`
+}
+
+function renderSkillLabBars(entries) {
+  const max = Math.max(1, ...entries.map(([, value]) => value))
+  return `<div class="skill-lab-bars">${entries.map(([label, value]) => `
+    <div class="skill-lab-bar-row"><span>${esc(label)}</span><div class="skill-lab-bar-track"><span style="width:${Math.round(value / max * 100)}%"></span></div><strong>${value}</strong></div>`).join('')}</div>`
+}
+
+function skillLabRecordButton(record, extra = '') {
+  const usage = record.lessons ? `${record.lessons} lezioni` : record.assigned ? `${record.assigned} allievi` : 'mai usata'
+  return `<button type="button" class="skill-lab-item" onclick="openSkillDetailModal(${jsArg(record.skill.id)})">
+    <span class="skill-lab-item-main"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} · Lv.${esc(record.skill.livello || '—')} · ${esc(usage)}${extra ? ` · ${esc(extra)}` : ''}</span></span>
+    <span class="skill-lab-badges">${skillLabBadge(`${record.quality.score}%`, record.quality.score >= 80 ? 'good' : record.quality.score < 50 ? 'bad' : 'warn')}${record.anomalies.slice(0, 2).map(label => skillLabBadge(label, 'warn')).join('')}</span>
+  </button>`
+}
+
+function renderSkillLabOverview(analysis) {
+  const { records } = analysis
+  const branchCounts = new Map()
+  const levelCounts = new Map()
+  records.forEach(record => {
+    const branch = skillBranchName(record.skill.ramo) || 'Senza ramo'
+    const level = `Livello ${record.skill.livello || '—'}`
+    branchCounts.set(branch, (branchCounts.get(branch) || 0) + 1)
+    levelCounts.set(level, (levelCounts.get(level) || 0) + 1)
+  })
+  const critical = records.filter(record => record.quality.score < 50).sort((a, b) => a.quality.score - b.quality.score).slice(0, 7)
+  const unused = records.filter(record => record.unused).sort((a, b) => a.quality.score - b.quality.score).slice(0, 7)
+  return `
+    <div class="skill-lab-kpis">
+      ${skillLabKpi(records.length, 'Skill catalogo')}
+      ${skillLabKpi(records.filter(record => record.unused).length, 'Mai assegnate né usate')}
+      ${skillLabKpi(records.filter(record => record.quality.score < 70).length, 'Documentazione incompleta')}
+      ${skillLabKpi(records.filter(record => record.anomalies.includes('isolata')).length, 'Skill isolate')}
+      ${skillLabKpi(analysis.cycles.length, 'Cicli nel grafo')}
+      ${skillLabKpi(analysis.similarPairs.length, 'Nomi simili sospetti')}
+    </div>
+    <div class="skill-lab-grid">
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Distribuzione per ramo</h3><span>${branchCounts.size} rami</span></div>${renderSkillLabBars([...branchCounts.entries()].sort((a, b) => b[1] - a[1]))}</section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Distribuzione per livello</h3><span>struttura attuale</span></div>${renderSkillLabBars([...levelCounts.entries()].sort((a, b) => Number(a[0].replace(/\D/g, '')) - Number(b[0].replace(/\D/g, ''))))}</section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Priorità documentazione</h3><span>completezza sotto il 50%</span></div><div class="skill-lab-list">${critical.length ? critical.map(record => skillLabRecordButton(record, record.quality.missing.join(', '))).join('') : '<div class="empty">Nessuna criticità grave.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Candidati alla pulizia</h3><span>nessun uso reale rilevato</span></div><div class="skill-lab-list">${unused.length ? unused.map(record => skillLabRecordButton(record, `${record.prerequisites} prereq · ${record.children} figli`)).join('') : '<div class="empty">Tutte le skill risultano utilizzate.</div>'}</div></section>
+    </div>`
+}
+
+function skillLabFilteredRecords(analysis) {
+  const query = normalizeText(skillLabFilters.query)
+  return analysis.records.filter(record => {
+    if (query && !normalizeText(`${record.skill.nome} ${record.skill.descrizione || ''} ${record.skill.ramo || ''}`).includes(query)) return false
+    if (skillLabFilters.branch && skillBranchName(record.skill.ramo) !== skillLabFilters.branch) return false
+    if (skillLabFilters.usage === 'unused' && !record.unused) return false
+    if (skillLabFilters.usage === 'never-assigned' && record.assigned > 0) return false
+    if (skillLabFilters.usage === 'never-lessons' && record.lessons > 0) return false
+    if (skillLabFilters.usage === 'used' && record.lessons === 0 && record.assigned === 0) return false
+    if (skillLabFilters.quality === 'critical' && record.quality.score >= 50) return false
+    if (skillLabFilters.quality === 'incomplete' && (record.quality.score < 50 || record.quality.score >= 80)) return false
+    if (skillLabFilters.quality === 'good' && record.quality.score < 80) return false
+    if (skillLabFilters.quality === 'anomaly' && !record.anomalies.length) return false
+    return true
+  })
+}
+
+function setSkillLabFilter(key, value) {
+  skillLabFilters[key] = value
+  renderSkillLab()
+  if (key === 'query') {
+    requestAnimationFrame(() => {
+      const input = document.getElementById('skill-lab-query')
+      if (!input) return
+      input.focus()
+      input.setSelectionRange(input.value.length, input.value.length)
+    })
+  }
+}
+
+function setSkillLabPreset(preset) {
+  skillLabFilters = { query: '', branch: '', usage: '', quality: '' }
+  if (preset === 'unused') skillLabFilters.usage = 'unused'
+  if (preset === 'critical') skillLabFilters.quality = 'critical'
+  if (preset === 'anomaly') skillLabFilters.quality = 'anomaly'
+  renderSkillLab()
+}
+
+function renderSkillLabInventory(analysis) {
+  const branches = [...new Set(analysis.records.map(record => skillBranchName(record.skill.ramo)))].sort((a, b) => a.localeCompare(b, 'it'))
+  const records = skillLabFilteredRecords(analysis)
+  return `
+    <div class="skill-lab-filters">
+      <input id="skill-lab-query" aria-label="Cerca skill" placeholder="Cerca nome, descrizione o ramo…" value="${esc(skillLabFilters.query)}" oninput="setSkillLabFilter('query',this.value)">
+      <select aria-label="Filtra ramo" onchange="setSkillLabFilter('branch',this.value)"><option value="">Tutti i rami</option>${branches.map(branch => `<option value="${esc(branch)}"${skillLabFilters.branch === branch ? ' selected' : ''}>${esc(branch)}</option>`).join('')}</select>
+      <select aria-label="Filtra utilizzo" onchange="setSkillLabFilter('usage',this.value)"><option value="">Qualsiasi utilizzo</option><option value="unused"${skillLabFilters.usage === 'unused' ? ' selected' : ''}>Mai assegnate né usate</option><option value="never-assigned"${skillLabFilters.usage === 'never-assigned' ? ' selected' : ''}>Mai assegnate</option><option value="never-lessons"${skillLabFilters.usage === 'never-lessons' ? ' selected' : ''}>Mai in lezione</option><option value="used"${skillLabFilters.usage === 'used' ? ' selected' : ''}>Utilizzate</option></select>
+      <select aria-label="Filtra qualità" onchange="setSkillLabFilter('quality',this.value)"><option value="">Qualsiasi qualità</option><option value="critical"${skillLabFilters.quality === 'critical' ? ' selected' : ''}>Critica (&lt;50%)</option><option value="incomplete"${skillLabFilters.quality === 'incomplete' ? ' selected' : ''}>Incompleta (50–79%)</option><option value="good"${skillLabFilters.quality === 'good' ? ' selected' : ''}>Buona (80%+)</option><option value="anomaly"${skillLabFilters.quality === 'anomaly' ? ' selected' : ''}>Con anomalie</option></select>
+    </div>
+    <div class="skill-lab-presets"><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('unused')">Inutilizzate</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('critical')">Qualità critica</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('anomaly')">Con anomalie</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('reset')">Azzera filtri</button></div>
+    <div class="skill-lab-section-title"><h3>${records.length} skill</h3><span>clicca il nome per aprire la scheda</span></div>
+    <div class="skill-lab-results">${records.length ? records.map(record => `
+      <article class="skill-lab-result">
+        <div><button class="skill-lab-result-action" onclick="openSkillDetailModal(${jsArg(record.skill.id)})"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} · Lv.${esc(record.skill.livello || '—')}</span></button></div>
+        <div><span class="skill-lab-result-label">Uso</span><span class="skill-lab-result-value">${record.lessons} lez. · ${record.assigned} all.</span></div>
+        <div><span class="skill-lab-result-label">Grafo</span><span class="skill-lab-result-value">${record.prerequisites} prereq · ${record.children} figli</span></div>
+        <div><span class="skill-lab-result-label">Qualità</span>${skillLabBadge(`${record.quality.score}%`, record.quality.score >= 80 ? 'good' : record.quality.score < 50 ? 'bad' : 'warn')}</div>
+        <div><span class="skill-lab-result-label">Segnali</span><span class="skill-lab-result-value">${record.anomalies.length ? esc(record.anomalies.join(', ')) : '—'}</span></div>
+      </article>`).join('') : '<div class="empty">Nessuna skill corrisponde ai filtri.</div>'}</div>`
+}
+
+function renderSkillLabQuality(analysis) {
+  const records = [...analysis.records].sort((a, b) => a.quality.score - b.quality.score || String(a.skill.nome).localeCompare(String(b.skill.nome), 'it'))
+  const missingCounts = new Map()
+  records.forEach(record => record.quality.missing.forEach(label => missingCounts.set(label, (missingCounts.get(label) || 0) + 1)))
+  const groups = [
+    ['Critica', records.filter(record => record.quality.score < 50), 'bad'],
+    ['Da completare', records.filter(record => record.quality.score >= 50 && record.quality.score < 80), 'warn'],
+    ['Buona', records.filter(record => record.quality.score >= 80), 'good'],
+  ]
+  return `<div class="skill-lab-grid">
+    <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Campi mancanti</h3><span>conteggio sul catalogo</span></div>${renderSkillLabBars([...missingCounts.entries()].sort((a, b) => b[1] - a[1]))}</section>
+    <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Criterio provvisorio</h3><span>0–100%</span></div><p class="tuning-context">Livello 10, ramo 10, descrizione 15, scheda definizione 10, “cosa fa” 20, “come si fa” 20, prerequisiti 10, metadati 5. Il modello definitivo aggiungerà esercizi, errori comuni, media e revisione editoriale.</p></section>
+  </div>${groups.map(([label, rows, tone]) => `<section><div class="skill-lab-section-title"><h3>${esc(label)}</h3><span>${rows.length} skill</span></div><div class="skill-lab-results">${rows.map(record => `<article class="skill-lab-result"><div><button class="skill-lab-result-action" onclick="openSkillDetailModal(${jsArg(record.skill.id)})"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} · Lv.${esc(record.skill.livello || '—')}</span></button></div><div>${skillLabBadge(`${record.quality.score}%`, tone)}</div><div style="grid-column:span 3"><span class="skill-lab-result-label">Manca</span><span class="skill-lab-result-value">${record.quality.missing.length ? esc(record.quality.missing.join(', ')) : 'Nessun campo essenziale'}</span></div></article>`).join('')}</div></section>`).join('')}`
+}
+
+function renderSkillLabAnomalies(analysis) {
+  const recordById = new Map(analysis.records.map(record => [record.id, record]))
+  const isolated = analysis.records.filter(record => record.anomalies.includes('isolata'))
+  const hubs = analysis.records.filter(record => record.anomalies.includes('molti collegamenti')).sort((a, b) => (b.prerequisites + b.children) - (a.prerequisites + a.children))
+  return `<div class="skill-lab-kpis">${skillLabKpi(analysis.cycles.length, 'Cicli')}${skillLabKpi(analysis.inconsistentEdges.length, 'Prerequisiti di livello superiore')}${skillLabKpi(isolated.length, 'Isolate')}${skillLabKpi(hubs.length, 'Molti collegamenti')}${skillLabKpi(analysis.similarPairs.length, 'Coppie di nomi simili')}</div>
+    <div class="skill-lab-grid">
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Prerequisiti circolari</h3><span>da risolvere prima di automatizzare</span></div><div class="skill-lab-list">${analysis.cycles.length ? analysis.cycles.map(cycle => `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${cycle.map(id => recordById.get(id)?.skill.nome || id).join(' → ')} → ${recordById.get(cycle[0])?.skill.nome || cycle[0]}</strong><span class="skill-lab-meta">Il percorso torna al punto di partenza.</span></span>${skillLabBadge('ciclo', 'bad')}</div>`).join('') : '<div class="empty">Nessun ciclo rilevato.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Livelli incoerenti</h3><span>prerequisito più avanzato della skill</span></div><div class="skill-lab-list">${analysis.inconsistentEdges.length ? analysis.inconsistentEdges.slice(0, 20).map(edge => `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${esc(edge.skill.nome)} richiede ${esc(edge.requirement.nome)}</strong><span class="skill-lab-meta">Lv.${edge.skill.livello} richiede Lv.${edge.requirement.livello}</span></span>${skillLabBadge('verificare', 'warn')}</div>`).join('') : '<div class="empty">Nessuna incoerenza di livello rilevata.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Skill isolate</h3><span>senza prerequisiti né figli</span></div><div class="skill-lab-list">${isolated.length ? isolated.map(record => skillLabRecordButton(record)).join('') : '<div class="empty">Nessuna skill isolata.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Nomi simili</h3><span>suggerimenti, non duplicati certi</span></div><div class="skill-lab-list">${analysis.similarPairs.length ? analysis.similarPairs.slice(0, 20).map(pair => `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${esc(pair.left.nome)} / ${esc(pair.right.nome)}</strong><span class="skill-lab-meta">Somiglianza ${Math.round(pair.similarity * 100)}%</span></span>${skillLabBadge('confrontare', 'warn')}</div>`).join('') : '<div class="empty">Nessun nome molto simile.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Nodi molto collegati</h3><span>soglia provvisoria: 8</span></div><div class="skill-lab-list">${hubs.length ? hubs.map(record => skillLabRecordButton(record, `${record.prerequisites + record.children} collegamenti`)).join('') : '<div class="empty">Nessun nodo supera la soglia.</div>'}</div></section>
+    </div>`
+}
+
+function renderSkillLabGuided() {
+  return `<div class="tuning-top"><div class="tuning-modes"><button class="chip" id="tune-mode-parametri" onclick="setTuningMode('parametri')" type="button">Parametri</button><button class="chip" id="tune-mode-requisiti" onclick="setTuningMode('requisiti')" type="button">Requisiti</button><button class="chip" id="tune-mode-progressione" onclick="setTuningMode('progressione')" type="button">Progressione</button><button class="chip" id="tune-mode-livelli" onclick="setTuningMode('livelli')" type="button">Livelli</button></div><select id="tune-scope" onchange="nextTuningCard()" style="max-width:220px"><option value="">Tutti i rami</option>${['Equilibrio','Andatura','Frenata','Rotazione','Air','Extra'].map(branch => `<option value="${branch}">${branch}</option>`).join('')}</select></div><div class="tuning-card" id="tuning-card"><div class="loading">Caricamento scheda…</div></div><div class="tuning-stats" id="tuning-stats"></div>`
+}
+
+function renderSkillLab() {
+  const el = document.getElementById('skill-lab-content')
+  if (!el) return
+  ;['overview', 'inventory', 'quality', 'anomalies', 'guided'].forEach(name => document.getElementById(`skill-lab-tab-${name}`)?.classList.toggle('chip-on', name === skillLabView))
+  if (skillLabLoading && !skillLabLoaded) {
+    el.innerHTML = '<div class="loading">Analisi dello Skill Tree e degli utilizzi reali…</div>'
+    return
+  }
+  if (skillLabView === 'guided') {
+    el.innerHTML = renderSkillLabGuided()
+    setTuningMode(tuningMode, true)
+    renderTuningStats()
+    return
+  }
+  const analysis = buildSkillLabAnalysis()
+  if (skillLabView === 'inventory') el.innerHTML = renderSkillLabInventory(analysis)
+  else if (skillLabView === 'quality') el.innerHTML = renderSkillLabQuality(analysis)
+  else if (skillLabView === 'anomalies') el.innerHTML = renderSkillLabAnomalies(analysis)
+  else el.innerHTML = renderSkillLabOverview(analysis)
 }
 
 function setTuningMode(mode, keepCard = false) {
   tuningMode = mode
   ;['parametri','requisiti','progressione','livelli'].forEach(m => {
-    document.getElementById(`tune-mode-${m}`).classList.toggle('chip-on', m === mode)
+    document.getElementById(`tune-mode-${m}`)?.classList.toggle('chip-on', m === mode)
   })
   if (!keepCard) nextTuningCard()
   else if (!tuningCard) nextTuningCard()
