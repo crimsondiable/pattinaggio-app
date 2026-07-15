@@ -999,10 +999,56 @@
     .stat-tile { border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); padding: .75rem; }
     .stat-tile strong { display: block; font-size: 1.35rem; }
     .stat-tile span { color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .skill-lab-notice { display: flex; gap: .65rem; align-items: flex-start; padding: .75rem .85rem; border: 1px solid rgba(110,231,249,.25); border-radius: var(--r); background: rgba(110,231,249,.06); color: var(--muted); font-size: .84rem; line-height: 1.4; }
+    .skill-lab-notice strong { color: var(--testo); }
+    .skill-lab-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .skill-lab-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .65rem; }
+    .skill-lab-kpi { min-width: 0; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); padding: .8rem; }
+    .skill-lab-kpi strong { display: block; font-size: 1.55rem; line-height: 1.1; }
+    .skill-lab-kpi span { display: block; color: var(--muted); font-size: .74rem; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; margin-top: .25rem; }
+    .skill-lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    .skill-lab-panel { min-width: 0; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); padding: .85rem; }
+    .skill-lab-panel h3 { font-size: .98rem; margin-bottom: .2rem; }
+    .skill-lab-panel-head { display: flex; justify-content: space-between; gap: .65rem; align-items: baseline; margin-bottom: .7rem; }
+    .skill-lab-panel-head span { color: var(--muted); font-size: .76rem; }
+    .skill-lab-bars { display: grid; gap: .55rem; }
+    .skill-lab-bar-row { display: grid; grid-template-columns: minmax(80px, 130px) minmax(80px, 1fr) auto; gap: .55rem; align-items: center; font-size: .8rem; }
+    .skill-lab-bar-track { height: 8px; overflow: hidden; border-radius: 99px; background: rgba(148,163,184,.12); }
+    .skill-lab-bar-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blu-scuro), var(--blu)); }
+    .skill-lab-list { display: grid; gap: .45rem; }
+    .skill-lab-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .7rem; align-items: center; width: 100%; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel); color: var(--testo); padding: .65rem .7rem; text-align: left; }
+    button.skill-lab-item { cursor: pointer; }
+    button.skill-lab-item:hover { border-color: var(--blu); background: var(--blu-chiaro); }
+    .skill-lab-item-main { min-width: 0; display: grid; gap: .22rem; }
+    .skill-lab-item-main strong { overflow-wrap: anywhere; }
+    .skill-lab-meta { color: var(--muted); font-size: .75rem; line-height: 1.35; }
+    .skill-lab-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .28rem; }
+    .skill-lab-badge { display: inline-flex; align-items: center; border: 1px solid var(--bordo); border-radius: 999px; padding: .18rem .42rem; color: var(--muted); font-size: .68rem; font-weight: 750; white-space: nowrap; }
+    .skill-lab-badge.bad { border-color: rgba(248,113,113,.35); color: #fca5a5; background: rgba(248,113,113,.08); }
+    .skill-lab-badge.warn { border-color: rgba(251,191,36,.35); color: #fcd34d; background: rgba(251,191,36,.08); }
+    .skill-lab-badge.good { border-color: rgba(52,211,153,.35); color: #6ee7b7; background: rgba(52,211,153,.08); }
+    .skill-lab-filters { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(130px, 1fr)); gap: .55rem; }
+    .skill-lab-filters input, .skill-lab-filters select { width: 100%; min-width: 0; }
+    .skill-lab-presets { display: flex; gap: .35rem; flex-wrap: wrap; }
+    .skill-lab-results { display: grid; gap: .5rem; }
+    .skill-lab-result { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(75px, .55fr)); gap: .6rem; align-items: center; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); padding: .72rem; }
+    .skill-lab-result > div { min-width: 0; }
+    .skill-lab-result-label { color: var(--muted); display: block; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .16rem; }
+    .skill-lab-result-value { font-size: .8rem; overflow-wrap: anywhere; }
+    .skill-lab-result-action { border: 0; background: none; color: inherit; padding: 0; text-align: left; cursor: pointer; }
+    .skill-lab-section-title { display: flex; gap: .6rem; justify-content: space-between; align-items: baseline; margin: .35rem 0 .55rem; }
+    .skill-lab-section-title span { color: var(--muted); font-size: .78rem; }
     @media (max-width: 560px) {
       .rating-5 { grid-template-columns: 1fr; }
       .rating-5 button { min-height: auto; padding: .7rem .8rem; }
       .tuning-title { font-size: 1.18rem; }
+      .skill-lab-grid { grid-template-columns: 1fr; }
+      .skill-lab-filters { grid-template-columns: 1fr; }
+      .skill-lab-result { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .skill-lab-result > div:first-child { grid-column: 1 / -1; }
+      .skill-lab-item { grid-template-columns: 1fr; }
+      .skill-lab-badges { justify-content: flex-start; }
+      .skill-lab-bar-row { grid-template-columns: minmax(72px, 105px) 1fr auto; }
     }
 
     /* ── Misc ── */
@@ -1670,48 +1716,34 @@
       </div>
     </section>
 
-    <!-- VIEW: tuning metodologia -->
+    <!-- VIEW: laboratorio manutenzione skill -->
     <section id="view-tuning" hidden>
       <div class="section-header">
         <div>
-          <h2>Tuning</h2>
-          <p style="color:var(--muted);font-size:.88rem;margin-top:.25rem">Micro-schede per calibrare parametri, prerequisiti e progressione.</p>
+          <h2>Skill Lab <span class="skill-lab-badge warn">Sperimentale</span></h2>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:.25rem">Controllo qualità e manutenzione dello Skill Tree, separati dal lavoro quotidiano.</p>
         </div>
         <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="importSkilltreeCatalog(this)">Importa catalogo</button>
-          <button class="btn btn-outline btn-sm" onclick="resetTuningSession()">Nuova sessione</button>
+          <button class="btn btn-outline btn-sm" onclick="refreshSkillLab()">Aggiorna analisi</button>
         </div>
       </div>
 
       <div class="tuning-shell">
         <div class="card">
-          <div id="tuning-import-status" class="msg" style="display:none;margin-bottom:.65rem"></div>
-          <div class="tuning-top">
-            <div class="tuning-modes">
-              <button class="chip chip-on" id="tune-mode-parametri" onclick="setTuningMode('parametri')" type="button">Parametri</button>
-              <button class="chip" id="tune-mode-requisiti" onclick="setTuningMode('requisiti')" type="button">Requisiti</button>
-              <button class="chip" id="tune-mode-progressione" onclick="setTuningMode('progressione')" type="button">Progressione</button>
-              <button class="chip" id="tune-mode-livelli" onclick="setTuningMode('livelli')" type="button">Livelli</button>
-            </div>
-            <select id="tune-scope" onchange="nextTuningCard()" style="max-width:220px;padding:.45rem .65rem;border-radius:var(--r);border:1px solid var(--bordo);background:var(--panel-soft);color:var(--testo);font-weight:600">
-              <option value="">Tutti i rami</option>
-              <option value="Equilibrio">Equilibrio</option>
-              <option value="Andatura">Andatura</option>
-              <option value="Frenata">Frenata</option>
-              <option value="Rotazione">Rotazione</option>
-              <option value="Air">Air</option>
-              <option value="Extra">Extra</option>
-            </select>
+          <div class="skill-lab-notice">
+            <span aria-hidden="true">◇</span>
+            <div><strong>Modalità diagnostica.</strong> Questo primo incremento legge il catalogo, gli utilizzi e i collegamenti. Non archivia, non fonde e non elimina skill.</div>
+          </div>
+          <div id="skill-lab-status" class="msg" style="display:none;margin-top:.65rem"></div>
+          <div class="skill-lab-tabs" style="margin-top:.75rem">
+            <button class="chip chip-on" id="skill-lab-tab-overview" onclick="setSkillLabView('overview')" type="button">Panoramica</button>
+            <button class="chip" id="skill-lab-tab-inventory" onclick="setSkillLabView('inventory')" type="button">Inventario</button>
+            <button class="chip" id="skill-lab-tab-quality" onclick="setSkillLabView('quality')" type="button">Qualità</button>
+            <button class="chip" id="skill-lab-tab-anomalies" onclick="setSkillLabView('anomalies')" type="button">Anomalie</button>
+            <button class="chip" id="skill-lab-tab-guided" onclick="setSkillLabView('guided')" type="button">Revisione guidata</button>
           </div>
         </div>
-
-        <div class="card tuning-card" id="tuning-card">
-          <div class="loading">Caricamento scheda…</div>
-        </div>
-
-        <div class="card">
-          <div class="tuning-stats" id="tuning-stats"></div>
-        </div>
+        <div id="skill-lab-content" class="card"><div class="loading">Analisi dello Skill Tree…</div></div>
       </div>
     </section>
 
