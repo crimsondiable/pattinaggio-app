@@ -11216,7 +11216,7 @@ function loadLezioneDraft() {
 function restoreLezioneDraft(draft) {
   if (draft.formMode) lezioneFormMode = draft.formMode === "prep" ? "prep" : "standard";
   document.getElementById("lz-data").value = draft.data || localDateIso();
-  document.getElementById("lz-ora").value = normalizeLessonTime(draft.ora || "");
+  document.getElementById("lz-ora").value = normalizeLessonTime(draft.ora || "") || draft.ora || "";
   document.getElementById("lz-durata").value = draft.durata || "";
   setLessonStatus(draft.stato || "aperta");
   document.getElementById("lz-luogo").value = draft.luogo || "";
@@ -12140,8 +12140,16 @@ function ripristinaRelazioniLezione(lezioneId, snapshot) {
 function salvaLezione() {
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f;
+    clearLezioneFormMessage();
+    const oraInput = document.getElementById("lz-ora");
+    const oraRaw = (oraInput && oraInput.value || "").trim();
+    const ora = normalizeLessonTime(oraRaw);
+    if (oraRaw && !ora || oraInput && oraInput.validity && oraInput.validity.badInput) {
+      setLezioneFormMessage("Inserisci un’ora valida nel formato 24 ore, ad esempio 14:30, oppure lascia il campo vuoto.");
+      if (oraInput) oraInput.focus();
+      return;
+    }
     const data = document.getElementById("lz-data").value;
-    const ora = normalizeLessonTime(((_a2 = document.getElementById("lz-ora")) == null ? void 0 : _a2.value) || "");
     const durata = parseInt(document.getElementById("lz-durata").value) || null;
     const stato = ((_b2 = document.getElementById("lz-stato")) == null ? void 0 : _b2.value) === "chiusa" ? "chiusa" : "aperta";
     const target = document.getElementById("lz-tipo").value;
@@ -12155,7 +12163,6 @@ function salvaLezione() {
     const checkBene = ((_e = document.getElementById("lz-check-bene")) == null ? void 0 : _e.value.trim()) || "";
     const checkNonFatto = ((_f = document.getElementById("lz-check-non-fatto")) == null ? void 0 : _f.value.trim()) || "";
     const note = composeLessonNotes(document.getElementById("lz-note").value.trim(), checkBene, checkNonFatto, noteSpeciali || "", stato, meteo || "", ora);
-    clearLezioneFormMessage();
     if (!data) {
       setLezioneFormMessage("Inserisci la data.");
       return;

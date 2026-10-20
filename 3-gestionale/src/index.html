@@ -1378,7 +1378,7 @@
         </div>
         <div class="form-grid">
           <div class="field"><label>Data *</label><input type="date" id="lz-data"></div>
-          <div class="field"><label>Ora</label><input type="time" id="lz-ora"></div>
+          <div class="field"><label for="lz-ora">Ora (24 ore)</label><input type="text" id="lz-ora" inputmode="numeric" placeholder="14:30" maxlength="5" autocomplete="off" onblur="this.value = normalizeLessonTime(this.value) || this.value.trim()"></div>
           <div class="field"><label>Durata (min)</label><input type="number" id="lz-durata" placeholder="60" min="1"></div>
           <div class="field">
             <label>Lezione di</label>
@@ -1996,7 +1996,7 @@
 </script>
 <script>
 (function () {
-  var appVersion = '20261020-student-navigation-fix';
+  var appVersion = '20261020-lesson-time-fix';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;

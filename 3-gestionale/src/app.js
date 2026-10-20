@@ -12126,7 +12126,7 @@ function loadLezioneDraft() {
 function restoreLezioneDraft(draft) {
   if (draft.formMode) lezioneFormMode = draft.formMode === 'prep' ? 'prep' : 'standard'
   document.getElementById('lz-data').value = draft.data || localDateIso()
-  document.getElementById('lz-ora').value = normalizeLessonTime(draft.ora || '')
+  document.getElementById('lz-ora').value = normalizeLessonTime(draft.ora || '') || draft.ora || ''
   document.getElementById('lz-durata').value = draft.durata || ''
   setLessonStatus(draft.stato || 'aperta')
   document.getElementById('lz-luogo').value = draft.luogo || ''
@@ -13156,8 +13156,16 @@ async function ripristinaRelazioniLezione(lezioneId, snapshot) {
 }
 
 async function salvaLezione() {
+  clearLezioneFormMessage()
+  const oraInput = document.getElementById('lz-ora')
+  const oraRaw = (oraInput?.value || '').trim()
+  const ora = normalizeLessonTime(oraRaw)
+  if ((oraRaw && !ora) || oraInput?.validity?.badInput) {
+    setLezioneFormMessage('Inserisci un’ora valida nel formato 24 ore, ad esempio 14:30, oppure lascia il campo vuoto.')
+    oraInput?.focus()
+    return
+  }
   const data   = document.getElementById('lz-data').value
-  const ora = normalizeLessonTime(document.getElementById('lz-ora')?.value || '')
   const durata = parseInt(document.getElementById('lz-durata').value) || null
   const stato = document.getElementById('lz-stato')?.value === 'chiusa' ? 'chiusa' : 'aperta'
   const target = document.getElementById('lz-tipo').value
@@ -13171,7 +13179,6 @@ async function salvaLezione() {
   const checkBene = document.getElementById('lz-check-bene')?.value.trim() || ''
   const checkNonFatto = document.getElementById('lz-check-non-fatto')?.value.trim() || ''
   const note   = composeLessonNotes(document.getElementById('lz-note').value.trim(), checkBene, checkNonFatto, noteSpeciali || '', stato, meteo || '', ora)
-  clearLezioneFormMessage()
 
   if (!data) { setLezioneFormMessage('Inserisci la data.'); return }
   if (!target) { setLezioneFormMessage('Seleziona allievo, gruppo o campo libero.'); return }
