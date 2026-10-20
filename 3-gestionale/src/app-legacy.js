@@ -2151,6 +2151,7 @@ function refreshDashboardData() {
   });
 }
 const APP_HISTORY_KEY = "blading-manager-view";
+let schedaLoadVersion = 0;
 function routeNeedsId(name) {
   return ["scheda", "gruppo", "location", "lezione"].includes(name);
 }
@@ -2302,6 +2303,7 @@ function goToReturnTarget(target, fallback) {
   });
 }
 function showView(name, id) {
+  schedaLoadVersion++;
   if ((name === "tuning" || name === "app-notes") && !godMode) name = "allievi";
   const previousReturnTarget = currentReturnTarget();
   if (name === "location") {
@@ -7966,6 +7968,7 @@ function loadScheda(id) {
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f, _g;
     showView("scheda");
+    const loadVersion = schedaLoadVersion;
     currentSchedaId = id;
     recordAppHistory("scheda", id);
     const prepShortcut = document.getElementById("scheda-prepara-lezione");
@@ -7973,10 +7976,16 @@ function loadScheda(id) {
     prepShortcut.onclick = () => showView("nuova-lezione", `modo:prep:${id}`);
     document.getElementById("scheda-content").innerHTML = '<div class="loading">Caricamento\u2026</div>';
     const allievo = allAllievi.find((a) => a.id === id);
+    if (!allievo) {
+      prepShortcut.hidden = true;
+      document.getElementById("scheda-content").innerHTML = '<div class="empty">Allievo non disponibile.</div>';
+      return;
+    }
     const [{ data: progressiRaw }, { data: laRows }] = yield Promise.all([
       sb.from("progressi_allievo").select("skill_id, stadio, data_inizio, data_acquisizione, data_perfezionamento, note_maestro, skills(nome, ramo, livello, blocco)").eq("allievo_id", id),
       sb.from("lezioni_allievi").select("lezione_id").eq("allievo_id", id)
     ]);
+    if (loadVersion !== schedaLoadVersion) return;
     const progressiRawVisible = (progressiRaw || []).filter((p2) => {
       var _a3;
       return !isFakieSkillName((_a3 = p2.skills) == null ? void 0 : _a3.nome);
@@ -8013,6 +8022,7 @@ function loadScheda(id) {
         lezioniHtml = renderLezioniTable(lz, { variant: "scheda", schedaId: id });
       }
     }
+    if (loadVersion !== schedaLoadVersion) return;
     const byRamo = {};
     (progressi || []).forEach((p2) => {
       var _a3;

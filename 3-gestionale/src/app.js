@@ -1098,6 +1098,7 @@ function renderHome() {
 // ── Views ─────────────────────────────────────────────────────────────
 
 const APP_HISTORY_KEY = 'blading-manager-view'
+let schedaLoadVersion = 0
 
 function routeNeedsId(name) {
   return ['scheda', 'gruppo', 'location', 'lezione'].includes(name)
@@ -1272,6 +1273,8 @@ async function goToReturnTarget(target, fallback) {
 }
 
 function showView(name, id) {
+  // Any navigation invalidates pending student renders, including A -> B -> A.
+  schedaLoadVersion++
   if ((name === 'tuning' || name === 'theme-colors' || name === 'app-notes') && !godMode) name = 'allievi'
   const previousReturnTarget = currentReturnTarget()
   if (name === 'location') {
@@ -8441,6 +8444,7 @@ async function loadGruppo(nomeGruppo) {
 
 async function loadScheda(id) {
   showView('scheda')
+  const loadVersion = schedaLoadVersion
   currentSchedaId = id
   recordAppHistory('scheda', id)
   const prepShortcut = document.getElementById('scheda-prepara-lezione')
@@ -8449,6 +8453,11 @@ async function loadScheda(id) {
   document.getElementById('scheda-content').innerHTML = '<div class="loading">Caricamento…</div>'
 
   const allievo = allAllievi.find(a => a.id === id)
+  if (!allievo) {
+    prepShortcut.hidden = true
+    document.getElementById('scheda-content').innerHTML = '<div class="empty">Allievo non disponibile.</div>'
+    return
+  }
 
   const [{ data: progressiRaw }, { data: laRows }] = await Promise.all([
     sb.from('progressi_allievo')
@@ -8459,6 +8468,7 @@ async function loadScheda(id) {
       .eq('allievo_id', id)
   ])
 
+  if (loadVersion !== schedaLoadVersion) return
   const progressiRawVisible = (progressiRaw || []).filter(p => !isFakieSkillName(p.skills?.nome))
   const progressi = progressiRawVisible.filter(p => p.stadio > 0)
   const progressiMap = Object.fromEntries(progressiRawVisible.map(p => [p.skill_id, p.stadio]))
@@ -8505,6 +8515,8 @@ async function loadScheda(id) {
       lezioniHtml = renderLezioniTable(lz, { variant: 'scheda', schedaId: id })
     }
   }
+
+  if (loadVersion !== schedaLoadVersion) return
 
   // Raggruppa progressi per ramo
   const byRamo = {}
@@ -10072,6 +10084,7 @@ async function toggleVacanzaAllievo(id) {
   const nextVacanza = !allievoInVacanzaDiretta(allievo)
   const nome = allievoDisplayName(id)
   if (nextVacanza && !confirm(`Mettere ${nome} in vacanza? Non comparira nelle liste operative e negli appuntamenti finche resta in vacanza.`)) return
+  const loadVersion = schedaLoadVersion
   try {
     const profilo = { ...(allievo.profilo || {}), in_vacanza: nextVacanza }
     let payload = { profilo, aggiornato_il: new Date().toISOString() }
@@ -10083,7 +10096,12 @@ async function toggleVacanzaAllievo(id) {
     if (error) throw error
     allAllievi = allAllievi.map(a => String(a.id) === String(id) ? (data || { ...a, profilo }) : a)
     logModificaLocale('allievo', id, nextVacanza ? 'Messo in vacanza' : 'Tolto dalla vacanza')
-    await loadScheda(id)
+    // A completed write must not reopen a student the user has already left.
+    if (loadVersion === schedaLoadVersion && document.body.dataset.view === 'scheda' && String(currentSchedaId) === String(id)) {
+      await loadScheda(id)
+    } else {
+      renderAllievi()
+    }
   } catch (e) {
     alert('Errore aggiornamento vacanza: ' + (e.message || e))
   }
