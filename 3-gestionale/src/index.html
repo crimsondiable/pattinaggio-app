@@ -931,6 +931,9 @@
     .skill-delete-btn { position: absolute; top: .3rem; right: .3rem; width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 50%; border: 1px solid rgba(251,113,133,.35); background: rgba(251,113,133,.1); color: #fecaca; cursor: pointer; font-weight: 800; line-height: 1; }
     .skill-delete-btn:hover { border-color: var(--danger); color: #fff; background: rgba(251,113,133,.2); }
     .skill-catalog-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(120px,.45fr); gap: .75rem; }
+    #modal-skill-catalog .skill-check-label { display: flex; align-items: center; gap: .45rem; font-size: .86rem; font-weight: 650; min-width: 0; }
+    #modal-skill-catalog .skill-check-label input[type="checkbox"] { width: auto; flex: 0 0 auto; padding: 0; margin: 0; }
+    #modal-skill-catalog .skill-check-label span { min-width: 0; overflow-wrap: anywhere; }
     .skill-catalog-danger { border-top: 1px solid var(--bordo); margin-top: 1rem; padding-top: 1rem; }
     .skill-catalog-danger h4 { font-size: .86rem; margin-bottom: .65rem; color: #fecaca; }
     .skill-delete-warning { display: none; border: 1px solid rgba(251,113,133,.55); border-radius: var(--r); background: rgba(251,113,133,.13); color: #fecaca; padding: .72rem .78rem; margin: .7rem 0; font-size: .84rem; line-height: 1.38; }
@@ -1864,7 +1867,12 @@
     <div class="modal" onclick="event.stopPropagation()">
       <h3>Gestisci skill</h3>
       <div id="skill-catalog-status" class="msg"></div>
-      <p class="form-sec" style="margin-top:0">Nuova skill</p>
+      <div class="field">
+        <label for="skill-delete-select">Skill da gestire</label>
+        <select id="skill-delete-select"></select>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="skill-catalog-new" onclick="openSkillCatalogModal(skillCatalogContext.source, skillCatalogContext.ownerId)">+ Nuova skill</button>
+      <p class="form-sec" id="skill-catalog-mode">Nuova skill</p>
       <div class="field">
         <label>Nome *</label>
         <input type="text" id="skill-new-name" placeholder="Es. Transizione tallone-punta">
@@ -1898,8 +1906,8 @@
         </div>
         <div class="field">
           <label>Tag</label>
-          <label style="display:flex;align-items:center;gap:.45rem;font-size:.86rem;font-weight:650">
-            <input type="checkbox" id="skill-new-required"> Obbligatoria
+          <label class="skill-check-label">
+            <input type="checkbox" id="skill-new-required"> <span>Obbligatoria</span>
           </label>
         </div>
       </div>
@@ -1912,8 +1920,8 @@
         <textarea id="skill-new-variants" placeholder="Una variante per riga: dx/sx, switch, ostacolo basso..."></textarea>
       </div>
       <div class="field">
-        <label style="display:flex;align-items:center;gap:.45rem;font-size:.86rem;font-weight:650">
-          <input type="checkbox" id="skill-new-is-variant" onchange="toggleNewSkillVariantParent()"> Questa skill e una variante di un'altra skill
+        <label class="skill-check-label">
+          <input type="checkbox" id="skill-new-is-variant" onchange="toggleNewSkillVariantParent()"> <span>Questa skill è una variante di un'altra skill</span>
         </label>
       </div>
       <div class="field" id="skill-new-variant-parent-field" hidden>
@@ -1925,10 +1933,7 @@
 
       <div class="skill-catalog-danger">
         <h4>Cancella skill esistente</h4>
-        <div class="field">
-          <label>Skill</label>
-          <select id="skill-delete-select"></select>
-        </div>
+        <p>Le azioni qui sotto riguardano la skill selezionata in alto.</p>
         <div id="skill-delete-warning" class="skill-delete-warning"></div>
         <button type="button" class="btn btn-outline btn-full" onclick="openSelectedSkillDetailFromCatalog()">Vedi dettaglio skill</button>
         <button type="button" class="btn btn-delete-soft btn-full" onclick="cancellaSkillCatalogo()">Cancella skill dal catalogo</button>
@@ -2020,9 +2025,10 @@
 })();
 </script>
 <script src="./lesson-time-input.js?v=20261020-lesson-time-scroll"></script>
+<script src="./skill-catalog-editor.js?v=20261020-skill-editor"></script>
 <script>
 (function () {
-  var appVersion = '20261020-prep-group-skills';
+  var appVersion = '20261020-skill-editor';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;

@@ -9309,7 +9309,7 @@ function refreshSkillDeleteOptions(selectedSkillId = '') {
   const skills = sortedSkillsForLesson()
   select.innerHTML = `<option value="">— Scegli skill —</option>${skills.map(skill => `<option value="${skill.id}" ${skill.id === selectedSkillId ? 'selected' : ''}>${esc(skill.nome)} · ${esc(skillMetaLabel(skill))}</option>`).join('')}`
   if (selectedSkillId && [...select.options].some(option => option.value === selectedSkillId)) select.value = selectedSkillId
-  select.onchange = () => setSkillDeleteWarning('')
+  select.onchange = () => selectSkillForCatalog(select.value)
 }
 
 function refreshSkillVariantParentOptions(selectedSkillId = '') {
@@ -9352,6 +9352,7 @@ function resetSkillParamControls() {
 }
 
 function openSkillCatalogModal(source = 'generic', ownerId = null, deleteSkillId = '') {
+  if (skillCatalogIsSaving()) return
   skillCatalogContext = { source, ownerId }
   document.getElementById('skill-new-name').value = ''
   document.getElementById('skill-new-level').value = '1'
@@ -9369,16 +9370,19 @@ function openSkillCatalogModal(source = 'generic', ownerId = null, deleteSkillId
   refreshSkillDeleteOptions(deleteSkillId)
   setSkillDeleteWarning('')
   setSkillCatalogStatus('', '')
+  selectSkillForCatalog(deleteSkillId)
   document.getElementById('modal-skill-catalog').hidden = false
   requestAnimationFrame(() => document.getElementById(deleteSkillId ? 'skill-delete-select' : 'skill-new-name')?.focus())
 }
 
 function chiudiSkillCatalogModal() {
+  if (skillCatalogIsSaving()) return
   document.getElementById('modal-skill-catalog').hidden = true
   skillCatalogContext = null
 }
 
 function openSelectedSkillDetailFromCatalog() {
+  if (skillCatalogIsSaving()) return
   const skillId = document.getElementById('skill-delete-select')?.value
   if (!skillId) { setSkillCatalogStatus('Scegli una skill da vedere.', 'msg-info'); return }
   document.getElementById('modal-skill-catalog').hidden = true
@@ -9462,6 +9466,7 @@ function selectNewSkillInLessonOwner(ownerId, skillId) {
 }
 
 async function creaSkillCatalogo() {
+  if (skillCatalogContext?.editingSkillId) return aggiornaSkillCatalogo()
   const btn = document.getElementById('btn-create-skill')
   const oldText = btn?.textContent
   const nome = document.getElementById('skill-new-name')?.value.trim()
@@ -9853,6 +9858,7 @@ async function salvaDefinizioneVarianteSkill(skill, parentSkill, variants = []) 
 }
 
 async function cancellaSkillCatalogo() {
+  if (skillCatalogIsSaving()) return
   const select = document.getElementById('skill-delete-select')
   const skillId = select?.value
   const skill = allSkills.find(s => s.id === skillId)

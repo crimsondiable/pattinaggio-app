@@ -8716,7 +8716,7 @@ function refreshSkillDeleteOptions(selectedSkillId = "") {
   const skills = sortedSkillsForLesson();
   select.innerHTML = `<option value="">\u2014 Scegli skill \u2014</option>${skills.map((skill) => `<option value="${skill.id}" ${skill.id === selectedSkillId ? "selected" : ""}>${esc(skill.nome)} \xB7 ${esc(skillMetaLabel(skill))}</option>`).join("")}`;
   if (selectedSkillId && [...select.options].some((option) => option.value === selectedSkillId)) select.value = selectedSkillId;
-  select.onchange = () => setSkillDeleteWarning("");
+  select.onchange = () => selectSkillForCatalog(select.value);
 }
 function refreshSkillVariantParentOptions(selectedSkillId = "") {
   const select = document.getElementById("skill-new-variant-parent");
@@ -8756,6 +8756,7 @@ function resetSkillParamControls() {
   });
 }
 function openSkillCatalogModal(source = "generic", ownerId = null, deleteSkillId = "") {
+  if (skillCatalogIsSaving()) return;
   skillCatalogContext = { source, ownerId };
   document.getElementById("skill-new-name").value = "";
   document.getElementById("skill-new-level").value = "1";
@@ -8773,6 +8774,7 @@ function openSkillCatalogModal(source = "generic", ownerId = null, deleteSkillId
   refreshSkillDeleteOptions(deleteSkillId);
   setSkillDeleteWarning("");
   setSkillCatalogStatus("", "");
+  selectSkillForCatalog(deleteSkillId);
   document.getElementById("modal-skill-catalog").hidden = false;
   requestAnimationFrame(() => {
     var _a2;
@@ -8780,10 +8782,12 @@ function openSkillCatalogModal(source = "generic", ownerId = null, deleteSkillId
   });
 }
 function chiudiSkillCatalogModal() {
+  if (skillCatalogIsSaving()) return;
   document.getElementById("modal-skill-catalog").hidden = true;
   skillCatalogContext = null;
 }
 function openSelectedSkillDetailFromCatalog() {
+  if (skillCatalogIsSaving()) return;
   var _a2;
   const skillId = (_a2 = document.getElementById("skill-delete-select")) == null ? void 0 : _a2.value;
   if (!skillId) {
@@ -8869,6 +8873,7 @@ function selectNewSkillInLessonOwner(ownerId, skillId) {
   onLessonSkillSelected(skillSelect);
 }
 function creaSkillCatalogo() {
+  if (skillCatalogContext && skillCatalogContext.editingSkillId) return aggiornaSkillCatalogo();
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j;
     const btn = document.getElementById("btn-create-skill");
@@ -9261,6 +9266,7 @@ function salvaDefinizioneVarianteSkill(_0, _1) {
   });
 }
 function cancellaSkillCatalogo() {
+  if (skillCatalogIsSaving()) return;
   return __async(this, null, function* () {
     const select = document.getElementById("skill-delete-select");
     const skillId = select == null ? void 0 : select.value;
