@@ -11440,7 +11440,7 @@ function renderLezionePartecipanti() {
     const ids = allieviSelezionabiliLezione().filter(a => a.gruppo === gruppo).map(a => a.id)
     setLezioneAllievi(ids)
     renderGroupLessonPanel(gruppo)
-    if (lezioneFormMode !== 'prep') renderGroupSkillWorkspace()
+    renderGroupSkillWorkspace()
   }
   lezionePresetAllievoId = null
   applyDefaultLessonLocationFromTarget()
