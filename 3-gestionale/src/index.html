@@ -737,6 +737,14 @@
     .group-exclusion-label { color: var(--muted); font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .035em; margin-right: .1rem; }
     .group-exclude-chip { border: 1px solid var(--bordo); border-radius: 999px; background: rgba(255,255,255,.025); color: var(--muted); padding: .16rem .45rem; font-size: .72rem; font-weight: 700; cursor: pointer; }
     .group-exclude-chip.is-excluded { border-color: rgba(248,113,113,.75); background: rgba(248,113,113,.16); color: #fecaca; }
+    .birthday-reminders { margin: .75rem 0; padding: .7rem .85rem; border: 1px solid var(--bordo); border-radius: var(--r); background: var(--panel-soft); }
+    .birthday-reminders h3 { margin: 0 0 .5rem; font-size: .85rem; color: var(--testo); }
+    .birthday-reminder { display: flex; align-items: center; gap: .6rem; padding: .35rem 0; }
+    .birthday-reminder > div { min-width: 0; }
+    .birthday-reminder strong { display: block; font-size: .86rem; overflow-wrap: anywhere; }
+    .birthday-reminder strong button { text-align: left; font: inherit; background: transparent; border: 0; padding: 0; }
+    .birthday-reminder div > span { display: block; margin-top: .15rem; color: var(--muted); font-size: .78rem; }
+    .birthday-reminder.is-today div > span { color: var(--blu); font-weight: 700; }
     .skill-dimensions { grid-column: 1 / -1; flex-basis: 100%; display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); gap: .35rem; }
     .skill-dimensions[hidden] { display: none; }
     .skill-dimensions select { font-size: .76rem; padding: .3rem .42rem; color: var(--muted); }
@@ -1427,6 +1435,7 @@
           </div>
           <div class="field"><label>Meteo</label><input type="text" id="lz-meteo" placeholder="Sole, vento, fondo bagnato..."></div>
         </div>
+        <div id="lz-birthday-reminders" hidden></div>
         <div id="lz-student-notes" class="lesson-student-notes" hidden></div>
         <p class="form-sec">Note speciali</p>
         <div class="field"><input type="text" id="lz-note-speciali" placeholder="Annotazione breve visibile nella lista lezioni"></div>
@@ -2026,9 +2035,10 @@
 </script>
 <script src="./lesson-time-input.js?v=20261020-lesson-time-scroll"></script>
 <script src="./skill-catalog-editor.js?v=20261020-skill-editor"></script>
+<script src="./birthday-reminders.js?v=20261020-birthdays"></script>
 <script>
 (function () {
-  var appVersion = '20261020-skill-editor';
+  var appVersion = '20261020-birthdays';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;

@@ -27,6 +27,7 @@ function fixture(file, mode) {
     selectedLezioneAllieviIds: () => selected,
     setLezioneAllievi(ids) { selected = ids; get('lz-skills-container').innerHTML = '' },
     renderGroupLessonPanel() {}, renderGroupIndividualControls() {},
+    renderLessonBirthdayReminders() {},
     renderLessonStudentNotes() {}, renderSpecialGuestPanel() {}, renderPrepBoard() {},
     refreshSuggerimentiLuogoSeAperti() {}, applyDefaultLessonLocationFromTarget() {},
     renderLezioneLocationSelect() {}, aggiungiSkillRow() {}, addIndividualSkillWork() {},

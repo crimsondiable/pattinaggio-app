@@ -1066,6 +1066,7 @@ function renderHome() {
         <p class="home-summary">Oggi hai ${lessons.length} lezion${lessons.length === 1 ? 'e' : 'i'} e ${involvedById.size} alliev${involvedById.size === 1 ? 'o' : 'i'} coinvolti.</p>
       </div>
 
+      ${renderBirthdayReminders(allieviVisibiliGod(), { title: 'Compleanni · oggi e prossimi 14 giorni' })}
       <div class="home-operational-grid">
         <section class="home-section" aria-labelledby="home-timeline-title">
           <div class="home-section-head"><h3 id="home-timeline-title">Timeline giornata</h3><span>${esc(formatDateWithWeekday(today))}</span></div>
@@ -8593,6 +8594,7 @@ async function loadScheda(id) {
             ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievoTier(allievo) === 'VIP' ? ' <span class="vip-star">★</span>' : ''}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
+          ${renderBirthdayReminders([allievo], { links: false })}
        </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
           <div class="inline-action-menu">
@@ -11155,6 +11157,7 @@ async function loadLezione(id) {
       ${(lezione.updated_at || lezione.aggiornato_il) ? `<div style="color:var(--muted);font-size:.78rem;margin-top:.55rem">Ultima modifica: ${esc(formatDateTime(lezione.updated_at || lezione.aggiornato_il))}</div>` : ''}
     </div>
 
+    ${renderBirthdayReminders(partecipanti.map(a => allievoById(a.id) || a), { title: 'Compleanni dei partecipanti · oggi e prossimi 14 giorni' })}
     ${noteSpecialiRead ? `
       <p class="sec-title">Note speciali</p>
       <div class="card"><div class="lezione-read-note">${esc(noteSpecialiRead)}</div></div>
@@ -11406,6 +11409,7 @@ async function initNuovaLezione(presetAllievoId = null) {
     pendingSpecialGuestId = null
     saveLezioneDraft({ keep: true })
   }
+  renderLessonBirthdayReminders()
 }
 
 function renderLezionePartecipanti() {
@@ -11419,6 +11423,7 @@ function renderLezionePartecipanti() {
   groupPanel.innerHTML = ''
   listEl.innerHTML = ''
   hiddenChecks.innerHTML = ''
+  renderLessonBirthdayReminders()
   if (target && errEl?.textContent === 'Seleziona allievo, gruppo o campo libero.') {
     errEl.classList.remove('show')
   }
@@ -11733,6 +11738,7 @@ function selectedLezioneAllieviIds() {
 }
 
 function renderLessonStudentNotes() {
+  renderLessonBirthdayReminders()
   const panel = document.getElementById('lz-student-notes')
   if (!panel) return
   if (editingLezioneId) {
@@ -12177,6 +12183,7 @@ function toggleAllievo(cb, nomeCompleto) {
 }
 
 async function renderPrepBoard() {
+  renderLessonBirthdayReminders()
   const board = document.getElementById('lz-prep-board')
   if (!board) return
   board.hidden = true
