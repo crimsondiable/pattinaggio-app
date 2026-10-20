@@ -1129,6 +1129,18 @@
     .sn-name { font-size: .79rem; }
     .skill-tree-legend { font-size: .73rem; }
   </style>
+  <style>
+    .lesson-time-field { position: relative; }
+    .lesson-time-entry { display: flex; gap: .35rem; }
+    .lesson-time-entry input { min-width: 0; flex: 1; }
+    .lesson-time-entry .btn { padding: .3rem .65rem; font-size: 1.25rem; }
+    .lesson-time-picker { position: absolute; z-index: 20; top: 100%; left: 0; width: 220px; padding: .75rem; background: var(--surface, #191e2b); border: 1px solid var(--border, #394052); border-radius: 10px; box-shadow: 0 6px 24px #0008; }
+    .lesson-time-picker[hidden] { display: none; }
+    .lesson-time-columns { display: flex; gap: .7rem; margin-bottom: .6rem; }
+    .lesson-time-columns label { flex: 1; }
+    .lesson-time-columns select { display: block; width: 100%; height: 150px; margin-top: .3rem; color-scheme: dark; }
+    .lesson-time-columns option { padding: .35rem; text-align: center; }
+  </style>
   <link rel="stylesheet" href="./route-builder/routeBuilder.css">
   <link rel="stylesheet" href="./lesson-radial-planner/lessonRadialPlanner.css">
   <style>
@@ -1378,7 +1390,20 @@
         </div>
         <div class="form-grid">
           <div class="field"><label>Data *</label><input type="date" id="lz-data"></div>
-          <div class="field"><label for="lz-ora">Ora</label><input type="time" id="lz-ora" step="60"></div>
+          <div class="field lesson-time-field">
+            <label for="lz-ora">Ora</label>
+            <div class="lesson-time-entry">
+              <input type="text" id="lz-ora" inputmode="numeric" placeholder="14:30" maxlength="5" autocomplete="off">
+              <button type="button" class="btn" id="lz-ora-toggle" aria-label="Scegli ora e minuti" aria-expanded="false" aria-controls="lz-ora-picker">◷</button>
+            </div>
+            <div id="lz-ora-picker" class="lesson-time-picker" hidden>
+              <div class="lesson-time-columns">
+                <label>Ore<select id="lz-ora-hours" size="5" aria-label="Ore"></select></label>
+                <label>Minuti<select id="lz-ora-minutes" size="5" aria-label="Minuti"></select></label>
+              </div>
+              <button type="button" class="btn" id="lz-ora-done">Conferma</button>
+            </div>
+          </div>
           <div class="field"><label>Durata (min)</label><input type="number" id="lz-durata" placeholder="60" min="1"></div>
           <div class="field">
             <label>Lezione di</label>
@@ -1994,9 +2019,10 @@
   };
 })();
 </script>
+<script src="./lesson-time-input.js?v=20261020-lesson-time-scroll"></script>
 <script>
 (function () {
-  var appVersion = '20261020-lesson-time-picker';
+  var appVersion = '20261020-lesson-time-scroll';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;
