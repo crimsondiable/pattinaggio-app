@@ -1396,7 +1396,7 @@ const importedAppointmentVariantIds = /* @__PURE__ */ new Set();
 let godMode = false, godScope = "all", shareContext = null;
 let appNotesTimer = null, appNotesRemoteAvailable = null;
 let appNotesReturnView = null;
-const SUPER_MAESTRO_EMAIL = "francesco.grinovero@gmail.com";
+let currentSuperMaestroUid = null, superMaestroAccessVersion = 0, authIdentityVersion = 0;
 const APP_BOOT_HASH = window.location.hash;
 let appBootRouteConsumed = false;
 const safeStorage = (() => {
@@ -1424,7 +1424,7 @@ function localDateIso(date = /* @__PURE__ */ new Date()) {
   return local.toISOString().slice(0, 10);
 }
 function isSuperMaestro() {
-  return currentEmail === SUPER_MAESTRO_EMAIL;
+  return !!currentUid && currentSuperMaestroUid === String(currentUid);
 }
 let tuningMode = "parametri", tuningCard = null, tuningCount = 0, tuningAlertCount = 0, tuningLocal = [], tuningRecentSkillIds = [];
 function supabaseClientIsV2(client = sb) {
@@ -1475,12 +1475,38 @@ function getCurrentAuthUser() {
     return (session == null ? void 0 : session.user) || null;
   });
 }
+function refreshSuperMaestroAccess() {
+  return __async(this, null, function* () {
+    const version = ++superMaestroAccessVersion;
+    const uid = currentUid ? String(currentUid) : null;
+    currentSuperMaestroUid = null;
+    try {
+      if (uid && typeof (sb == null ? void 0 : sb.rpc) === "function") {
+        const { data, error } = yield sb.rpc("is_super_maestro");
+        if (version !== superMaestroAccessVersion || String(currentUid || "") !== uid) return false;
+        if (!error && data === true) currentSuperMaestroUid = uid;
+        if (error) console.warn("Verifica ruolo super maestro non disponibile; funzioni riservate disabilitate.");
+      }
+    } catch (_error) {
+      if (version !== superMaestroAccessVersion || String(currentUid || "") !== uid) return false;
+      console.warn("Verifica ruolo super maestro non disponibile; funzioni riservate disabilitate.");
+    }
+    if (!isSuperMaestro()) {
+      godMode = false;
+      godScope = "all";
+    }
+    return isSuperMaestro();
+  });
+}
 function refreshCurrentAuthIdentity() {
   return __async(this, null, function* () {
+    const version = ++authIdentityVersion;
     const user = yield getCurrentAuthUser();
+    if (version !== authIdentityVersion) return currentUid;
     currentUid = (user == null ? void 0 : user.id) || null;
     currentEmail = ((user == null ? void 0 : user.email) || "").toLowerCase();
     currentUserMetadata = (user == null ? void 0 : user.user_metadata) || {};
+    yield refreshSuperMaestroAccess();
     return currentUid;
   });
 }
@@ -1643,7 +1669,16 @@ document.addEventListener("click", (e) => {
 });
 function handleAuthSession(session) {
   return __async(this, null, function* () {
+    var _a2;
     if (session) {
+      if (currentUid && ((_a2 = session.user) == null ? void 0 : _a2.id) && String(session.user.id) !== String(currentUid)) {
+        authIdentityVersion++;
+        superMaestroAccessVersion++;
+        currentSuperMaestroUid = null;
+        godMode = false;
+        godScope = "all";
+        appInited = false;
+      }
       document.getElementById("screen-login").hidden = true;
       document.getElementById("screen-app").hidden = false;
       if (!appInited) {
@@ -1653,6 +1688,11 @@ function handleAuthSession(session) {
     } else {
       appInited = false;
       appHistoryStarted = false;
+      authIdentityVersion++;
+      superMaestroAccessVersion++;
+      currentSuperMaestroUid = null;
+      godMode = false;
+      godScope = "all";
       currentUid = null;
       currentEmail = "";
       currentUserMetadata = {};
@@ -1720,10 +1760,7 @@ function consumeInitialRoute() {
 }
 function initApp() {
   return __async(this, null, function* () {
-    const user = yield getCurrentAuthUser();
-    currentUid = (user == null ? void 0 : user.id) || null;
-    currentEmail = ((user == null ? void 0 : user.email) || "").toLowerCase();
-    currentUserMetadata = (user == null ? void 0 : user.user_metadata) || {};
+    yield refreshCurrentAuthIdentity();
     maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata);
     maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata);
     calendarioItems = loadCalendarioItems(currentUserMetadata);

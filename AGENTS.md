@@ -152,7 +152,8 @@ Tabelle chiamate dal codice:
 Funzioni/RLS note:
 
 - gestione multi-maestro e condivisione allievi;
-- super maestro hardcoded nel frontend come `francesco.grinovero@gmail.com`;
+- ruolo super maestro verificato dal frontend tramite RPC `is_super_maestro`;
+  le migrazioni storiche contengono ancora il precedente identificativo personale;
 - policy RLS su molte tabelle;
 - hardening di grant/execute;
 - `notify pgrst, 'reload schema'` in alcune migrazioni recenti.

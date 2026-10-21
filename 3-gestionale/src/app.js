@@ -115,7 +115,7 @@ const importedAppointmentVariantIds = new Set()
 let godMode = false, godScope = 'all', shareContext = null
 let appNotesTimer = null, appNotesRemoteAvailable = null
 let appNotesReturnView = null
-const SUPER_MAESTRO_EMAIL = 'francesco.grinovero@gmail.com'
+let currentSuperMaestroUid = null, superMaestroAccessVersion = 0, authIdentityVersion = 0
 const APP_BOOT_HASH = window.location.hash
 let appBootRouteConsumed = false
 
@@ -144,7 +144,7 @@ function localDateIso(date = new Date()) {
 }
 
 function isSuperMaestro() {
-  return currentEmail === SUPER_MAESTRO_EMAIL
+  return !!currentUid && currentSuperMaestroUid === String(currentUid)
 }
 let tuningMode = 'parametri', tuningCard = null, tuningCount = 0, tuningAlertCount = 0, tuningLocal = [], tuningRecentSkillIds = []
 let skillLabView = 'overview', skillLabUsageRows = [], skillLabLoaded = false, skillLabLoading = false
@@ -197,11 +197,36 @@ async function getCurrentAuthUser() {
   return session?.user || null
 }
 
+async function refreshSuperMaestroAccess() {
+  const version = ++superMaestroAccessVersion
+  const uid = currentUid ? String(currentUid) : null
+  currentSuperMaestroUid = null
+  try {
+    if (uid && typeof sb?.rpc === 'function') {
+      const { data, error } = await sb.rpc('is_super_maestro')
+      if (version !== superMaestroAccessVersion || String(currentUid || '') !== uid) return false
+      if (!error && data === true) currentSuperMaestroUid = uid
+      if (error) console.warn('Verifica ruolo super maestro non disponibile; funzioni riservate disabilitate.')
+    }
+  } catch (_error) {
+    if (version !== superMaestroAccessVersion || String(currentUid || '') !== uid) return false
+    console.warn('Verifica ruolo super maestro non disponibile; funzioni riservate disabilitate.')
+  }
+  if (!isSuperMaestro()) {
+    godMode = false
+    godScope = 'all'
+  }
+  return isSuperMaestro()
+}
+
 async function refreshCurrentAuthIdentity() {
+  const version = ++authIdentityVersion
   const user = await getCurrentAuthUser()
+  if (version !== authIdentityVersion) return currentUid
   currentUid = user?.id || null
   currentEmail = (user?.email || '').toLowerCase()
   currentUserMetadata = user?.user_metadata || {}
+  await refreshSuperMaestroAccess()
   return currentUid
 }
 
@@ -441,6 +466,14 @@ async function retryBootstrap() {
 
 async function handleAuthSession(session) {
   if (session) {
+    if (currentUid && session.user?.id && String(session.user.id) !== String(currentUid)) {
+      authIdentityVersion++
+      superMaestroAccessVersion++
+      currentSuperMaestroUid = null
+      godMode = false
+      godScope = 'all'
+      appInited = false
+    }
     document.getElementById('screen-login').hidden = true
     document.getElementById('screen-app').hidden   = false
     if (!appInited) {
@@ -460,6 +493,11 @@ async function handleAuthSession(session) {
     clearBootstrapError()
     appInited = false
     appHistoryStarted = false
+    authIdentityVersion++
+    superMaestroAccessVersion++
+    currentSuperMaestroUid = null
+    godMode = false
+    godScope = 'all'
     currentUid = null
     currentEmail = ''
     currentUserMetadata = {}
@@ -529,10 +567,7 @@ function consumeInitialRoute() {
 }
 
 async function initApp() {
-  const user = await getCurrentAuthUser()
-  currentUid = user?.id || null
-  currentEmail = (user?.email || '').toLowerCase()
-  currentUserMetadata = user?.user_metadata || {}
+  await refreshCurrentAuthIdentity()
   maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata)
   maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata)
   calendarioItems = loadCalendarioItems(currentUserMetadata)
