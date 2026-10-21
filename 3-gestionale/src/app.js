@@ -7617,14 +7617,7 @@ function vacationLabel(allievo = {}) {
 }
 
 function allievoLessonNote(allievo = {}) {
-  const p = allievo?.profilo || {}
-  return String(
-    p.note_lezione ||
-    p.promemoria_lezione ||
-    p.note_per_lezione ||
-    allievo?.note_lezione ||
-    ''
-  ).trim()
+  return studentLessonReminderValue(allievo)
 }
 
 async function salvaAllievo() {
@@ -8612,7 +8605,7 @@ async function loadScheda(id) {
           </div>
         </div>
       </div>
-      ${!isAss ? `<div class="scheda-lesson-note"><span>Promemoria lezione</span>${noteLezione ? esc(noteLezione) : '<span style="color:var(--muted);font-weight:600;text-transform:none;letter-spacing:0">Nessuna nota impostata.</span>'}</div>` : ''}
+      ${!isAss ? renderStudentLessonReminder(allievo) : ''}
       ${!isAss && allievo.note_generali ? `<p style="font-size:.88rem;color:var(--muted);margin-top:.6rem">${esc(allievo.note_generali)}</p>` : ''}
     </div>
 

@@ -8104,6 +8104,7 @@ function loadScheda(id) {
           </div>
         </div>
       </div>
+      ${!isAss ? renderStudentLessonReminder(allievo) : ''}
       ${!isAss && allievo.note_generali ? `<p style="font-size:.88rem;color:var(--muted);margin-top:.6rem">${esc(allievo.note_generali)}</p>` : ""}
     </div>
 

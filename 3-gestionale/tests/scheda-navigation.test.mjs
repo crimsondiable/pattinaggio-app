@@ -62,6 +62,7 @@ function fixture(legacy = false) {
     parseMapCoordinate: () => null, renderSkillTree: () => '',
   })
   vm.runInContext(readFileSync(new URL('../src/birthday-reminders.js', import.meta.url), 'utf8'), context)
+  vm.runInContext(readFileSync(new URL('../src/student-lesson-reminder.js', import.meta.url), 'utf8'), context)
   if (legacy) vm.runInContext(input.slice(0, input.indexOf('var _a, _b;')), context)
   vm.runInContext(declaration('showView', input) + declaration('loadScheda', input) + (legacy ? '' : declaration('toggleVacanzaAllievo')), context)
   const popstateStart = input.search(/window.addEventListener\(['"]popstate['"],/)

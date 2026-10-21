@@ -809,6 +809,14 @@
     .scheda-meta { color: var(--muted); font-size: .86rem; margin-bottom: 1.4rem; }
     .scheda-lesson-note { margin-top: .45rem; padding-top: .55rem; border-top: 1px solid rgba(148,163,184,.18); color: var(--testo); font-size: .88rem; line-height: 1.4; white-space: pre-wrap; }
     .scheda-lesson-note span { display: inline-block; margin-right: .35rem; color: var(--blu); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .055em; }
+    .student-reminder { white-space: normal; }
+    .student-reminder-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+    .student-reminder-head .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; }
+    .student-reminder-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .student-reminder-add { font-size: .85rem; text-align: left; padding: .3rem 0; }
+    .student-reminder textarea { width: 100%; margin: .4rem 0; padding: .6rem; color: var(--testo); background: var(--panel-soft); border: 1px solid var(--bordo); border-radius: var(--r); font: inherit; resize: vertical; }
+    .student-reminder-actions { display: flex; gap: .45rem; }
+    .student-reminder-error { color: var(--danger); margin: .4rem 0; font-size: .83rem; }
     .lesson-student-notes { margin-top: .65rem; border: 1px solid rgba(110,231,249,.28); border-radius: var(--r); background: rgba(110,231,249,.06); padding: .7rem .8rem; }
     .lesson-student-notes-title { color: var(--blu); font-size: .72rem; font-weight: 850; text-transform: uppercase; letter-spacing: .055em; margin-bottom: .4rem; }
     .lesson-student-note-row { font-size: .88rem; line-height: 1.42; color: var(--testo); white-space: pre-wrap; }
@@ -2036,9 +2044,10 @@
 <script src="./lesson-time-input.js?v=20261020-lesson-time-scroll"></script>
 <script src="./skill-catalog-editor.js?v=20261020-skill-editor"></script>
 <script src="./birthday-reminders.js?v=20261020-birthdays"></script>
+<script src="./student-lesson-reminder.js?v=20261020-inline-reminder"></script>
 <script>
 (function () {
-  var appVersion = '20261020-birthdays';
+  var appVersion = '20261020-inline-reminder';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;
