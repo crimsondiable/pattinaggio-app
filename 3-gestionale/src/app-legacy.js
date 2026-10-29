@@ -8134,7 +8134,7 @@ function renderAllievi() {
     return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
-          <td><strong>${esc(gruppo)}</strong>${soloGruppo ? ' <span class="chip">Solo gruppo</span>' : ""}${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
+          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -8165,7 +8165,7 @@ function renderAllievi() {
               <div class="allievi-mobile-card-title">
                 <strong>${esc(gruppo)}</strong>
               </div>
-              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? "allievo" : "allievi"}${soloGruppo ? " \xB7 Solo gruppo" : ""}</span></div>
+              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? "allievo" : "allievi"}</span></div>
             </a>
             <div class="allievi-mobile-group-tools">
               ${!soloGruppo ? `<button class="btn btn-ghost btn-sm" type="button" title="${expanded ? "Compatta membri" : "Espandi membri"}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})">${expanded ? "\u25B4" : "\u25BE"}</button>` : ""}

@@ -56,7 +56,7 @@ for (const file of ['app.js','app-legacy.js']) {
   test(file + ': Tutti shows the class once, never flattens its students, and keeps mixed members', () => {
     const f = fixture(file); f.c.renderAllievi()
     const html = f.get('allievi-content').innerHTML
-    assert.ok(html.includes('Budosan prova')); assert.ok(html.includes('Solo gruppo'))
+    assert.ok(html.includes('Budosan prova')); assert.ok(!html.includes('Solo gruppo'))
     for (const name of ['ClassOnlyAnna','ClassOnlyBea']) assert.ok(!html.includes(name))
     for (const name of ['CarloCabisto','DinaCabisto','ElenaPrivata']) assert.ok(html.includes(name))
   })
