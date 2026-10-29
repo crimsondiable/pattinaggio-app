@@ -9432,6 +9432,14 @@ function profiloComuneGruppo(membri) {
     solo_gruppo: membri.some(allievoSoloGruppo)
   };
 }
+function groupMemberBirthdayLabel(allievo) {
+  const age = allievoEtaLabel(allievo.data_nascita);
+  if (!age) return "Compleanno non indicato";
+  const iso = dateInputToIso(allievo.data_nascita);
+  const [, month, day] = iso.split("-").map(Number);
+  const months = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+  return `${day} ${months[month - 1]} \xB7 ${age}`;
+}
 function loadGruppo(nomeGruppo) {
   return __async(this, null, function* () {
     showView("gruppo");
@@ -9474,7 +9482,7 @@ function loadGruppo(nomeGruppo) {
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
         <div class="gruppo-member-name">${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(" "))}${a.nickname ? ` \xB7 ${esc(a.nickname)}` : ""}${vacationIconHtml(allievoInVacanza(a))}</div>
-        <div class="gruppo-member-meta">Lv ${a.livello_attuale || "\u2014"} \xB7 ${esc(a.blocco_attuale || "\u2014")}${allievoInVacanza(a) ? " \xB7 In vacanza" : ""}</div>
+        <div class="gruppo-member-meta">${esc(groupMemberBirthdayLabel(a))}${allievoInVacanza(a) ? " \xB7 In vacanza" : ""}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
     </div>`).join("");

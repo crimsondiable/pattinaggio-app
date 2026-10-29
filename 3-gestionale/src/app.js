@@ -8388,6 +8388,15 @@ function profiloComuneGruppo(membri) {
   }
 }
 
+function groupMemberBirthdayLabel(allievo) {
+  const age = allievoEtaLabel(allievo.data_nascita)
+  if (!age) return 'Compleanno non indicato'
+  const iso = dateInputToIso(allievo.data_nascita)
+  const [, month, day] = iso.split('-').map(Number)
+  const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+  return `${day} ${months[month - 1]} · ${age}`
+}
+
 async function loadGruppo(nomeGruppo) {
   showView('gruppo')
   currentGruppoNome = nomeGruppo
@@ -8442,7 +8451,7 @@ async function loadGruppo(nomeGruppo) {
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
         <div class="gruppo-member-name">${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(' '))}${a.nickname ? ` · ${esc(a.nickname)}` : ''}${vacationIconHtml(allievoInVacanza(a))}</div>
-        <div class="gruppo-member-meta">Lv ${a.livello_attuale || '—'} · ${esc(a.blocco_attuale || '—')}${allievoInVacanza(a) ? ' · In vacanza' : ''}</div>
+        <div class="gruppo-member-meta">${esc(groupMemberBirthdayLabel(a))}${allievoInVacanza(a) ? ' · In vacanza' : ''}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
     </div>`).join('')
