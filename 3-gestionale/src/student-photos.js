@@ -8,9 +8,9 @@ function studentPhotoPath(student) {
 }
 
 function studentAvatarHtml(student, large = false) {
-  const initials = [student.nome, student.cognome].filter(Boolean).map(s => s[0]).join('').slice(0, 2).toUpperCase() || '?'
+  const initials = student.avatar_sigla || [student.nome, student.cognome].filter(Boolean).map(s => s[0]).join('').slice(0, 2).toUpperCase() || '?'
   const path = studentPhotoPath(student)
-  return `<span class="student-avatar${large ? ' student-avatar-large' : ''}" aria-hidden="true"><span>${esc(initials)}</span>${path ? `<img data-student-photo="${esc(path)}" alt="" hidden>` : ''}</span>`
+  return `<span class="student-avatar${large ? ' student-avatar-large' : ''}" aria-hidden="true"><span>${esc(initials)}</span>${path ? `<img data-student-photo="${esc(path)}" data-photo-bucket="${esc(student.photo_bucket || 'student-photos')}" alt="" hidden>` : ''}</span>`
 }
 
 function studentPhotoControls(student) {
@@ -24,13 +24,14 @@ async function hydrateStudentPhotos() {
   const images = Array.from(document.querySelectorAll('img[data-student-photo]'))
   await Promise.all(images.map(async img => {
     const path = img.dataset.studentPhoto
-    const key = uid + ':' + path
+    const bucketName = img.dataset.photoBucket || 'student-photos'
+    const key = uid + ':' + bucketName + ':' + path
     if (img.dataset.photoLoading || (img.dataset.photoKey === key && Number(img.dataset.photoExpiry) > Date.now())) return
     img.dataset.photoLoading = '1'
     try {
       let entry = studentPhotoCache.get(key)
       if (!entry || entry.expires < Date.now()) {
-        entry = { expires: Date.now() + 240000, promise: sb.storage.from('student-photos').createSignedUrl(path, 600) }
+        entry = { expires: Date.now() + 240000, promise: sb.storage.from(bucketName).createSignedUrl(path, 600) }
         studentPhotoCache.set(key, entry)
       }
       const result = await entry.promise
@@ -76,23 +77,24 @@ function closeStudentPhotoEditor() {
   editor?.returnFocus?.focus()
 }
 
-function openStudentPhotoEditor(id) {
+function openStudentPhotoEditor(id, groupName = null) {
   if (studentPhotoEditor) return
-  const student = allAllievi.find(a => a.id === id)
+  const student = groupName ? groupAvatarRecord(groupName) : allAllievi.find(a => a.id === id)
   if (!student || !currentUid) return
-  studentPhotoEditor = { id, uid: currentUid, original: student.foto_path || null, busy: false, returnFocus: document.activeElement }
+  studentPhotoEditor = { id, groupName, originalInitials: groupName ? student.avatar_sigla : null, uid: currentUid, original: student.foto_path || null, busy: false, returnFocus: document.activeElement }
   const modal = document.createElement('div')
   modal.id = 'student-photo-dialog'
   modal.className = 'student-photo-overlay'
   modal.innerHTML = `<div class="card student-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="student-photo-title">
     <h2 id="student-photo-title">Foto di ${esc(student.nome)}</h2>
+    ${groupName ? `${studentAvatarHtml(student, true)}<label class="student-photo-file">Sigla anteprima<input id="group-photo-initials" type="text" maxlength="4" value="${esc(student.avatar_sigla)}" oninput="refreshGroupInitialsPreview(this)" aria-describedby="group-photo-help"></label><p id="group-photo-help" style="font-size:.82rem;color:var(--muted)">Da 1 a 4 lettere o numeri. Compare quando manca la foto.</p>` : ''}
     <label class="student-photo-file">Scegli una foto o scattala dal telefono<input id="student-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onchange="selectStudentPhoto(this)"></label>
     <div id="student-photo-crop" hidden><canvas id="student-photo-preview" width="512" height="512" aria-label="Anteprima del ritaglio"></canvas>
     <label>Ingrandimento<input id="student-photo-zoom" type="range" min="1" max="3" step="0.05" value="1" oninput="drawStudentPhotoCrop()"></label>
     <label>Sposta orizzontalmente<input id="student-photo-x" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label>
     <label>Sposta verticalmente<input id="student-photo-y" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label></div>
     <p id="student-photo-status" role="status" aria-live="polite"></p>
-    <div class="student-photo-actions"><button type="button" class="btn btn-primary" id="student-photo-save" disabled onclick="saveStudentPhoto(false)">Salva foto</button>
+    <div class="student-photo-actions"><button type="button" class="btn btn-primary" id="student-photo-save" ${groupName ? '' : 'disabled'} onclick="saveStudentPhoto(false)">${groupName ? 'Salva' : 'Salva foto'}</button>
     ${studentPhotoPath(student) ? '<button type="button" class="btn btn-outline" onclick="saveStudentPhoto(true)">Rimuovi foto</button>' : ''}
     <button type="button" class="btn btn-ghost" onclick="closeStudentPhotoEditor()">Annulla</button></div></div>`
   document.body.appendChild(modal)
@@ -114,7 +116,7 @@ async function selectStudentPhoto(input) {
   if (!file || !editor || editor.busy) return
   editor.image = null
   const selection = editor.selection = (editor.selection || 0) + 1
-  document.getElementById('student-photo-save').disabled = true
+  document.getElementById('student-photo-save').disabled = !editor.groupName
   document.getElementById('student-photo-crop').hidden = true
   const status = document.getElementById('student-photo-status')
   status.textContent = ''
@@ -141,6 +143,7 @@ async function selectStudentPhoto(input) {
 }
 
 async function persistStudentPhoto(editor, blob) {
+  if (editor.groupName) return persistGroupPhoto(editor, blob)
   if (currentUid !== editor.uid) throw new Error('La sessione è cambiata. Accedi di nuovo.')
   const bucket = sb.storage.from('student-photos')
   const path = blob ? editor.id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg' : null
@@ -178,29 +181,35 @@ async function persistStudentPhoto(editor, blob) {
 
 async function saveStudentPhoto(remove) {
   const editor = studentPhotoEditor
-  if (!editor || editor.busy || (!remove && !editor.image)) return
-  if (remove && !confirm('Rimuovere la foto di questo allievo?')) return
+  if (!editor || editor.busy || (!remove && !editor.image && !editor.groupName)) return
+  if (remove && !confirm('Rimuovere questa foto?')) return
+  if (editor.groupName) {
+    editor.initials = document.getElementById('group-photo-initials').value.trim().toUpperCase()
+    editor.remove = !!remove
+  }
   const status = document.getElementById('student-photo-status')
   editor.busy = true
   document.querySelectorAll('#student-photo-dialog button, #student-photo-dialog input').forEach(el => { el.disabled = true })
   status.textContent = remove ? 'Rimozione in corso…' : 'Salvataggio in corso…'
   let saved = false
   try {
-    const blob = remove ? null : await new Promise(resolve => document.getElementById('student-photo-preview').toBlob(resolve, 'image/jpeg', 0.82))
-    if (!remove && !blob) throw new Error('Impossibile preparare la foto. Prova con un’altra immagine.')
+    const blob = remove || !editor.image ? null : await new Promise(resolve => document.getElementById('student-photo-preview').toBlob(resolve, 'image/jpeg', 0.82))
+    if (!remove && editor.image && !blob) throw new Error('Impossibile preparare la foto. Prova con un’altra immagine.')
     const result = await persistStudentPhoto(editor, blob)
     saved = true
     editor.busy = false
     closeStudentPhotoEditor()
     renderAllievi()
-    if (currentSchedaId === editor.id) await loadScheda(editor.id)
+    if (editor.groupName) {
+      if (currentGruppoNome === editor.groupName) await loadGruppo(editor.groupName)
+    } else if (currentSchedaId === editor.id) await loadScheda(editor.id)
     if (result.cleanupFailed) alert('Foto aggiornata. Non è stato possibile eliminare il vecchio file: riprova la pulizia quando la connessione è disponibile.')
   } catch (error) {
     if (saved) { console.warn('Foto salvata; aggiornare la scheda per rivederla.'); return }
     status.textContent = error.message || 'Impossibile salvare la foto. Riprova.'
     editor.busy = false
     document.querySelectorAll('#student-photo-dialog button, #student-photo-dialog input').forEach(el => { el.disabled = false })
-    document.getElementById('student-photo-save').disabled = !editor.image
+    document.getElementById('student-photo-save').disabled = !editor.image && !editor.groupName
   }
 }
 

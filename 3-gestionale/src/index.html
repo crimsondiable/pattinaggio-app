@@ -1178,7 +1178,7 @@
     }
   </style>
   <link rel="stylesheet" href="./responsive/shell.css?v=20260712-operational-home">
-  <link rel="stylesheet" href="./student-photos.css?v=20261029-photos">
+  <link rel="stylesheet" href="./student-photos.css?v=20261029-group-avatars">
   <link rel="stylesheet" href="./responsive/allievi.css?v=20260711-mobile-compact-students">
   <link rel="stylesheet" href="./responsive/home.css?v=20260712-home-without-quick-actions">
   <script src="./responsive/shell.js?v=20260712-operational-home" defer></script>
@@ -2052,7 +2052,7 @@
 <script src="./student-lesson-reminder.js?v=20261020-inline-reminder"></script>
 <script>
 (function () {
-  var appVersion = '20261029-group-birthdays';
+  var appVersion = '20261029-group-avatars';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;
@@ -2077,6 +2077,7 @@
     localScript('./lesson-radial-planner/LessonTimelineList.js'),
     localScript('./lesson-radial-planner/LessonDetailPanel.js'),
     localScript('./lesson-radial-planner/LessonRadialPlannerPage.js'),
+    localScript('./group-appearance.js'),
     localScript('./student-photos.js'),
     localScript('./app.js')
   ];

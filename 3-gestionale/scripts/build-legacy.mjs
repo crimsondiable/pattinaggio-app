@@ -90,6 +90,7 @@ const orderedFiles = [
   'route-builder/ElementPropertiesPanel.js',
   'route-builder/RouteToolbar.js',
   'route-builder/RouteBuilderPage.js',
+  'group-appearance.js',
   'student-photos.js',
   'app.js',
 ]

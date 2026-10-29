@@ -13,3 +13,4 @@
 #student-photo-status { font-size:.87rem; overflow-wrap:anywhere; }
 .student-photo-actions { display:flex; gap:.4rem; flex-wrap:wrap; }
 @media(max-width:480px) { .student-photo-overlay { padding:.6rem; } .student-photo-dialog { max-height:94vh; } }
+.student-photo-file input[type="text"] { width:100%; padding:.55rem .65rem; border:1px solid var(--bordo); border-radius:var(--r); background:var(--panel-soft); color:var(--testo); font:inherit; text-transform:uppercase; }

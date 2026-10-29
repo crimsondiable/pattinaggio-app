@@ -31,7 +31,7 @@ function fixture(file) {
     allievoTier: () => 'C', allievoTierListLabel: () => 'C', allievoInVacanza: () => false,
     gruppoInVacanza: () => false, allievoEtaLabel: () => '', vacationIconHtml: () => '',
     renderAllievoActionMenu: () => '', renderGruppoActionMenu: () => '',
-    studentAvatarHtml: () => '', ordinaAllieviLista: a => a, esc: String, jsArg: JSON.stringify,
+    studentAvatarHtml: () => '', groupAvatarHtml: () => '', ordinaAllieviLista: a => a, esc: String, jsArg: JSON.stringify,
     lezioniCache: [], allievoById: id => students.find(a => a.id === id),
     activeAppointmentAllievi: () => students, appointmentGroupTargetValue: name => 'group:' + name,
     APPOINTMENT_GROUP_TARGET_PREFIX: 'group:',

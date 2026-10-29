@@ -6966,7 +6966,7 @@ function renderAllievi() {
       return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
-          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}</td>
+          <td>${groupAvatarHtml(gruppo, membri)}<strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -6996,7 +6996,7 @@ function renderAllievi() {
           <div class="allievi-mobile-card-head">
             <a class="allievi-mobile-card-open" href="#gruppo:${encodeURIComponent(gruppo)}" onclick="event.preventDefault(); showView('gruppo',${jsArg(gruppo)})">
               <div class="allievi-mobile-card-title">
-                <strong>${esc(gruppo)}</strong>
+                ${groupAvatarHtml(gruppo, membri)}<strong>${esc(gruppo)}</strong>
               </div>
               <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? 'allievo' : 'allievi'}</span></div>
             </a>
@@ -7823,6 +7823,9 @@ async function salvaAllievo() {
   }
 
   payload.solo_gruppo = !isAss && gruppoSoloGruppo(payload.gruppo)
+  const groupAvatar = payload.gruppo ? groupAppearance(payload.gruppo) : null
+  if (groupAvatar) payload.profilo.gruppo_avatar = groupAvatar
+  else delete payload.profilo.gruppo_avatar
 
   try {
     let data, error
@@ -8226,6 +8229,7 @@ async function salvaGruppo() {
     in_vacanza: inVacanza,
   }
   const commonProfile = {
+    gruppo_avatar: groupAppearance(editingGruppoNome || nomeGruppo),
     ...commonLogistica,
     logistica_gruppo: commonLogistica,
   }
@@ -8273,6 +8277,10 @@ async function salvaGruppo() {
         }
       }
 
+      if (editingGruppoNome !== nomeGruppo) {
+        const { error: avatarRenameError } = await sb.rpc('rename_group_appearance', { p_old_group: editingGruppoNome, p_new_group: nomeGruppo })
+        if (avatarRenameError) throw avatarRenameError
+      }
       await saveGroupOnlyRule(nomeGruppo, soloGruppo)
       filtroGruppo = nomeGruppo
       const nextGroup = nomeGruppo
@@ -8474,6 +8482,7 @@ async function loadGruppo(nomeGruppo) {
     <div class="card">
       <div class="lezione-read-head">
         <div>
+          ${groupPhotoControls(nomeGruppo, membri)}
           <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
           <div class="scheda-meta">${profilo.solo_gruppo ? 'Solo gruppo · ' : ''}${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} ${gruppoArchiviato ? 'archiviat' : 'attiv'}${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
         </div>

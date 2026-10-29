@@ -1376,6 +1376,96 @@ var _a, _b;
   };
   window.RouteBuilderPage = RouteBuilderPage;
 })();
+let groupPhotoOpening = false;
+function groupAppearance(name, members = allAllievi) {
+  var _a2;
+  return ((_a2 = members.find((a) => {
+    var _a3, _b2;
+    return a.gruppo === name && ((_b2 = (_a3 = a.profilo) == null ? void 0 : _a3.gruppo_avatar) == null ? void 0 : _b2.id);
+  })) == null ? void 0 : _a2.profilo.gruppo_avatar) || null;
+}
+function groupAvatarRecord(name, members = allAllievi) {
+  const config = groupAppearance(name, members);
+  const fallback = String(name || "").trim().split(/\s+/).map((word) => word[0]).slice(0, 2).join("").toUpperCase() || "?";
+  return { id: (config == null ? void 0 : config.id) || "", nome: name, avatar_sigla: (config == null ? void 0 : config.sigla) || fallback, foto_path: (config == null ? void 0 : config.foto_path) || null, photo_bucket: "group-photos" };
+}
+function groupAvatarHtml(name, members = allAllievi, large = false) {
+  return studentAvatarHtml(groupAvatarRecord(name, members), large);
+}
+function groupPhotoControls(name, members = allAllievi) {
+  return `<div class="student-photo-controls">${groupAvatarHtml(name, members, true)}<button type="button" class="btn btn-outline btn-sm" onclick="openGroupPhotoEditor(${jsArg(name)})">Foto e sigla</button></div>`;
+}
+function updateLocalGroupAppearance(name, config) {
+  allAllievi.forEach((a) => {
+    if (a.gruppo === name) a.profilo = __spreadProps(__spreadValues({}, a.profilo || {}), { gruppo_avatar: config });
+  });
+}
+function openGroupPhotoEditor(name) {
+  return __async(this, null, function* () {
+    if (groupPhotoOpening || studentPhotoEditor || !currentUid) return;
+    groupPhotoOpening = true;
+    const uid = currentUid;
+    try {
+      const result = yield sb.rpc("save_group_appearance", { p_group: name, p_sigla: groupAvatarRecord(name).avatar_sigla });
+      if (result.error) throw result.error;
+      if (uid !== currentUid) return;
+      updateLocalGroupAppearance(name, result.data);
+      openStudentPhotoEditor(result.data.id, name);
+    } catch (error) {
+      alert(error.message || "Impossibile aprire foto e sigla del gruppo.");
+    } finally {
+      groupPhotoOpening = false;
+    }
+  });
+}
+function refreshGroupInitialsPreview(input) {
+  const text = input.value.trim().toUpperCase();
+  const span = document.querySelector("#student-photo-dialog .student-avatar > span");
+  if (span) span.textContent = text || "?";
+}
+function persistGroupPhoto(editor, blob) {
+  return __async(this, null, function* () {
+    if (currentUid !== editor.uid) throw new Error("La sessione \xE8 cambiata. Accedi di nuovo.");
+    if (!/^[A-Z0-9À-ÖØ-Þ]{1,4}$/.test(editor.initials || "")) throw new Error("Usa da 1 a 4 lettere o numeri per la sigla.");
+    const bucket = sb.storage.from("group-photos");
+    const uploadedPath = blob ? editor.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg" : null;
+    const path = uploadedPath || (editor.remove ? null : editor.original);
+    if (blob) {
+      if (blob.size > 524288) throw new Error("Foto troppo pesante.");
+      const upload = yield bucket.upload(uploadedPath, blob, { contentType: "image/jpeg", upsert: false, cacheControl: "60" });
+      if (upload.error) throw upload.error;
+    }
+    try {
+      if (currentUid !== editor.uid) throw new Error("La sessione \xE8 cambiata. Accedi di nuovo.");
+      const result = yield sb.rpc("save_group_appearance", {
+        p_group: editor.groupName,
+        p_action: "save",
+        p_sigla: editor.initials,
+        p_photo_path: path,
+        p_expected_photo_path: editor.original,
+        p_expected_sigla: editor.originalInitials
+      });
+      if (result.error) throw result.error;
+      updateLocalGroupAppearance(editor.groupName, result.data);
+    } catch (error) {
+      if (uploadedPath && ["40001", "42501", "22023"].includes(error.code)) yield bucket.remove([uploadedPath]).catch(() => {
+      });
+      throw error;
+    }
+    let cleanupFailed = false;
+    if (editor.original && editor.original !== path) {
+      try {
+        const result = yield bucket.remove([editor.original]);
+        cleanupFailed = !!result.error;
+      } catch (_) {
+        cleanupFailed = true;
+      }
+    }
+    studentPhotoCache.clear();
+    return { path, cleanupFailed };
+  });
+}
+;
 const studentPhotoCache = /* @__PURE__ */ new Map();
 let studentPhotoEditor = null;
 function studentPhotoPath(student) {
@@ -1383,9 +1473,9 @@ function studentPhotoPath(student) {
   return path.startsWith(student.id + "/") && /^[a-zA-Z0-9/-]+\.jpg$/.test(path) ? path : "";
 }
 function studentAvatarHtml(student, large = false) {
-  const initials = [student.nome, student.cognome].filter(Boolean).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
+  const initials = student.avatar_sigla || [student.nome, student.cognome].filter(Boolean).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
   const path = studentPhotoPath(student);
-  return `<span class="student-avatar${large ? " student-avatar-large" : ""}" aria-hidden="true"><span>${esc(initials)}</span>${path ? `<img data-student-photo="${esc(path)}" alt="" hidden>` : ""}</span>`;
+  return `<span class="student-avatar${large ? " student-avatar-large" : ""}" aria-hidden="true"><span>${esc(initials)}</span>${path ? `<img data-student-photo="${esc(path)}" data-photo-bucket="${esc(student.photo_bucket || "student-photos")}" alt="" hidden>` : ""}</span>`;
 }
 function studentPhotoControls(student) {
   if (student.tipo === "associazione") return "";
@@ -1399,13 +1489,14 @@ function hydrateStudentPhotos() {
     yield Promise.all(images.map((img) => __async(null, null, function* () {
       var _a2, _b2;
       const path = img.dataset.studentPhoto;
-      const key = uid + ":" + path;
+      const bucketName = img.dataset.photoBucket || "student-photos";
+      const key = uid + ":" + bucketName + ":" + path;
       if (img.dataset.photoLoading || img.dataset.photoKey === key && Number(img.dataset.photoExpiry) > Date.now()) return;
       img.dataset.photoLoading = "1";
       try {
         let entry = studentPhotoCache.get(key);
         if (!entry || entry.expires < Date.now()) {
-          entry = { expires: Date.now() + 24e4, promise: sb.storage.from("student-photos").createSignedUrl(path, 600) };
+          entry = { expires: Date.now() + 24e4, promise: sb.storage.from(bucketName).createSignedUrl(path, 600) };
           studentPhotoCache.set(key, entry);
         }
         const result = yield entry.promise;
@@ -1458,23 +1549,24 @@ function closeStudentPhotoEditor() {
   studentPhotoEditor = null;
   (_b2 = editor == null ? void 0 : editor.returnFocus) == null ? void 0 : _b2.focus();
 }
-function openStudentPhotoEditor(id) {
+function openStudentPhotoEditor(id, groupName = null) {
   if (studentPhotoEditor) return;
-  const student = allAllievi.find((a) => a.id === id);
+  const student = groupName ? groupAvatarRecord(groupName) : allAllievi.find((a) => a.id === id);
   if (!student || !currentUid) return;
-  studentPhotoEditor = { id, uid: currentUid, original: student.foto_path || null, busy: false, returnFocus: document.activeElement };
+  studentPhotoEditor = { id, groupName, originalInitials: groupName ? student.avatar_sigla : null, uid: currentUid, original: student.foto_path || null, busy: false, returnFocus: document.activeElement };
   const modal = document.createElement("div");
   modal.id = "student-photo-dialog";
   modal.className = "student-photo-overlay";
   modal.innerHTML = `<div class="card student-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="student-photo-title">
     <h2 id="student-photo-title">Foto di ${esc(student.nome)}</h2>
+    ${groupName ? `${studentAvatarHtml(student, true)}<label class="student-photo-file">Sigla anteprima<input id="group-photo-initials" type="text" maxlength="4" value="${esc(student.avatar_sigla)}" oninput="refreshGroupInitialsPreview(this)" aria-describedby="group-photo-help"></label><p id="group-photo-help" style="font-size:.82rem;color:var(--muted)">Da 1 a 4 lettere o numeri. Compare quando manca la foto.</p>` : ""}
     <label class="student-photo-file">Scegli una foto o scattala dal telefono<input id="student-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onchange="selectStudentPhoto(this)"></label>
     <div id="student-photo-crop" hidden><canvas id="student-photo-preview" width="512" height="512" aria-label="Anteprima del ritaglio"></canvas>
     <label>Ingrandimento<input id="student-photo-zoom" type="range" min="1" max="3" step="0.05" value="1" oninput="drawStudentPhotoCrop()"></label>
     <label>Sposta orizzontalmente<input id="student-photo-x" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label>
     <label>Sposta verticalmente<input id="student-photo-y" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label></div>
     <p id="student-photo-status" role="status" aria-live="polite"></p>
-    <div class="student-photo-actions"><button type="button" class="btn btn-primary" id="student-photo-save" disabled onclick="saveStudentPhoto(false)">Salva foto</button>
+    <div class="student-photo-actions"><button type="button" class="btn btn-primary" id="student-photo-save" ${groupName ? "" : "disabled"} onclick="saveStudentPhoto(false)">${groupName ? "Salva" : "Salva foto"}</button>
     ${studentPhotoPath(student) ? '<button type="button" class="btn btn-outline" onclick="saveStudentPhoto(true)">Rimuovi foto</button>' : ""}
     <button type="button" class="btn btn-ghost" onclick="closeStudentPhotoEditor()">Annulla</button></div></div>`;
   document.body.appendChild(modal);
@@ -1505,7 +1597,7 @@ function selectStudentPhoto(input) {
     if (!file || !editor || editor.busy) return;
     editor.image = null;
     const selection = editor.selection = (editor.selection || 0) + 1;
-    document.getElementById("student-photo-save").disabled = true;
+    document.getElementById("student-photo-save").disabled = !editor.groupName;
     document.getElementById("student-photo-crop").hidden = true;
     const status = document.getElementById("student-photo-status");
     status.textContent = "";
@@ -1544,6 +1636,7 @@ function selectStudentPhoto(input) {
 function persistStudentPhoto(editor, blob) {
   return __async(this, null, function* () {
     var _a2, _b2;
+    if (editor.groupName) return persistGroupPhoto(editor, blob);
     if (currentUid !== editor.uid) throw new Error("La sessione \xE8 cambiata. Accedi di nuovo.");
     const bucket = sb.storage.from("student-photos");
     const path = blob ? editor.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg" : null;
@@ -1587,8 +1680,12 @@ function persistStudentPhoto(editor, blob) {
 function saveStudentPhoto(remove) {
   return __async(this, null, function* () {
     const editor = studentPhotoEditor;
-    if (!editor || editor.busy || !remove && !editor.image) return;
-    if (remove && !confirm("Rimuovere la foto di questo allievo?")) return;
+    if (!editor || editor.busy || !remove && !editor.image && !editor.groupName) return;
+    if (remove && !confirm("Rimuovere questa foto?")) return;
+    if (editor.groupName) {
+      editor.initials = document.getElementById("group-photo-initials").value.trim().toUpperCase();
+      editor.remove = !!remove;
+    }
     const status = document.getElementById("student-photo-status");
     editor.busy = true;
     document.querySelectorAll("#student-photo-dialog button, #student-photo-dialog input").forEach((el) => {
@@ -1597,14 +1694,16 @@ function saveStudentPhoto(remove) {
     status.textContent = remove ? "Rimozione in corso\u2026" : "Salvataggio in corso\u2026";
     let saved = false;
     try {
-      const blob = remove ? null : yield new Promise((resolve) => document.getElementById("student-photo-preview").toBlob(resolve, "image/jpeg", 0.82));
-      if (!remove && !blob) throw new Error("Impossibile preparare la foto. Prova con un\u2019altra immagine.");
+      const blob = remove || !editor.image ? null : yield new Promise((resolve) => document.getElementById("student-photo-preview").toBlob(resolve, "image/jpeg", 0.82));
+      if (!remove && editor.image && !blob) throw new Error("Impossibile preparare la foto. Prova con un\u2019altra immagine.");
       const result = yield persistStudentPhoto(editor, blob);
       saved = true;
       editor.busy = false;
       closeStudentPhotoEditor();
       renderAllievi();
-      if (currentSchedaId === editor.id) yield loadScheda(editor.id);
+      if (editor.groupName) {
+        if (currentGruppoNome === editor.groupName) yield loadGruppo(editor.groupName);
+      } else if (currentSchedaId === editor.id) yield loadScheda(editor.id);
       if (result.cleanupFailed) alert("Foto aggiornata. Non \xE8 stato possibile eliminare il vecchio file: riprova la pulizia quando la connessione \xE8 disponibile.");
     } catch (error) {
       if (saved) {
@@ -1616,7 +1715,7 @@ function saveStudentPhoto(remove) {
       document.querySelectorAll("#student-photo-dialog button, #student-photo-dialog input").forEach((el) => {
         el.disabled = false;
       });
-      document.getElementById("student-photo-save").disabled = !editor.image;
+      document.getElementById("student-photo-save").disabled = !editor.image && !editor.groupName;
     }
   });
 }
@@ -8134,7 +8233,7 @@ function renderAllievi() {
     return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
-          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
+          <td>${groupAvatarHtml(gruppo, membri)}<strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -8163,7 +8262,7 @@ function renderAllievi() {
           <div class="allievi-mobile-card-head">
             <a class="allievi-mobile-card-open" href="#gruppo:${encodeURIComponent(gruppo)}" onclick="event.preventDefault(); showView('gruppo',${jsArg(gruppo)})">
               <div class="allievi-mobile-card-title">
-                <strong>${esc(gruppo)}</strong>
+                ${groupAvatarHtml(gruppo, membri)}<strong>${esc(gruppo)}</strong>
               </div>
               <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? "allievo" : "allievi"}</span></div>
             </a>
@@ -8907,6 +9006,9 @@ function salvaAllievo() {
       aggiornato_il: (/* @__PURE__ */ new Date()).toISOString()
     }, editingAllieviId ? {} : { maestro_id: writeUid });
     payload.solo_gruppo = !isAss && gruppoSoloGruppo(payload.gruppo);
+    const groupAvatar = payload.gruppo ? groupAppearance(payload.gruppo) : null;
+    if (groupAvatar) payload.profilo.gruppo_avatar = groupAvatar;
+    else delete payload.profilo.gruppo_avatar;
     try {
       let data, error;
       if (savedId) {
@@ -9271,7 +9373,9 @@ function salvaGruppo() {
       pagamento_note: pagamentoNote,
       in_vacanza: inVacanza
     };
-    const commonProfile = __spreadProps(__spreadValues({}, commonLogistica), {
+    const commonProfile = __spreadProps(__spreadValues({
+      gruppo_avatar: groupAppearance(editingGruppoNome || nomeGruppo)
+    }, commonLogistica), {
       logistica_gruppo: commonLogistica
     });
     if (editingGruppoNome) {
@@ -9314,6 +9418,10 @@ function salvaGruppo() {
             });
             if (error) throw error;
           }
+        }
+        if (editingGruppoNome !== nomeGruppo) {
+          const { error: avatarRenameError } = yield sb.rpc("rename_group_appearance", { p_old_group: editingGruppoNome, p_new_group: nomeGruppo });
+          if (avatarRenameError) throw avatarRenameError;
         }
         yield saveGroupOnlyRule(nomeGruppo, soloGruppo);
         filtroGruppo = nomeGruppo;
@@ -9501,6 +9609,7 @@ function loadGruppo(nomeGruppo) {
     <div class="card">
       <div class="lezione-read-head">
         <div>
+          ${groupPhotoControls(nomeGruppo, membri)}
           <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
           <div class="scheda-meta">${profilo.solo_gruppo ? "Solo gruppo \xB7 " : ""}${membri.length} alliev${membri.length === 1 ? "o" : "i"} ${gruppoArchiviato ? "archiviat" : "attiv"}${membri.length === 1 ? "o" : "i"}${profilo.in_vacanza ? " \xB7 In vacanza" : ""}</div>
         </div>
