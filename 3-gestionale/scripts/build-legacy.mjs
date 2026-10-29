@@ -90,6 +90,7 @@ const orderedFiles = [
   'route-builder/ElementPropertiesPanel.js',
   'route-builder/RouteToolbar.js',
   'route-builder/RouteBuilderPage.js',
+  'student-photos.js',
   'app.js',
 ]
 
@@ -111,7 +112,10 @@ const args = [
   '--log-level=warning',
 ]
 
-const result = spawnSync('npx', args, { stdio: 'inherit' })
+const localEsbuild = process.env.GESTIONALE_ESBUILD_BINARY
+const result = localEsbuild
+  ? spawnSync(localEsbuild, args.slice(2), { stdio: 'inherit' })
+  : spawnSync('npx', args, { stdio: 'inherit' })
 if (result.status !== 0) {
   process.exit(result.status || 1)
 }

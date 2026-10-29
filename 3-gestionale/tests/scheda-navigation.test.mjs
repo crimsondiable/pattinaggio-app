@@ -51,7 +51,7 @@ function fixture(legacy = false) {
     isMissingLessonMeteoError: () => false,
     isMissingDimensioniError: () => false,
     isMissingNoteSpecialiError: () => false,
-    renderLezioniTable: () => '',
+    renderLezioniTable: () => '', studentPhotoControls: () => '', allievoSoloGruppo: () => false, lezionePresetPerAllievo: a => 'modo:prep:' + a.id,
     logisticaIndividualeProfilo: () => ({}),
     visibleAllievoAddress: () => ({}), allievoEtaLabel: () => '',
     allievoTier: () => 'C', vacationLabel: () => '',

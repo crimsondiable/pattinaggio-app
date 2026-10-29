@@ -251,6 +251,15 @@ var _a, _b;
     { key: "large", label: "Grande", width: 1040, height: 640 },
     { key: "custom", label: "Personalizzato", width: 760, height: 480 }
   ];
+  const ROUTE_SURFACE_PRESETS = [
+    { key: "basketball", label: "Campetto da basket", width: 840, height: 450 },
+    { key: "futsal", label: "Campo calcio a 5", width: 1e3, height: 500 },
+    { key: "volleyball", label: "Campo pallavolo", width: 720, height: 360 },
+    { key: "figure_skating", label: "Figure skating / pista", width: 1200, height: 600 },
+    { key: "school_gym", label: "Palestra scolastica", width: 760, height: 460 },
+    { key: "open_area", label: "Piazza / area libera", width: 900, height: 560 },
+    { key: "custom", label: "Custom salvato", width: 760, height: 480 }
+  ];
   const ROUTE_VARIANT_COLORS = {
     orange: "#f97316",
     yellow: "#facc15",
@@ -266,6 +275,8 @@ var _a, _b;
   };
   const DEFAULT_ROUTE_CANVAS = Object.freeze({
     size: "medium",
+    surface: "custom",
+    surfaceName: "Campo custom",
     width: 760,
     height: 480,
     showGrid: true,
@@ -293,6 +304,9 @@ var _a, _b;
   }
   function getCanvasSize(size) {
     return ROUTE_CANVAS_SIZES.find((item) => item.key === size) || ROUTE_CANVAS_SIZES[1];
+  }
+  function getSurfacePreset(surface) {
+    return ROUTE_SURFACE_PRESETS.find((item) => item.key === surface) || ROUTE_SURFACE_PRESETS[ROUTE_SURFACE_PRESETS.length - 1];
   }
   function parseList(value) {
     if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
@@ -361,8 +375,12 @@ var _a, _b;
   function normalizeCanvas(canvas = {}) {
     const sizeDef = getCanvasSize(canvas.size || DEFAULT_ROUTE_CANVAS.size);
     const isCustom = (canvas.size || sizeDef.key) === "custom";
+    const surfaceDef = getSurfacePreset(canvas.surface || DEFAULT_ROUTE_CANVAS.surface);
+    const surface = surfaceDef.key;
     return {
       size: isCustom ? "custom" : sizeDef.key,
+      surface,
+      surfaceName: String(canvas.surfaceName || surfaceDef.label || DEFAULT_ROUTE_CANVAS.surfaceName),
       width: clampNumber(canvas.width, 240, 4e3, sizeDef.width),
       height: clampNumber(canvas.height, 180, 4e3, sizeDef.height),
       showGrid: canvas.showGrid !== false,
@@ -402,20 +420,35 @@ var _a, _b;
     });
     return normalizeRoute2(__spreadProps(__spreadValues({}, route), { canvas }));
   }
+  function applySurfacePreset(route, surfaceKey) {
+    const surface = getSurfacePreset(surfaceKey);
+    const isCustom = surface.key === "custom";
+    const canvas = __spreadProps(__spreadValues({}, route.canvas), {
+      size: "custom",
+      surface: surface.key,
+      surfaceName: isCustom ? route.canvas.surfaceName || surface.label : surface.label,
+      width: isCustom ? route.canvas.width : surface.width,
+      height: isCustom ? route.canvas.height : surface.height
+    });
+    return normalizeRoute2(__spreadProps(__spreadValues({}, route), { canvas }));
+  }
   window.RouteModels = {
     ROUTE_ELEMENT_TYPES,
     ROUTE_CANVAS_SIZES,
+    ROUTE_SURFACE_PRESETS,
     ROUTE_VARIANT_COLORS,
     DEFAULT_ROUTE_CANVAS,
     getElementType,
     hasElementType,
     getCanvasSize,
+    getSurfacePreset,
     createElement,
     createRoute,
     normalizeElement,
     normalizeRoute: normalizeRoute2,
     parseList,
     applyCanvasSize,
+    applySurfacePreset,
     uid
   };
   window.ROUTE_ELEMENT_TYPES = ROUTE_ELEMENT_TYPES;
@@ -708,13 +741,30 @@ var _a, _b;
       if (!this.route) return;
       const canvas = this.route.canvas;
       this.viewport.classList.toggle("is-pan-mode", this.panMode);
-      this.ruler.textContent = `${canvas.width} x ${canvas.height} px`;
+      this.ruler.textContent = `${canvas.surfaceName} - ${canvas.width} larghezza x ${canvas.height} lunghezza`;
       this.content.style.transform = `translate(${canvas.panX}px, ${canvas.panY}px) scale(${canvas.zoom})`;
       this.stage.style.width = `${canvas.width}px`;
       this.stage.style.height = `${canvas.height}px`;
       this.stage.style.setProperty("--route-grid-size", `${canvas.gridSize || 24}px`);
       this.stage.classList.toggle("show-grid", !!canvas.showGrid);
-      this.stage.innerHTML = this.route.elements.map((element) => this.renderElement(element)).join("");
+      this.stage.dataset.surface = canvas.surface || "custom";
+      this.stage.innerHTML = `${this.renderSurface(canvas)}${this.route.elements.map((element) => this.renderElement(element)).join("")}`;
+    }
+    renderSurface(canvas) {
+      const surface = canvas.surface || "custom";
+      return `
+        <div class="route-surface-lines route-surface-${surface}" aria-hidden="true">
+          <span class="route-line route-line-half"></span>
+          <span class="route-line route-line-center-circle"></span>
+          <span class="route-line route-line-left-box"></span>
+          <span class="route-line route-line-right-box"></span>
+          <span class="route-line route-line-left-circle"></span>
+          <span class="route-line route-line-right-circle"></span>
+          <span class="route-line route-line-volley-left"></span>
+          <span class="route-line route-line-volley-right"></span>
+          <span class="route-line route-line-rink"></span>
+        </div>
+      `;
     }
     renderElement(element) {
       const def = window.RouteModels.getElementType(element.type);
@@ -801,6 +851,8 @@ var _a, _b;
         <div class="route-props-actions">
           <button type="button" class="btn btn-outline btn-sm" data-action="rotate-left">Ruota -15</button>
           <button type="button" class="btn btn-outline btn-sm" data-action="rotate-right">Ruota +15</button>
+          <button type="button" class="btn btn-outline btn-sm" data-action="rotate-left-90">Ruota -90</button>
+          <button type="button" class="btn btn-outline btn-sm" data-action="rotate-right-90">Ruota +90</button>
           <button type="button" class="btn btn-outline btn-sm" data-action="duplicate">Duplica</button>
           <button type="button" class="btn btn-delete-soft btn-sm" data-action="delete">Elimina</button>
         </div>
@@ -824,8 +876,10 @@ var _a, _b;
         </datalist>
       `;
       this.root.querySelectorAll("[data-field]").forEach((input) => {
-        input.addEventListener("input", () => this.emitChange(input, element));
-        input.addEventListener("change", () => this.emitChange(input, element));
+        const isSelect = input.tagName === "SELECT";
+        const isCheckbox = input.type === "checkbox";
+        if (!isSelect && !isCheckbox) input.addEventListener("input", () => this.emitChange(input, element, { live: true }));
+        input.addEventListener("change", () => this.emitChange(input, element, { live: false }));
       });
       this.root.querySelectorAll("[data-action]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -834,10 +888,12 @@ var _a, _b;
           if (action === "delete") this.onDelete(element.id);
           if (action === "rotate-left") this.onRotate(element.id, -15);
           if (action === "rotate-right") this.onRotate(element.id, 15);
+          if (action === "rotate-left-90") this.onRotate(element.id, -90);
+          if (action === "rotate-right-90") this.onRotate(element.id, 90);
         });
       });
     }
-    emitChange(input, element) {
+    emitChange(input, element, options = {}) {
       const fieldName = input.dataset.field;
       let value = input.type === "checkbox" ? input.checked : input.value;
       if (["x", "y", "rotation", "width", "height", "difficulty", "order"].includes(fieldName)) {
@@ -850,7 +906,7 @@ var _a, _b;
         patch.variant = nextDef.defaultVariant;
         if (!element.label || element.label === previousDef.label) patch.label = nextDef.label;
       }
-      this.onChange(element.id, patch);
+      this.onChange(element.id, patch, options);
     }
   }
   function field(name, label, value) {
@@ -889,8 +945,8 @@ var _a, _b;
       var _a2, _b2;
       const route = this.route;
       const canvas = route.canvas;
-      const sizes = window.RouteModels.ROUTE_CANVAS_SIZES.map((size) => `
-        <option value="${size.key}" ${size.key === canvas.size ? "selected" : ""}>${size.label}</option>
+      const surfaces = window.RouteModels.ROUTE_SURFACE_PRESETS.map((surface) => `
+        <option value="${surface.key}" ${surface.key === canvas.surface ? "selected" : ""}>${surface.label}</option>
       `).join("");
       const savedOptions = this.savedRoutes.map((item) => `
         <option value="${item.id}" ${item.id === route.id ? "selected" : ""}>${escapeHtml(item.title)}</option>
@@ -914,9 +970,10 @@ var _a, _b;
               <option value="">Percorsi salvati</option>
               ${savedOptions}
             </select></label>
-            <label class="field"><span>Spazio</span><select data-canvas-field="size">${sizes}</select></label>
-            <label class="field route-dimension-field"><span>Larghezza</span><input type="number" min="240" data-canvas-field="width" value="${canvas.width}" ${canvas.size !== "custom" ? "readonly" : ""}></label>
-            <label class="field route-dimension-field"><span>Altezza</span><input type="number" min="180" data-canvas-field="height" value="${canvas.height}" ${canvas.size !== "custom" ? "readonly" : ""}></label>
+            <label class="field route-surface-field"><span>Fondo</span><select data-canvas-field="surface">${surfaces}</select></label>
+            <label class="field route-surface-name-field"><span>Nome fondo</span><input data-canvas-field="surfaceName" value="${escapeAttr(canvas.surfaceName)}" placeholder="Campo custom"></label>
+            <label class="field route-dimension-field"><span>Larghezza</span><input type="number" min="240" data-canvas-field="width" value="${canvas.width}"></label>
+            <label class="field route-dimension-field"><span>Lunghezza</span><input type="number" min="180" data-canvas-field="height" value="${canvas.height}"></label>
             <label class="route-check-field"><input type="checkbox" data-canvas-field="showGrid" ${canvas.showGrid ? "checked" : ""}> Griglia</label>
             <div class="route-zoom-controls">
               <button type="button" class="btn btn-outline btn-sm" data-action="zoom-out">-</button>
@@ -944,17 +1001,21 @@ var _a, _b;
     }
     bind() {
       this.root.querySelectorAll("[data-route-field]").forEach((input) => {
-        input.addEventListener("input", () => {
+        const emit = (options) => {
           var _a2, _b2;
           const field = input.dataset.routeField;
           let value = input.value;
           if (["level", "estimatedDurationMinutes"].includes(field)) value = Number(value);
-          (_b2 = (_a2 = this.handlers).onRouteChange) == null ? void 0 : _b2.call(_a2, field, value);
-        });
+          (_b2 = (_a2 = this.handlers).onRouteChange) == null ? void 0 : _b2.call(_a2, field, value, options);
+        };
+        input.addEventListener("input", () => emit({ live: true }));
+        input.addEventListener("change", () => emit({ live: false }));
       });
       this.root.querySelectorAll("[data-canvas-field]").forEach((input) => {
-        input.addEventListener("input", () => this.emitCanvasChange(input));
-        input.addEventListener("change", () => this.emitCanvasChange(input));
+        const isSelect = input.tagName === "SELECT";
+        const isCheckbox = input.type === "checkbox";
+        if (!isSelect && !isCheckbox) input.addEventListener("input", () => this.emitCanvasChange(input, { live: true }));
+        input.addEventListener("change", () => this.emitCanvasChange(input, { live: false }));
       });
       this.root.querySelectorAll("[data-action]").forEach((control) => {
         const action = control.dataset.action;
@@ -976,12 +1037,12 @@ var _a, _b;
         control.addEventListener("click", () => this.dispatchAction(action));
       });
     }
-    emitCanvasChange(input) {
+    emitCanvasChange(input, options = {}) {
       var _a2, _b2;
       const field = input.dataset.canvasField;
       let value = input.type === "checkbox" ? input.checked : input.value;
       if (["width", "height"].includes(field)) value = Number(value);
-      (_b2 = (_a2 = this.handlers).onCanvasChange) == null ? void 0 : _b2.call(_a2, { [field]: value });
+      (_b2 = (_a2 = this.handlers).onCanvasChange) == null ? void 0 : _b2.call(_a2, { [field]: value }, options);
     }
     dispatchAction(action) {
       var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
@@ -1044,8 +1105,8 @@ var _a, _b;
         </div>
       `;
       this.toolbar = new window.RouteToolbar(this.root.querySelector("#route-toolbar-root"), {
-        onRouteChange: (field, value) => this.updateRouteField(field, value),
-        onCanvasChange: (patch) => this.updateCanvas(patch),
+        onRouteChange: (field, value, options) => this.updateRouteField(field, value, options),
+        onCanvasChange: (patch, options) => this.updateCanvas(patch, options),
         onSave: () => this.save(),
         onLoad: (id) => this.load(id),
         onExport: () => this.exportJson(),
@@ -1061,11 +1122,11 @@ var _a, _b;
       this.canvas = new window.CanvasArea(this.root.querySelector("#route-canvas-root"), {
         onAddElement: (type, point) => this.addElement(type, point),
         onSelect: (id) => this.selectElement(id),
-        onChangeElement: (id, patch) => this.updateElement(id, patch, { quiet: true }),
-        onCanvasChange: (patch) => this.updateCanvas(patch, { quiet: true })
+        onChangeElement: (id, patch) => this.updateElement(id, patch, { quiet: true, live: true }),
+        onCanvasChange: (patch) => this.updateCanvas(patch, { quiet: true, live: true })
       });
       this.properties = new window.ElementPropertiesPanel(this.root.querySelector("#route-properties-root"), {
-        onChange: (id, patch) => this.updateElement(id, patch),
+        onChange: (id, patch, options) => this.updateElement(id, patch, options),
         onDuplicate: (id) => this.duplicateElement(id),
         onDelete: (id) => this.deleteElement(id),
         onRotate: (id, delta) => this.rotateElement(id, delta)
@@ -1099,6 +1160,15 @@ var _a, _b;
       this.canvas.setState(this.route, this.selectedId, { panMode: this.panMode });
       this.properties.setState(this.route, this.selectedId, this.skillOptions());
     }
+    renderLiveCanvas() {
+      this.canvas.setState(this.route, this.selectedId, { panMode: this.panMode });
+      this.toolbar.route = this.route;
+      this.properties.route = this.route;
+    }
+    clearTransientStatus() {
+      window.clearTimeout(this.statusTimer);
+      this.status = null;
+    }
     setStatus(message, type = "msg-info") {
       this.status = message ? { message, type } : null;
       window.clearTimeout(this.statusTimer);
@@ -1112,19 +1182,35 @@ var _a, _b;
     markUpdated(route) {
       this.route = window.RouteModels.normalizeRoute(__spreadProps(__spreadValues({}, route), { updatedAt: (/* @__PURE__ */ new Date()).toISOString() }));
     }
-    updateRouteField(field, value) {
+    updateRouteField(field, value, options = {}) {
       const next = __spreadProps(__spreadValues({}, this.route), { [field]: field === "skills" ? window.RouteModels.parseList(value) : value });
       this.markUpdated(next);
+      if (options.live) {
+        this.clearTransientStatus();
+        return;
+      }
       this.render();
     }
     updateCanvas(patch, options = {}) {
+      const changes = __spreadValues({}, patch);
+      if ((Object.prototype.hasOwnProperty.call(changes, "width") || Object.prototype.hasOwnProperty.call(changes, "height")) && !Object.prototype.hasOwnProperty.call(changes, "surface")) {
+        changes.size = "custom";
+        changes.surface = "custom";
+      }
       let nextRoute = __spreadProps(__spreadValues({}, this.route), { canvas: __spreadValues(__spreadValues({}, this.route.canvas), patch) });
-      if (Object.prototype.hasOwnProperty.call(patch, "size")) {
-        nextRoute = window.RouteModels.applyCanvasSize(nextRoute, patch.size);
+      if (Object.prototype.hasOwnProperty.call(changes, "surface") && patch.surface) {
+        nextRoute = window.RouteModels.applySurfacePreset(nextRoute, patch.surface);
+      } else if (Object.prototype.hasOwnProperty.call(changes, "size")) {
+        nextRoute = window.RouteModels.applyCanvasSize(__spreadProps(__spreadValues({}, this.route), { canvas: __spreadValues(__spreadValues({}, this.route.canvas), changes) }), changes.size);
       } else {
-        nextRoute = window.RouteModels.normalizeRoute(nextRoute);
+        nextRoute = window.RouteModels.normalizeRoute(__spreadProps(__spreadValues({}, this.route), { canvas: __spreadValues(__spreadValues({}, this.route.canvas), changes) }));
       }
       this.markUpdated(nextRoute);
+      if (options.live) {
+        this.clearTransientStatus();
+        this.renderLiveCanvas();
+        return;
+      }
       if (!options.quiet) this.setStatus("Canvas aggiornato.", "msg-info");
       this.render();
     }
@@ -1151,6 +1237,11 @@ var _a, _b;
         return window.RouteModels.normalizeElement(__spreadValues(__spreadValues({}, element), patch));
       });
       this.markUpdated(__spreadProps(__spreadValues({}, this.route), { elements }));
+      if (options.live) {
+        this.clearTransientStatus();
+        this.renderLiveCanvas();
+        return;
+      }
       if (!options.quiet) this.setStatus("Elemento aggiornato.", "msg-info");
       this.render();
     }
@@ -1285,18 +1376,280 @@ var _a, _b;
   };
   window.RouteBuilderPage = RouteBuilderPage;
 })();
+const studentPhotoCache = /* @__PURE__ */ new Map();
+let studentPhotoEditor = null;
+function studentPhotoPath(student) {
+  const path = (student == null ? void 0 : student.foto_path) || "";
+  return path.startsWith(student.id + "/") && /^[a-zA-Z0-9/-]+\.jpg$/.test(path) ? path : "";
+}
+function studentAvatarHtml(student, large = false) {
+  const initials = [student.nome, student.cognome].filter(Boolean).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
+  const path = studentPhotoPath(student);
+  return `<span class="student-avatar${large ? " student-avatar-large" : ""}" aria-hidden="true"><span>${esc(initials)}</span>${path ? `<img data-student-photo="${esc(path)}" alt="" hidden>` : ""}</span>`;
+}
+function studentPhotoControls(student) {
+  if (student.tipo === "associazione") return "";
+  return `<div class="student-photo-controls">${studentAvatarHtml(student, true)}<button type="button" class="btn btn-outline btn-sm" onclick="openStudentPhotoEditor('${student.id}')">${studentPhotoPath(student) ? "Modifica foto" : "Aggiungi foto"}</button></div>`;
+}
+function hydrateStudentPhotos() {
+  return __async(this, null, function* () {
+    if (typeof currentUid === "undefined" || !currentUid || typeof sb === "undefined" || !sb) return;
+    const uid = currentUid;
+    const images = Array.from(document.querySelectorAll("img[data-student-photo]"));
+    yield Promise.all(images.map((img) => __async(null, null, function* () {
+      var _a2, _b2;
+      const path = img.dataset.studentPhoto;
+      const key = uid + ":" + path;
+      if (img.dataset.photoLoading || img.dataset.photoKey === key && Number(img.dataset.photoExpiry) > Date.now()) return;
+      img.dataset.photoLoading = "1";
+      try {
+        let entry = studentPhotoCache.get(key);
+        if (!entry || entry.expires < Date.now()) {
+          entry = { expires: Date.now() + 24e4, promise: sb.storage.from("student-photos").createSignedUrl(path, 600) };
+          studentPhotoCache.set(key, entry);
+        }
+        const result = yield entry.promise;
+        if (result.error) throw result.error;
+        const url = ((_a2 = result.data) == null ? void 0 : _a2.signedUrl) || result.signedURL || ((_b2 = result.data) == null ? void 0 : _b2.signedURL);
+        if (!url) throw new Error("Foto non disponibile");
+        if (currentUid !== uid || !img.isConnected) return;
+        img.onload = () => {
+          img.hidden = false;
+        };
+        img.onerror = () => {
+          img.hidden = true;
+        };
+        img.dataset.photoKey = key;
+        img.dataset.photoExpiry = String(entry.expires);
+        img.src = url;
+      } catch (_) {
+        img.dataset.photoKey = key;
+        img.dataset.photoExpiry = String(Date.now() + 3e4);
+        studentPhotoCache.delete(key);
+        img.hidden = true;
+      } finally {
+        delete img.dataset.photoLoading;
+      }
+    })));
+  });
+}
+function studentPhotoCrop(width, height, zoom = 1, x = 0, y = 0) {
+  const side = Math.min(width, height) / zoom;
+  return { side, x: (width - side) * (x + 100) / 200, y: (height - side) * (y + 100) / 200 };
+}
+function drawStudentPhotoCrop() {
+  const editor = studentPhotoEditor;
+  if (!(editor == null ? void 0 : editor.image)) return;
+  const canvas = document.getElementById("student-photo-preview");
+  const crop = studentPhotoCrop(
+    editor.image.naturalWidth,
+    editor.image.naturalHeight,
+    Number(document.getElementById("student-photo-zoom").value),
+    Number(document.getElementById("student-photo-x").value),
+    Number(document.getElementById("student-photo-y").value)
+  );
+  canvas.getContext("2d").drawImage(editor.image, crop.x, crop.y, crop.side, crop.side, 0, 0, 512, 512);
+}
+function closeStudentPhotoEditor() {
+  var _a2, _b2;
+  if (studentPhotoEditor == null ? void 0 : studentPhotoEditor.busy) return;
+  const editor = studentPhotoEditor;
+  (_a2 = document.getElementById("student-photo-dialog")) == null ? void 0 : _a2.remove();
+  studentPhotoEditor = null;
+  (_b2 = editor == null ? void 0 : editor.returnFocus) == null ? void 0 : _b2.focus();
+}
+function openStudentPhotoEditor(id) {
+  if (studentPhotoEditor) return;
+  const student = allAllievi.find((a) => a.id === id);
+  if (!student || !currentUid) return;
+  studentPhotoEditor = { id, uid: currentUid, original: student.foto_path || null, busy: false, returnFocus: document.activeElement };
+  const modal = document.createElement("div");
+  modal.id = "student-photo-dialog";
+  modal.className = "student-photo-overlay";
+  modal.innerHTML = `<div class="card student-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="student-photo-title">
+    <h2 id="student-photo-title">Foto di ${esc(student.nome)}</h2>
+    <label class="student-photo-file">Scegli una foto o scattala dal telefono<input id="student-photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onchange="selectStudentPhoto(this)"></label>
+    <div id="student-photo-crop" hidden><canvas id="student-photo-preview" width="512" height="512" aria-label="Anteprima del ritaglio"></canvas>
+    <label>Ingrandimento<input id="student-photo-zoom" type="range" min="1" max="3" step="0.05" value="1" oninput="drawStudentPhotoCrop()"></label>
+    <label>Sposta orizzontalmente<input id="student-photo-x" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label>
+    <label>Sposta verticalmente<input id="student-photo-y" type="range" min="-100" max="100" value="0" oninput="drawStudentPhotoCrop()"></label></div>
+    <p id="student-photo-status" role="status" aria-live="polite"></p>
+    <div class="student-photo-actions"><button type="button" class="btn btn-primary" id="student-photo-save" disabled onclick="saveStudentPhoto(false)">Salva foto</button>
+    ${studentPhotoPath(student) ? '<button type="button" class="btn btn-outline" onclick="saveStudentPhoto(true)">Rimuovi foto</button>' : ""}
+    <button type="button" class="btn btn-ghost" onclick="closeStudentPhotoEditor()">Annulla</button></div></div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeStudentPhotoEditor();
+    }
+    if (e.key === "Tab") {
+      const items = Array.from(modal.querySelectorAll("button:not(:disabled),input:not(:disabled)")).filter((el) => !el.closest("[hidden]"));
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+  document.getElementById("student-photo-file").focus();
+}
+function selectStudentPhoto(input) {
+  return __async(this, null, function* () {
+    var _a2;
+    const editor = studentPhotoEditor;
+    const file = (_a2 = input.files) == null ? void 0 : _a2[0];
+    if (!file || !editor || editor.busy) return;
+    editor.image = null;
+    const selection = editor.selection = (editor.selection || 0) + 1;
+    document.getElementById("student-photo-save").disabled = true;
+    document.getElementById("student-photo-crop").hidden = true;
+    const status = document.getElementById("student-photo-status");
+    status.textContent = "";
+    if (file.size > 20 * 1024 * 1024) {
+      status.textContent = "Scegli una foto inferiore a 20 MB.";
+      return;
+    }
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) {
+      status.textContent = "Scegli una foto JPEG, PNG o WebP.";
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    try {
+      const image = yield new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Foto non leggibile. Prova a esportarla come JPEG."));
+        img.src = url;
+      });
+      if (studentPhotoEditor !== editor || editor.selection !== selection) return;
+      if (image.naturalWidth * image.naturalHeight > 8e7) throw new Error("Foto troppo grande. Scegli una versione ridotta.");
+      editor.image = image;
+      ["zoom", "x", "y"].forEach((key) => {
+        document.getElementById("student-photo-" + key).value = key === "zoom" ? "1" : "0";
+      });
+      document.getElementById("student-photo-crop").hidden = false;
+      drawStudentPhotoCrop();
+      document.getElementById("student-photo-save").disabled = false;
+    } catch (error) {
+      if (studentPhotoEditor === editor && editor.selection === selection) status.textContent = error.message;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  });
+}
+function persistStudentPhoto(editor, blob) {
+  return __async(this, null, function* () {
+    var _a2, _b2;
+    if (currentUid !== editor.uid) throw new Error("La sessione \xE8 cambiata. Accedi di nuovo.");
+    const bucket = sb.storage.from("student-photos");
+    const path = blob ? editor.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg" : null;
+    if (blob) {
+      if (blob.size > 524288) throw new Error("Foto troppo pesante. Scegli un\u2019immagine pi\xF9 semplice.");
+      const upload = yield bucket.upload(path, blob, { contentType: "image/jpeg", upsert: false, cacheControl: "60" });
+      if (upload.error) throw upload.error;
+    }
+    try {
+      if (currentUid !== editor.uid) throw new Error("La sessione \xE8 cambiata. Accedi di nuovo.");
+      let query = sb.from("allievi").update({ foto_path: path }).eq("id", editor.id);
+      query = editor.original ? query.eq("foto_path", editor.original) : query.is("foto_path", null);
+      const result = yield query.select("id,foto_path").single();
+      if (result.error || !result.data) {
+        const error = new Error(((_a2 = result.error) == null ? void 0 : _a2.code) === "PGRST116" || !result.error ? "La foto \xE8 stata modificata altrove. Ricarica la pagina prima di riprovare." : result.error.message);
+        error.code = (_b2 = result.error) == null ? void 0 : _b2.code;
+        error.confirmedRejection = !result.data && (!result.error || ["PGRST116", "42501", "23514", "PGRST204"].includes(result.error.code));
+        throw error;
+      }
+      allAllievi.forEach((a) => {
+        if (a.id === editor.id) a.foto_path = path;
+      });
+    } catch (error) {
+      if (path && (error.code === "42501" || error.confirmedRejection)) yield bucket.remove([path]).catch(() => {
+      });
+      throw error;
+    }
+    let cleanupFailed = false;
+    if (editor.original && editor.original.startsWith(editor.id + "/")) {
+      try {
+        const removed = yield bucket.remove([editor.original]);
+        cleanupFailed = !!removed.error;
+      } catch (_) {
+        cleanupFailed = true;
+      }
+    }
+    studentPhotoCache.clear();
+    return { path, cleanupFailed };
+  });
+}
+function saveStudentPhoto(remove) {
+  return __async(this, null, function* () {
+    const editor = studentPhotoEditor;
+    if (!editor || editor.busy || !remove && !editor.image) return;
+    if (remove && !confirm("Rimuovere la foto di questo allievo?")) return;
+    const status = document.getElementById("student-photo-status");
+    editor.busy = true;
+    document.querySelectorAll("#student-photo-dialog button, #student-photo-dialog input").forEach((el) => {
+      el.disabled = true;
+    });
+    status.textContent = remove ? "Rimozione in corso\u2026" : "Salvataggio in corso\u2026";
+    let saved = false;
+    try {
+      const blob = remove ? null : yield new Promise((resolve) => document.getElementById("student-photo-preview").toBlob(resolve, "image/jpeg", 0.82));
+      if (!remove && !blob) throw new Error("Impossibile preparare la foto. Prova con un\u2019altra immagine.");
+      const result = yield persistStudentPhoto(editor, blob);
+      saved = true;
+      editor.busy = false;
+      closeStudentPhotoEditor();
+      renderAllievi();
+      if (currentSchedaId === editor.id) yield loadScheda(editor.id);
+      if (result.cleanupFailed) alert("Foto aggiornata. Non \xE8 stato possibile eliminare il vecchio file: riprova la pulizia quando la connessione \xE8 disponibile.");
+    } catch (error) {
+      if (saved) {
+        console.warn("Foto salvata; aggiornare la scheda per rivederla.");
+        return;
+      }
+      status.textContent = error.message || "Impossibile salvare la foto. Riprova.";
+      editor.busy = false;
+      document.querySelectorAll("#student-photo-dialog button, #student-photo-dialog input").forEach((el) => {
+        el.disabled = false;
+      });
+      document.getElementById("student-photo-save").disabled = !editor.image;
+    }
+  });
+}
+if (typeof MutationObserver !== "undefined") {
+  let scheduled = false;
+  new MutationObserver((records) => {
+    if (scheduled || !records.some((record) => record.addedNodes.length)) return;
+    scheduled = true;
+    setTimeout(() => {
+      scheduled = false;
+      hydrateStudentPhotos();
+    }, 0);
+  }).observe(document.body, { childList: true, subtree: true });
+  setInterval(hydrateStudentPhotos, 6e4);
+}
+;
 const SUPA_URL = "https://mhioneawefsvagbccsum.supabase.co";
 const SUPA_KEY = "sb_publishable_SGGdSVxCEAXLgMGAjRksMQ_PbIvMIuH";
-let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = "", currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroLezioni = "all", filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = /* @__PURE__ */ new Set(), lezioniAnniEspansi = /* @__PURE__ */ new Set(), schedaLezioniAnniEspansi = /* @__PURE__ */ new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = /* @__PURE__ */ new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false;
+let sb, allAllievi = [], allSkills = [], allPrereqs = [], allProgressi = [], skillDefinitions = [], appInited = false, editingAllieviId = null, editingGruppoNome = null, currentUid = null, currentEmail = "", currentUserMetadata = {}, mostraArchiviati = false, filtroGruppo = null, filtroVacanza = false, filtroListaAllievi = "attivi", filtroLezioni = "all", filtroLezioniAperte = false, lezioniCache = null, lezioniDettagliEspansi = false, lezionePresetAllievoId = null, editingLezioneId = null, editingLezioneAllieviIds = [], editingLezioneSkillRows = {}, editingLezioneGroupFeedback = {}, gruppiEspansi = /* @__PURE__ */ new Set(), lezioniAnniEspansi = /* @__PURE__ */ new Set(), schedaLezioniAnniEspansi = /* @__PURE__ */ new Set(), lezioniAnniDefaultAperto = false, schedaLezioniAnniDefaultAperti = /* @__PURE__ */ new Set(), lezioneBackAllievoId = null, lezioneBackGruppoNome = null, currentSchedaId = null, currentGruppoNome = null, currentLezioneId = null, editReturnTarget = null, locationBackTarget = null, skillTreeEditMode = false, catalogSkillEditMode = false, catalogSkillBranchFilters = /* @__PURE__ */ new Set(), pendingSpecialGuestId = null, skillCatalogContext = null, skillDetailContext = null, appHistoryStarted = false, appHistoryApplying = false;
 let luoghiLezioneCache = /* @__PURE__ */ new Map(), luogoSuggestTimer = null, allLocations = [], locationsLoaded = false, globalSearchTimer = null, lezioneFormMode = "standard";
 let mappaTipoFiltro = "all", mappaSelectedLocationName = null, mappaSingleFocusName = null, mappaPuntiEspansi = false, mappaPuntiEspansiLoaded = false;
 let calendarioSuggestTimer = null;
+let editingThemeColorName = null;
 const lezioniColumnState = { data: false, luogo: false, note: false };
 const LEZIONE_DRAFT_KEY = "lezioneDraftInCorso";
 const GROUP_SKILL_ROWS_KEY = "__group__";
 const FREE_LESSON_SKILL_ROWS_KEY = "__free__";
 const APP_NOTES_KEY = "bladingManagerAppNotes";
 const APP_NOTES_REMOTE_KEY = "gestionale";
+const THEME_PRIMARY_COLOR_KEY = "bladingManagerPrimaryColor";
+const THEME_PRIMARY_COLOR_PRESETS_KEY = "bladingManagerPrimaryColorPresets";
+const DEFAULT_PRIMARY_COLOR = "#6EE7F9";
+const DEFAULT_PRIMARY_DARK = "#22B8CF";
 const LOCATION_MAP_COORDS_KEY = "bladingManagerLocationMapCoords";
 const LOCATION_BACK_TARGET_KEY = "bladingManagerLocationBackTarget";
 const MILANO_MAP_BOUNDS = Object.freeze({ north: 45.5433822361299, south: 45.38158101556157, west: 9.034115819444445, east: 9.286647969771241 });
@@ -1368,8 +1721,8 @@ const AVAILABILITY_DAYS = [
   { value: 6, label: "Sabato", short: "Sab" },
   { value: 0, label: "Domenica", short: "Dom" }
 ];
-const AVAILABILITY_START_MIN = 7 * 60;
-const AVAILABILITY_END_MIN = 23 * 60;
+let AVAILABILITY_START_MIN = 8 * 60;
+let AVAILABILITY_END_MIN = 21 * 60;
 const AVAILABILITY_STEP_MIN = 15;
 const AVAILABILITY_HOUR_PX = 30;
 const APPOINTMENT_BUFFER_MIN = 15;
@@ -1381,7 +1734,7 @@ const APPOINTMENT_HEAT_START_MIN = 13 * 60;
 const APPOINTMENT_HEAT_END_MIN = 15 * 60 + 30;
 const APPOINTMENT_CONSECUTIVE_PREFER = "prefer";
 const APPOINTMENT_CONSECUTIVE_STRICT = "strict";
-let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = "", appuntamentiGruppoFiltro = "all";
+let maestroAvailabilitySlots = [], maestroExcludedSlots = [], calendarioItems = [], appuntamentiSelectedAllievoId = null, appuntamentiAllieviQuery = "";
 let availabilityDragState = null;
 let calendarioDragId = null;
 let appointmentSelectedAllieviIds = null;
@@ -1419,6 +1772,7 @@ const safeStorage = (() => {
     };
   }
 })();
+applyPrimaryColorFromStorage();
 function localDateIso(date = /* @__PURE__ */ new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 6e4);
   return local.toISOString().slice(0, 10);
@@ -1427,6 +1781,8 @@ function isSuperMaestro() {
   return !!currentUid && currentSuperMaestroUid === String(currentUid);
 }
 let tuningMode = "parametri", tuningCard = null, tuningCount = 0, tuningAlertCount = 0, tuningLocal = [], tuningRecentSkillIds = [];
+let skillLabView = "overview", skillLabUsageRows = [], skillLabLoaded = false, skillLabLoading = false;
+let skillLabFilters = { query: "", branch: "", usage: "", quality: "" };
 function supabaseClientIsV2(client = sb) {
   return !!(client && client.auth && typeof client.auth.getSession === "function");
 }
@@ -1530,6 +1886,12 @@ function requireCurrentUidForWrite(errEl = null) {
 function supabaseErrorText(error) {
   if (!error) return "";
   return [error.message, error.details, error.hint, error.code].filter(Boolean).join(" \xB7 ");
+}
+function requiredQueryData(result, label) {
+  if (result == null ? void 0 : result.error) {
+    throw new Error(`Caricamento ${label} fallito: ${supabaseErrorText(result.error) || "errore Supabase sconosciuto"}`);
+  }
+  return (result == null ? void 0 : result.data) || [];
 }
 function saveBlockedByPolicy(error) {
   const text = supabaseErrorText(error);
@@ -1667,6 +2029,67 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   addNewLessonSkillRow(newSkillBtn.dataset.ownerId);
 });
+let bootstrapState = "signed-out";
+function clearBootstrapError() {
+  var _a2;
+  (_a2 = document.getElementById("app-bootstrap-error")) == null ? void 0 : _a2.remove();
+  const loginError = document.getElementById("login-err");
+  if ((loginError == null ? void 0 : loginError.dataset.bootstrapError) === "1") {
+    loginError.textContent = "";
+    loginError.classList.remove("show");
+    delete loginError.dataset.bootstrapError;
+  }
+}
+function showBootstrapError(error) {
+  var _a2, _b2;
+  bootstrapState = "error";
+  const message = (error == null ? void 0 : error.message) || "Inizializzazione non riuscita.";
+  console.error("Bootstrap applicazione fallito", error);
+  const appScreen = document.getElementById("screen-app");
+  if (appScreen && !appScreen.hidden) {
+    (_a2 = document.getElementById("app-bootstrap-error")) == null ? void 0 : _a2.remove();
+    const banner = document.createElement("div");
+    banner.id = "app-bootstrap-error";
+    banner.className = "msg msg-err show";
+    banner.setAttribute("role", "alert");
+    const text = document.createElement("span");
+    text.textContent = `${message} `;
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "btn btn-outline btn-sm";
+    retry.textContent = "Riprova";
+    retry.addEventListener("click", retryBootstrap);
+    banner.append(text, retry);
+    (_b2 = appScreen.querySelector("main")) == null ? void 0 : _b2.prepend(banner);
+    return;
+  }
+  const loginError = document.getElementById("login-err");
+  if (loginError) {
+    loginError.textContent = "";
+    const text = document.createElement("span");
+    text.textContent = `${message} `;
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "btn btn-outline btn-sm";
+    retry.textContent = "Riprova";
+    retry.addEventListener("click", retryBootstrap);
+    loginError.append(text, retry);
+    loginError.dataset.bootstrapError = "1";
+    loginError.classList.add("show");
+  }
+}
+function retryBootstrap() {
+  return __async(this, null, function* () {
+    if (bootstrapState === "loading") return;
+    clearBootstrapError();
+    appInited = false;
+    try {
+      yield bootstrapAuth();
+    } catch (error) {
+      showBootstrapError(error);
+    }
+  });
+}
 function handleAuthSession(session) {
   return __async(this, null, function* () {
     var _a2;
@@ -1682,10 +2105,20 @@ function handleAuthSession(session) {
       document.getElementById("screen-login").hidden = true;
       document.getElementById("screen-app").hidden = false;
       if (!appInited) {
+        bootstrapState = "loading";
+        clearBootstrapError();
         appInited = true;
-        yield initApp();
+        try {
+          yield initApp();
+          bootstrapState = "ready";
+        } catch (error) {
+          appInited = false;
+          throw error;
+        }
       }
     } else {
+      bootstrapState = "signed-out";
+      clearBootstrapError();
       appInited = false;
       appHistoryStarted = false;
       authIdentityVersion++;
@@ -1702,7 +2135,7 @@ function handleAuthSession(session) {
   });
 }
 (_b = (_a = sb == null ? void 0 : sb.auth) == null ? void 0 : _a.onAuthStateChange) == null ? void 0 : _b.call(_a, (_e, session) => {
-  handleAuthSession(session);
+  void handleAuthSession(session).catch(showBootstrapError);
 });
 function bootstrapAuth() {
   return __async(this, null, function* () {
@@ -1711,7 +2144,7 @@ function bootstrapAuth() {
     yield handleAuthSession(session);
   });
 }
-bootstrapAuth();
+void bootstrapAuth().catch(showBootstrapError);
 function doLogin() {
   return __async(this, null, function* () {
     const email = document.getElementById("login-email").value.trim();
@@ -1738,7 +2171,7 @@ function doLogout() {
 }
 function initialRouteFromHash(hashValue = window.location.hash) {
   const raw = String(hashValue || "").replace(/^#/, "");
-  if (!raw) return { name: "allievi", id: null };
+  if (!raw) return { name: "home", id: null };
   const [encodedName, ...encodedRest] = raw.split("/");
   let name = "";
   let id = null;
@@ -1746,15 +2179,15 @@ function initialRouteFromHash(hashValue = window.location.hash) {
     name = decodeURIComponent(encodedName || "");
     id = encodedRest.length ? decodeURIComponent(encodedRest.join("/")) : null;
   } catch (e) {
-    return { name: "allievi", id: null };
+    return { name: "home", id: null };
   }
-  const allowed = ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"];
-  if (!allowed.includes(name)) return { name: "allievi", id: null };
-  if (routeNeedsId(name) && !id) return { name: "allievi", id: null };
+  const allowed = ["home", "allievi", "scheda", "gruppo", "lezioni", "lesson-radial-planner", "percorsi", "calendario", "appuntamenti", "analisi", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "theme-colors", "app-notes"];
+  if (!allowed.includes(name)) return { name: "home", id: null };
+  if (routeNeedsId(name) && !id) return { name: "home", id: null };
   return { name, id };
 }
 function consumeInitialRoute() {
-  if (appBootRouteConsumed) return { name: "allievi", id: null };
+  if (appBootRouteConsumed) return { name: "home", id: null };
   appBootRouteConsumed = true;
   return initialRouteFromHash(APP_BOOT_HASH);
 }
@@ -1764,16 +2197,20 @@ function initApp() {
     maestroAvailabilitySlots = loadMaestroAvailabilitySlots(currentUserMetadata);
     maestroExcludedSlots = loadMaestroExcludedSlots(currentUserMetadata);
     calendarioItems = loadCalendarioItems(currentUserMetadata);
-    const [{ data: a }, { data: s }, { data: p }, { data: pr }] = yield Promise.all([
+    const [allieviResult, skillsResult, prerequisitiResult, progressiResult] = yield Promise.all([
       sb.from("allievi").select("*").eq("stato", "attivo").order("nome"),
       sb.from("skills").select("*").order("livello"),
       sb.from("prerequisiti_skill").select("*"),
       sb.from("progressi_allievo").select("allievo_id, skill_id, stadio")
     ]);
-    allAllievi = a || [];
-    allSkills = visibleCatalogSkills(s || []);
-    allPrereqs = p || [];
-    allProgressi = pr || [];
+    const a = requiredQueryData(allieviResult, "allievi");
+    const s = requiredQueryData(skillsResult, "skill");
+    const p = requiredQueryData(prerequisitiResult, "prerequisiti");
+    const pr = requiredQueryData(progressiResult, "progressi");
+    allAllievi = a;
+    allSkills = visibleCatalogSkills(s);
+    allPrereqs = p;
+    allProgressi = pr;
     skillDefinitions = yield loadSkillDefinitions();
     loadLocations().catch((error) => console.warn("locations non precaricate", error));
     renderGodPanel();
@@ -1781,7 +2218,7 @@ function initApp() {
     const initialRoute = consumeInitialRoute();
     showView(initialRoute.name, initialRoute.id || void 0);
     scheduleNuovaLezioneRouteRepair();
-    refreshDashboardData();
+    yield refreshDashboardData();
   });
 }
 function loadSkillDefinitions() {
@@ -2074,8 +2511,9 @@ function ricaricaAllievi() {
   return __async(this, null, function* () {
     let q = sb.from("allievi").select("*").order("nome");
     q = mostraArchiviati ? q.eq("stato", "archiviato") : q.eq("stato", "attivo");
-    const { data } = yield q;
-    allAllievi = data || [];
+    const result = yield q;
+    const data = requiredQueryData(result, "allievi");
+    allAllievi = data;
     renderGodPanel();
     renderAllievi();
     refreshDashboardData();
@@ -2167,17 +2605,9 @@ function renderDashboard() {
   const allieviDashboard = allieviVisibiliGod().filter((a) => mostraArchiviati ? a.stato === "archiviato" : a.stato !== "archiviato");
   const allieviLabel = mostraArchiviati ? "Allievi archiviati" : "Allievi attivi";
   const allieviAction = mostraArchiviati ? "setArchivio(true)" : "showView('allievi')";
-  const lezioni = lezioniCache || [];
-  const oggi = localDateIso();
-  const todayLessons = lezioni.filter((l) => String(l.data || "").slice(0, 10) === oggi);
-  const aperte = lezioni.filter((l) => lessonStatus(l) === "aperta");
-  const locations = locationNamesFromLessons();
   el.innerHTML = `
-    <div class="dashboard-grid">
+    <div class="dashboard-grid dashboard-compact">
       <div class="dashboard-tile" onclick="${allieviAction}"><strong>${allieviDashboard.length}</strong><span>${allieviLabel}</span></div>
-      <div class="dashboard-tile" onclick="showView('lezioni'); openDayLessonsWidget('${oggi}')"><strong>${todayLessons.length}</strong><span>Lezioni oggi</span></div>
-      <div class="dashboard-tile" onclick="showView('lezioni'); setFiltroLezioniAperte(true)"><strong>${aperte.length}</strong><span>Lezioni aperte</span></div>
-      <div class="dashboard-tile" onclick="showLocationsIndex()"><strong>${locations.length}</strong><span>Location</span></div>
     </div>`;
 }
 function refreshDashboardData() {
@@ -2187,20 +2617,123 @@ function refreshDashboardData() {
     renderDashboard();
   });
 }
+function homeIcon(name) {
+  const paths = {
+    lesson: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+    person: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+    calendar: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>',
+    chart: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/>',
+    archive: '<path d="M3 6h18M5 6v14h14V6M8 3h8l2 3H6l2-3Z"/><path d="M9 11h6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.search}</svg>`;
+}
+function focusHomeGlobalSearch() {
+  const input = document.getElementById("global-search-input");
+  input == null ? void 0 : input.focus();
+  input == null ? void 0 : input.scrollIntoView({ block: "nearest" });
+  scheduleGlobalSearch();
+}
+function renderHome() {
+  const el = document.getElementById("home-content");
+  if (!el) return;
+  const now = /* @__PURE__ */ new Date();
+  const day = new Intl.DateTimeFormat("it-IT", { weekday: "long" }).format(now);
+  const date = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" }).format(now);
+  const today = localDateIso(now);
+  const todayLessons = (lezioniCache || []).filter((lesson) => String(lesson.data || "").slice(0, 10) === today).sort((a, b) => lessonSortToken(a).localeCompare(lessonSortToken(b)));
+  const lessons = todayLessons.map((lesson) => {
+    const participants = lessonParticipantsFromLesson(lesson);
+    const open = lessonStatus(lesson) === "aperta";
+    return {
+      id: lesson.id,
+      time: lessonTime(lesson) || "\u2014",
+      title: labelPartecipantiLezione(lesson) || tipoLabel(lesson.tipo),
+      place: lesson.luogo || "Luogo non indicato",
+      people: participants.length === 1 ? "1 partecipante" : `${participants.length} partecipanti`,
+      status: open ? "Aperta" : "Chiusa",
+      statusClass: open ? "is-current" : "is-done",
+      note: lessonSpecialNotes(lesson) || "Nessuna nota speciale"
+    };
+  });
+  const involvedById = /* @__PURE__ */ new Map();
+  todayLessons.forEach((lesson) => lessonParticipantsFromLesson(lesson).forEach((student) => involvedById.set(String(student.id), student)));
+  const students = [...involvedById.values()].slice(0, 3);
+  const nextLesson = lessons.find((lesson) => lesson.statusClass === "is-current") || lessons[0] || null;
+  const weekStart = new Date(now);
+  const weekday = (weekStart.getDay() + 6) % 7;
+  weekStart.setDate(weekStart.getDate() - weekday);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekLessons = (lezioniCache || []).filter((lesson) => {
+    const lessonDate = /* @__PURE__ */ new Date(`${String(lesson.data || "").slice(0, 10)}T12:00:00`);
+    return lessonDate >= weekStart && lessonDate < weekEnd;
+  });
+  const weeklyStudentIds = new Set(weekLessons.flatMap((lesson) => lessonParticipantsFromLesson(lesson).map((student) => String(student.id))));
+  const weeklyMinutes = weekLessons.reduce((total, lesson) => total + (Number(lesson.durata_min) || 0), 0);
+  const weeklySkills = weekLessons.reduce((total, lesson) => {
+    var _a2;
+    return total + (((_a2 = lesson.lezioni_skills) == null ? void 0 : _a2.length) || 0);
+  }, 0);
+  el.innerHTML = `
+    <div class="home-page">
+      <div class="home-header">
+        <div class="home-header-top">
+          <div><div class="home-date">${esc(day)} \xB7 ${esc(date)}</div><h2 class="home-title">La tua giornata</h2></div>
+          <button type="button" class="home-search-button" onclick="focusHomeGlobalSearch()">${homeIcon("search")}<span>Cerca allievi, gruppi, luoghi\u2026</span></button>
+          <button type="button" class="btn btn-primary" onclick="showView('nuova-lezione')">+ Nuova lezione</button>
+        </div>
+        <p class="home-summary">Oggi hai ${lessons.length} lezion${lessons.length === 1 ? "e" : "i"} e ${involvedById.size} alliev${involvedById.size === 1 ? "o" : "i"} coinvolti.</p>
+      </div>
+
+      ${renderBirthdayReminders(allieviVisibiliGod(), { title: "Compleanni \xB7 oggi e prossimi 14 giorni" })}
+      <div class="home-operational-grid">
+        <section class="home-section" aria-labelledby="home-timeline-title">
+          <div class="home-section-head"><h3 id="home-timeline-title">Timeline giornata</h3><span>${esc(formatDateWithWeekday(today))}</span></div>
+          <div class="home-timeline">
+            ${lessons.length ? lessons.map((lesson) => `<article class="home-lesson${lesson.statusClass === "is-current" ? " is-current" : ""}">
+              <div class="home-lesson-time">${esc(lesson.time)}</div>
+              <div class="home-lesson-main">
+                <div class="home-lesson-title-row"><h4>${esc(lesson.title)}</h4><span class="home-status ${lesson.statusClass}">${esc(lesson.status)}</span></div>
+                <div class="home-lesson-meta"><span>\u2316 ${esc(lesson.place)}</span><span>\u25CE ${esc(lesson.people)}</span></div>
+                <div class="home-lesson-context"><div class="home-context-item"><span>Note</span>${esc(lesson.note)}</div></div>
+                <div class="home-lesson-actions"><button class="btn btn-primary btn-sm" onclick="openLezione(${jsArg(lesson.id)})">Apri lezione</button></div>
+              </div>
+            </article>`).join("") : '<div class="empty">Nessuna lezione registrata per oggi.</div>'}
+          </div>
+        </section>
+
+        <aside class="home-sidebar">
+          <section class="home-side-card home-next-card"><h3>Prima lezione di oggi</h3>${nextLesson ? `<div class="home-next-time">${esc(nextLesson.time)}</div><h4>${esc(nextLesson.title)}</h4><div class="home-detail-list"><div><span>Luogo</span><br>${esc(nextLesson.place)}</div><div><span>Partecipanti</span><br>${esc(nextLesson.people)}</div><div><span>Note</span><br>${esc(nextLesson.note)}</div></div><button class="btn btn-primary btn-full" onclick="openLezione(${jsArg(nextLesson.id)})">Apri lezione</button>` : '<div class="empty">Nessuna lezione prevista.</div>'}</section>
+          <section class="home-side-card"><h3>Stato dati</h3><div class="empty">La Home mostra soltanto dati reali caricati dal gestionale.</div></section>
+        </aside>
+      </div>
+
+      <section class="home-section"><div class="home-section-head"><h3>Allievi di oggi</h3><span>${involvedById.size} coinvolti</span></div><div class="home-students">${students.length ? students.map((student) => {
+    const name = [student.nome, student.cognome].filter(Boolean).join(" ");
+    const initials = [student.nome, student.cognome].filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+    return `<button type="button" class="home-student" onclick="showView('scheda',${jsArg(student.id)})"><div class="home-student-head">${studentAvatarHtml(student)}<div><strong>${esc(name)}</strong><span>${esc(student.gruppo || allievoTier(student))}</span></div></div></button>`;
+  }).join("") : '<div class="empty">Nessun allievo coinvolto nelle lezioni di oggi.</div>'}</div></section>
+
+      <section class="home-section"><div class="home-section-head"><h3>Riepilogo settimana</h3><span>Dati registrati</span></div><div class="home-week"><div class="home-week-stat"><strong>${weekLessons.length}</strong><span>Lezioni</span></div><div class="home-week-stat"><strong>${String(Math.round(weeklyMinutes / 6) / 10).replace(".", ",")}</strong><span>Ore insegnate</span></div><div class="home-week-stat"><strong>${weeklyStudentIds.size}</strong><span>Allievi allenati</span></div><div class="home-week-stat"><strong>${weeklySkills}</strong><span>Skill lavorate</span></div></div></section>
+    </div>`;
+  requestAnimationFrame(() => motion.cards(el));
+}
 const APP_HISTORY_KEY = "blading-manager-view";
 let schedaLoadVersion = 0;
 function routeNeedsId(name) {
   return ["scheda", "gruppo", "location", "lezione"].includes(name);
 }
-function normalizeRoute(name = "allievi", id = null) {
-  const cleanName = name || "allievi";
+function normalizeRoute(name = "home", id = null) {
+  const cleanName = name || "home";
   return { app: APP_HISTORY_KEY, name: cleanName, id: id || null };
 }
 function homeBoundaryRoute() {
-  return __spreadProps(__spreadValues({}, normalizeRoute("allievi")), { boundary: true });
+  return __spreadProps(__spreadValues({}, normalizeRoute("home")), { boundary: true });
 }
 function routeHash(route) {
-  const base = route.name || "allievi";
+  const base = route.name || "home";
   return route.id ? `#${encodeURIComponent(base)}/${encodeURIComponent(route.id)}` : `#${encodeURIComponent(base)}`;
 }
 function sameRoute(a, b) {
@@ -2225,9 +2758,9 @@ function recordAppHistory(name, id = null) {
 }
 function showHomeFromHistoryBoundary() {
   appHistoryApplying = true;
-  showView("allievi");
+  showView("home");
   appHistoryApplying = false;
-  const home = normalizeRoute("allievi");
+  const home = normalizeRoute("home");
   history.pushState(home, "", routeHash(home));
 }
 window.addEventListener("popstate", (event) => {
@@ -2243,34 +2776,40 @@ window.addEventListener("popstate", (event) => {
     return;
   }
   appHistoryApplying = true;
-  showView(route.name || "allievi", route.id || null);
+  showView(route.name || "home", route.id || null);
   appHistoryApplying = false;
 });
 window.addEventListener("hashchange", () => {
   scheduleNuovaLezioneRouteRepair();
 });
 function visibleViewName() {
-  return ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].find((v) => {
+  return ["home", "allievi", "scheda", "gruppo", "lezioni", "lesson-radial-planner", "percorsi", "calendario", "appuntamenti", "analisi", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "theme-colors", "app-notes"].find((v) => {
     var _a2;
     return !((_a2 = document.getElementById(`view-${v}`)) == null ? void 0 : _a2.hidden);
   }) || null;
 }
 function syncNavActive(name) {
+  var _a2, _b2, _c, _d, _e;
   const locationFromMap = name === "location" && (locationBackTarget == null ? void 0 : locationBackTarget.name) === "mappa";
+  (_a2 = document.getElementById("nav-home")) == null ? void 0 : _a2.classList.toggle("active", name === "home");
   document.getElementById("nav-allievi").classList.toggle("active", ["allievi", "scheda", "gruppo", "nuovo-allievo", "nuovo-gruppo"].includes(name));
   document.getElementById("nav-lezioni").classList.toggle("active", ["lezioni", "lezione", "nuova-lezione"].includes(name) || name === "location" && !locationFromMap);
+  (_b2 = document.getElementById("nav-lesson-radial-planner")) == null ? void 0 : _b2.classList.toggle("active", name === "lesson-radial-planner");
   document.getElementById("nav-percorsi").classList.toggle("active", name === "percorsi");
   document.getElementById("nav-calendar").classList.toggle("active", name === "calendario");
   document.getElementById("nav-auto-orari").classList.toggle("active", name === "appuntamenti");
+  (_c = document.getElementById("nav-analisi")) == null ? void 0 : _c.classList.toggle("active", name === "analisi");
   document.getElementById("nav-mappa").classList.toggle("active", name === "mappa" || locationFromMap);
   document.getElementById("nav-skills").classList.toggle("active", name === "skills");
   document.getElementById("nav-tuning").classList.toggle("active", name === "tuning");
+  (_d = document.getElementById("nav-theme-colors")) == null ? void 0 : _d.classList.toggle("active", name === "theme-colors");
   document.getElementById("nav-app-notes").classList.toggle("active", name === "app-notes");
+  (_e = window.ResponsiveShell) == null ? void 0 : _e.revealActiveDestination();
 }
 function isValidLocationBackTarget(target) {
   if (!target || target.name === "location") return false;
   if (target.name === "scheda" || target.name === "gruppo" || target.name === "lezione") return !!target.id;
-  return ["allievi", "lezioni", "percorsi", "calendario", "appuntamenti", "mappa", "skills", "tuning", "app-notes"].includes(target.name);
+  return ["home", "allievi", "lezioni", "lesson-radial-planner", "percorsi", "calendario", "appuntamenti", "analisi", "mappa", "skills", "tuning", "theme-colors", "app-notes"].includes(target.name);
 }
 function readLocationBackTarget() {
   try {
@@ -2287,14 +2826,18 @@ function setLocationBackTarget(target) {
 }
 function locationBackLabel(target = locationBackTarget) {
   const labels = {
+    home: "Home",
     allievi: "Allievi",
     lezioni: "Lezioni",
+    "lesson-radial-planner": "Planner",
     percorsi: "Percorsi",
     calendario: "Calendario",
     appuntamenti: "Appuntamenti",
+    analisi: "Analisi",
     mappa: "Mappa",
     skills: "Skills",
     tuning: "Tuning",
+    "theme-colors": "Colori",
     "app-notes": "Note",
     scheda: "Scheda allievo",
     gruppo: "Scheda gruppo",
@@ -2317,7 +2860,7 @@ function currentReturnTarget() {
   if (view === "gruppo" && currentGruppoNome) return { name: "gruppo", id: currentGruppoNome };
   if (view === "lezione" && currentLezioneId) return { name: "lezione", id: currentLezioneId };
   if (view === "location") return locationBackTarget || readLocationBackTarget() || { name: "lezioni", id: null };
-  if (view === "allievi" || view === "lezioni" || view === "percorsi" || view === "calendario" || view === "appuntamenti" || view === "mappa" || view === "skills" || view === "tuning" || view === "app-notes") return { name: view, id: null };
+  if (view === "home" || view === "allievi" || view === "lezioni" || view === "lesson-radial-planner" || view === "percorsi" || view === "calendario" || view === "appuntamenti" || view === "analisi" || view === "mappa" || view === "skills" || view === "tuning" || view === "theme-colors" || view === "app-notes") return { name: view, id: null };
   return null;
 }
 function goToReturnTarget(target, fallback) {
@@ -2341,7 +2884,7 @@ function goToReturnTarget(target, fallback) {
 }
 function showView(name, id) {
   schedaLoadVersion++;
-  if ((name === "tuning" || name === "app-notes") && !godMode) name = "allievi";
+  if ((name === "tuning" || name === "theme-colors" || name === "app-notes") && !godMode) name = "allievi";
   const previousReturnTarget = currentReturnTarget();
   if (name === "location") {
     const storedTarget = readLocationBackTarget();
@@ -2351,19 +2894,23 @@ function showView(name, id) {
   }
   document.body.dataset.view = name;
   document.body.classList.toggle("route-builder-active", name === "percorsi");
+  document.body.classList.toggle("lesson-radial-active", name === "lesson-radial-planner");
   if (["nuovo-allievo", "nuovo-gruppo", "nuova-lezione"].includes(name)) {
     const returnTarget = previousReturnTarget;
     if (returnTarget) editReturnTarget = returnTarget;
   }
-  ["allievi", "scheda", "gruppo", "lezioni", "percorsi", "calendario", "appuntamenti", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "app-notes"].forEach((v) => {
+  ["home", "allievi", "scheda", "gruppo", "lezioni", "lesson-radial-planner", "percorsi", "calendario", "appuntamenti", "analisi", "location", "mappa", "lezione", "nuova-lezione", "nuovo-allievo", "nuovo-gruppo", "skills", "tuning", "theme-colors", "app-notes"].forEach((v) => {
     document.getElementById(`view-${v}`).hidden = v !== name;
   });
   syncNavActive(name);
+  if (name === "home") renderHome();
   if (name === "lezioni" && id) filtroLezioni = `allievo:${id}`;
   if (name === "lezioni") loadLezioni();
+  if (name === "lesson-radial-planner") ensureLessonRadialPlannerMounted();
   if (name === "percorsi") ensureRouteBuilderMounted();
   if (name === "calendario") renderCalendario();
-  if (name === "appuntamenti") renderAppuntamenti();
+  if (name === "appuntamenti") loadAppuntamenti();
+  if (name === "analisi") loadAnalisi();
   if (name === "mappa") renderMappa(id || null);
   if (name === "location" && id) loadLocation(id);
   if (name === "lezione" && id) loadLezione(id);
@@ -2379,6 +2926,7 @@ function showView(name, id) {
   if (name === "scheda" && id) loadScheda(id);
   if (name === "skills") renderSkillsCatalog();
   if (name === "tuning") initTuning();
+  if (name === "theme-colors") renderThemeColorPanel();
   if (name === "app-notes") initAppNotes();
   requestAnimationFrame(() => motion.view(name));
   recordAppHistory(name, id || null);
@@ -2455,6 +3003,34 @@ function routeBuilderLoadErrorHtml(detail) {
       </div>
     </div>`;
 }
+function ensureLessonRadialPlannerMounted() {
+  const view = document.getElementById("view-lesson-radial-planner");
+  const root = document.getElementById("lesson-radial-planner-root");
+  if (!view || view.hidden || !root) return;
+  if (typeof initLessonRadialPlannerPage === "function") {
+    try {
+      initLessonRadialPlannerPage();
+    } catch (error) {
+      console.error("Errore inizializzazione planner radiale", error);
+      root.innerHTML = lessonRadialPlannerLoadErrorHtml((error == null ? void 0 : error.message) || "Errore JavaScript durante il caricamento.");
+    }
+    return;
+  }
+  root.innerHTML = lessonRadialPlannerLoadErrorHtml("Script lesson-radial-planner non caricati.");
+}
+function lessonRadialPlannerLoadErrorHtml(detail) {
+  return `
+    <div class="card">
+      <div class="msg msg-err show" style="display:block;margin-bottom:.7rem">
+        Planner radiale non caricato.
+      </div>
+      <div style="color:var(--muted);font-size:.86rem;line-height:1.45">
+        ${esc(detail || "Errore non specificato.")}<br>
+        Apri il gestionale tramite server locale:
+        <a href="http://localhost:8027/#lesson-radial-planner" style="color:var(--blu);font-weight:800">http://localhost:8027/#lesson-radial-planner</a>
+      </div>
+    </div>`;
+}
 function openAppNotes() {
   if (!godMode) return;
   const current = visibleViewName();
@@ -2475,6 +3051,7 @@ function closeAppNotes() {
   targetEl.hidden = false;
   document.body.dataset.view = target;
   document.body.classList.toggle("route-builder-active", target === "percorsi");
+  document.body.classList.toggle("lesson-radial-active", target === "lesson-radial-planner");
   syncNavActive(target);
   requestAnimationFrame(() => motion.view(target));
 }
@@ -2874,6 +3451,507 @@ function setAppointmentCalendarStatus(text, cls = "") {
   el.className = `appointments-status ${cls}`.trim();
   el.textContent = text || "";
 }
+const ANALYSIS_PERIODS = [
+  { value: "30", label: "Ultimi 30 giorni" },
+  { value: "90", label: "Ultimi 90 giorni" },
+  { value: "180", label: "Ultimi 6 mesi" },
+  { value: "365", label: "Ultimo anno" },
+  { value: "all", label: "Tutto lo storico" }
+];
+const ANALYSIS_BRANCHES = [
+  { id: "stance", label: "STANCE", aliases: ["stance", "equilibrio", "stabilita", "stabilit\xE0"] },
+  { id: "gait", label: "GAIT", aliases: ["gait", "andatura", "passo", "spinta"] },
+  { id: "rotation", label: "ROTATION", aliases: ["rotation", "rotazione"] },
+  { id: "braking", label: "BRAKING", aliases: ["braking", "break", "frenata", "freno"] }
+];
+const ANALYSIS_BIOMECHANIC_METRICS = [
+  { id: "forze", label: "Forze" },
+  { id: "verticalizzazione", label: "Verticalizzazione" },
+  { id: "rotazione", label: "Rotazione" },
+  { id: "tempo", label: "Tempo" },
+  { id: "stabilita", label: "Stabilita" },
+  { id: "asimmetria", label: "Asimmetria" },
+  { id: "coordinazione", label: "Coordinazione" }
+];
+const ANALYSIS_MOCK_LESSONS = Object.freeze([
+  { id: "mock-1", data: "2026-01-08", durata_min: 60, tipo: "individuale", mockNames: ["Allievo demo"], mockSkills: ["Spinta base", "Frenata a T"] },
+  { id: "mock-2", data: "2026-01-15", durata_min: 75, tipo: "gruppo", mockNames: ["Gruppo demo"], mockSkills: ["Curve base", "Stabilita monopodalica"] },
+  { id: "mock-3", data: "2026-02-02", durata_min: 60, tipo: "individuale", mockNames: ["Allievo demo"], mockSkills: ["Rotazione 180", "Frenata a T"] }
+]);
+function analysisDateFromIso(value) {
+  const iso = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const date = /* @__PURE__ */ new Date(`${iso}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function analysisIsoFromDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+function analysisLessonDate(lesson) {
+  return analysisDateFromIso(lesson == null ? void 0 : lesson.data);
+}
+function analysisPeriodRange(period) {
+  if (period === "all") return { from: null, to: null, days: null };
+  const days = Number(period) || 90;
+  const to = /* @__PURE__ */ new Date();
+  to.setHours(12, 0, 0, 0);
+  const from = new Date(to);
+  from.setDate(to.getDate() - days + 1);
+  return { from, to, days };
+}
+function analysisBranchId(raw) {
+  const normalized = normalizeText(raw);
+  const found = ANALYSIS_BRANCHES.find((branch) => branch.aliases.some((alias) => normalized.includes(normalizeText(alias))));
+  return (found == null ? void 0 : found.id) || "other";
+}
+function analysisBranchLabel(id) {
+  var _a2;
+  return ((_a2 = ANALYSIS_BRANCHES.find((branch) => branch.id === id)) == null ? void 0 : _a2.label) || "EXTRA";
+}
+function analysisSkillByName(name) {
+  const normalized = normalizeText(name);
+  return allSkills.find((skill) => normalizeText(skill.nome) === normalized) || null;
+}
+function analysisSkillFromLessonRow(row) {
+  const nested = (row == null ? void 0 : row.skills) || {};
+  const name = nested.nome || (row == null ? void 0 : row.skill_nome) || (row == null ? void 0 : row.nome) || "";
+  return analysisSkillByName(name) || nested || { nome: name };
+}
+function analysisLessonParticipants(lesson) {
+  if (lesson == null ? void 0 : lesson.mockNames) return lesson.mockNames.map((name) => ({ id: "", label: name, gruppo: "" }));
+  return ((lesson == null ? void 0 : lesson.lezioni_allievi) || []).map((row) => (row == null ? void 0 : row.allievi) || (row == null ? void 0 : row.allievo) || null).filter(Boolean).map((allievo) => ({
+    id: allievo.id || "",
+    label: lezioneTargetLabelAllievo(allievo),
+    gruppo: allievo.gruppo || ""
+  }));
+}
+function analysisLessonSkills(lesson) {
+  if (lesson == null ? void 0 : lesson.mockSkills) {
+    return lesson.mockSkills.map((name) => ({
+      nome: name,
+      stadio: 1,
+      dimensioni: {},
+      skill: analysisSkillByName(name) || { nome: name, ramo: name.includes("Frenata") ? "Frenata" : name.includes("Rotazione") ? "Rotazione" : "Andatura" }
+    }));
+  }
+  return ((lesson == null ? void 0 : lesson.lezioni_skills) || []).map((row) => {
+    var _a2;
+    const skill = analysisSkillFromLessonRow(row);
+    const nome = (skill == null ? void 0 : skill.nome) || ((_a2 = row == null ? void 0 : row.skills) == null ? void 0 : _a2.nome) || (row == null ? void 0 : row.skill_nome) || "";
+    if (!nome || isFakieSkillName(nome)) return null;
+    return {
+      nome,
+      stadio: Number((row == null ? void 0 : row.stadio_raggiunto) || (row == null ? void 0 : row.stadio) || 0),
+      dimensioni: (row == null ? void 0 : row.dimensioni) || {},
+      skill
+    };
+  }).filter(Boolean);
+}
+function analysisTargetOptions() {
+  const students = ordinaAllieviLista(allieviVisibiliGod().filter((a) => a.stato !== "archiviato"));
+  const groups = [...new Set(students.map((a) => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }));
+  return `
+    <option value="all">Tutti</option>
+    ${students.length ? `<optgroup label="Allievi">${students.map((a) => `<option value="allievo:${esc(a.id)}">${esc(lezioneTargetLabelAllievo(a))}</option>`).join("")}</optgroup>` : ""}
+    ${groups.length ? `<optgroup label="Gruppi">${groups.map((group) => `<option value="gruppo:${esc(group)}">${esc(group)}</option>`).join("")}</optgroup>` : ""}`;
+}
+function analysisSelectedFilters() {
+  var _a2, _b2, _c, _d;
+  return {
+    period: ((_a2 = document.getElementById("analysis-period")) == null ? void 0 : _a2.value) || "90",
+    target: ((_b2 = document.getElementById("analysis-target")) == null ? void 0 : _b2.value) || "all",
+    branch: ((_c = document.getElementById("analysis-branch")) == null ? void 0 : _c.value) || "all",
+    status: ((_d = document.getElementById("analysis-status")) == null ? void 0 : _d.value) || "all"
+  };
+}
+function analysisMetricValue(skill, metricId) {
+  if (!skill) return null;
+  const aliases = {
+    forze: ["param_forze", "forze", "attr_forze"],
+    verticalizzazione: ["param_verticalizzazione", "verticalizzazione", "attr_verticalizzazione", "baricentro", "attr_baricentro"],
+    rotazione: ["param_rotazione", "rotazione", "attr_rotazione", "assi", "attr_assi"],
+    tempo: ["param_tempo", "tempo", "attr_tempo"],
+    stabilita: ["param_stabilita", "stabilita", "stabilit\xE0", "attr_stabilita", "attr_stabilit\xE0"],
+    asimmetria: ["param_asimmetria", "asimmetria", "attr_asimmetria"],
+    coordinazione: ["param_coordinazione", "coordinazione", "attr_coordinazione"]
+  };
+  const key = (aliases[metricId] || [metricId]).find((alias) => skill[alias] !== void 0 && skill[alias] !== null && skill[alias] !== "");
+  if (!key) return null;
+  const value = Number(skill[key]);
+  return Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : null;
+}
+function analysisBranchForSkill(skill) {
+  return analysisBranchId((skill == null ? void 0 : skill.ramo) || (skill == null ? void 0 : skill.branch) || (skill == null ? void 0 : skill.categoria) || (skill == null ? void 0 : skill.blocco) || (skill == null ? void 0 : skill.nome));
+}
+const AnalysisService = {
+  getOverview(filters) {
+    return __async(this, null, function* () {
+      if (!lezioniCache) yield loadLezioni(true);
+      const sourceLessons = (lezioniCache == null ? void 0 : lezioniCache.length) ? lezioniCache : ANALYSIS_MOCK_LESSONS;
+      const lessons = this.filteredLessons(sourceLessons, filters);
+      const skillStats = this.skillStats(lessons);
+      const branchStats = this.branchStats(skillStats);
+      const biomechanicStats = this.biomechanicStats(skillStats);
+      return {
+        filters,
+        isMock: !(lezioniCache == null ? void 0 : lezioniCache.length),
+        lessons,
+        skillStats,
+        branchStats,
+        biomechanicStats,
+        distribution: this.distribution(lessons, skillStats),
+        timeline: this.timeline(lessons, filters.period),
+        forgottenSkills: this.forgottenSkills(skillStats),
+        criticalSkills: this.criticalSkills(skillStats),
+        studentTimeline: this.studentTimeline(lessons, filters.target),
+        insights: this.insights(lessons, branchStats, biomechanicStats, skillStats)
+      };
+    });
+  },
+  filteredLessons(sourceLessons, filters) {
+    const range = analysisPeriodRange(filters.period);
+    return (sourceLessons || []).filter((lesson) => {
+      const date = analysisLessonDate(lesson);
+      if (range.from && (!date || date < range.from || date > range.to)) return false;
+      if (filters.status !== "all" && lessonStatus(lesson) !== filters.status) return false;
+      const participants = analysisLessonParticipants(lesson);
+      if (filters.target.startsWith("allievo:")) {
+        const id = filters.target.slice("allievo:".length);
+        if (!participants.some((p) => String(p.id) === String(id))) return false;
+      }
+      if (filters.target.startsWith("gruppo:")) {
+        const group = filters.target.slice("gruppo:".length);
+        if (!participants.some((p) => p.gruppo === group)) return false;
+      }
+      if (filters.branch !== "all" && !analysisLessonSkills(lesson).some((row) => analysisBranchForSkill(row.skill) === filters.branch)) return false;
+      return true;
+    }).sort((a, b) => String(a.data || "").localeCompare(String(b.data || "")));
+  },
+  skillStats(lessons) {
+    const stats = /* @__PURE__ */ new Map();
+    lessons.forEach((lesson) => {
+      const date = analysisLessonDate(lesson);
+      analysisLessonSkills(lesson).forEach((row) => {
+        const key = normalizeText(row.nome);
+        if (!stats.has(key)) {
+          stats.set(key, {
+            nome: row.nome,
+            skill: row.skill,
+            count: 0,
+            minutes: 0,
+            lastDate: null,
+            maxStadio: 0,
+            branches: /* @__PURE__ */ new Map()
+          });
+        }
+        const stat = stats.get(key);
+        stat.count += 1;
+        stat.minutes += Number(lesson.durata_min || 60) / Math.max(1, analysisLessonSkills(lesson).length);
+        stat.maxStadio = Math.max(stat.maxStadio, Number(row.stadio || 0));
+        if (date && (!stat.lastDate || date > stat.lastDate)) stat.lastDate = date;
+        const branch = analysisBranchForSkill(row.skill);
+        stat.branches.set(branch, (stat.branches.get(branch) || 0) + 1);
+      });
+    });
+    return [...stats.values()].sort((a, b) => b.count - a.count || a.nome.localeCompare(b.nome, "it", { sensitivity: "base" }));
+  },
+  branchStats(skillStats) {
+    const stats = new Map(ANALYSIS_BRANCHES.map((branch) => [branch.id, { id: branch.id, label: branch.label, count: 0, minutes: 0 }]));
+    stats.set("other", { id: "other", label: "ALTRO", count: 0, minutes: 0 });
+    skillStats.forEach((skill) => {
+      var _a2;
+      const branch = ((_a2 = [...skill.branches.entries()].sort((a, b) => b[1] - a[1])[0]) == null ? void 0 : _a2[0]) || "other";
+      const row = stats.get(branch) || stats.get("other");
+      row.count += skill.count;
+      row.minutes += skill.minutes;
+    });
+    return [...stats.values()].filter((row) => row.count || row.id !== "other");
+  },
+  biomechanicStats(skillStats) {
+    return ANALYSIS_BIOMECHANIC_METRICS.map((metric) => {
+      const values = skillStats.map((stat) => analysisMetricValue(stat.skill, metric.id)).filter((value) => value !== null);
+      const avg = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+      return __spreadProps(__spreadValues({}, metric), { value: avg, count: values.length });
+    });
+  },
+  distribution(lessons, skillStats) {
+    const totalMinutes = lessons.reduce((sum, lesson) => sum + Number(lesson.durata_min || 60), 0);
+    const open = lessons.filter((lesson) => lessonStatus(lesson) === "aperta").length;
+    return {
+      totalMinutes,
+      totalLessons: lessons.length,
+      open,
+      closed: Math.max(0, lessons.length - open),
+      uniqueSkills: skillStats.length,
+      avgSkills: lessons.length ? skillStats.reduce((sum, skill) => sum + skill.count, 0) / lessons.length : 0
+    };
+  },
+  timeline(lessons, period) {
+    const range = analysisPeriodRange(period === "all" ? "180" : period);
+    const periodStart = range.from || (() => {
+      const first = lessons.map(analysisLessonDate).filter(Boolean).sort((a, b) => a - b)[0] || /* @__PURE__ */ new Date();
+      const copy = new Date(first);
+      copy.setHours(12, 0, 0, 0);
+      return copy;
+    })();
+    const periodEnd = range.to || (() => {
+      const last = lessons.map(analysisLessonDate).filter(Boolean).sort((a, b) => b - a)[0] || /* @__PURE__ */ new Date();
+      const copy = new Date(last);
+      copy.setHours(12, 0, 0, 0);
+      return copy;
+    })();
+    const from = new Date(periodStart);
+    from.setDate(from.getDate() - (from.getDay() + 6) % 7);
+    const to = new Date(periodEnd);
+    to.setDate(to.getDate() + (6 - (to.getDay() + 6) % 7));
+    const days = Math.max(7, Math.round((to - from) / 864e5) + 1);
+    const weeks = Math.ceil(days / 7);
+    const map = /* @__PURE__ */ new Map();
+    lessons.forEach((lesson) => {
+      const iso = String(lesson.data || "").slice(0, 10);
+      if (!iso) return;
+      if (!map.has(iso)) map.set(iso, []);
+      map.get(iso).push(lesson);
+    });
+    let longestGap = 0;
+    let currentGap = 0;
+    const cells = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(from);
+      date.setDate(from.getDate() + i);
+      const iso = analysisIsoFromDate(date);
+      const dayLessons = map.get(iso) || [];
+      const count = dayLessons.length;
+      const inRange = date >= periodStart && date <= periodEnd;
+      if (inRange) {
+        if (count) {
+          if (currentGap > longestGap) longestGap = currentGap;
+          currentGap = 0;
+        } else currentGap += 1;
+      }
+      cells.push({ iso, count, lessons: dayLessons, inRange, weekIndex: Math.floor(i / 7) + 1, dayIndex: (date.getDay() + 6) % 7 + 1, gapEnd: inRange && count > 0 && currentGap === 0 });
+    }
+    longestGap = Math.max(longestGap, currentGap);
+    return { cells, longestGap, weeks };
+  },
+  forgottenSkills(skillStats) {
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(12, 0, 0, 0);
+    return skillStats.map((stat) => __spreadProps(__spreadValues({}, stat), {
+      daysAgo: stat.lastDate ? Math.floor((today - stat.lastDate) / 864e5) : 999
+    })).filter((stat) => stat.daysAgo >= 21).sort((a, b) => b.daysAgo - a.daysAgo || b.count - a.count).slice(0, 8);
+  },
+  criticalSkills(skillStats) {
+    return skillStats.filter((stat) => stat.count >= 2 && stat.maxStadio < 3).sort((a, b) => b.count - a.count || a.maxStadio - b.maxStadio).slice(0, 6);
+  },
+  studentTimeline(lessons, target) {
+    if (!target.startsWith("allievo:")) return [];
+    const id = target.slice("allievo:".length);
+    return lessons.filter((lesson) => analysisLessonParticipants(lesson).some((p) => String(p.id) === String(id))).slice(-10).reverse();
+  },
+  insights(lessons, branchStats, biomechanicStats, skillStats) {
+    const insights = [];
+    const total = branchStats.reduce((sum, row) => sum + row.count, 0);
+    const dominant = [...branchStats].sort((a, b) => b.count - a.count)[0];
+    const weak = [...branchStats].filter((row) => row.count > 0).sort((a, b) => a.count - b.count)[0];
+    if (dominant && total && dominant.count / total > 0.48) insights.push(`Molto lavoro su ${dominant.label}: ${Math.round(dominant.count / total * 100)}% delle skill registrate.`);
+    if (weak && total && weak.count / total < 0.16) insights.push(`${weak.label} e poco presente: valuta un richiamo nelle prossime lezioni.`);
+    const missingMetrics = biomechanicStats.filter((row) => !row.count).map((row) => row.label);
+    if (missingMetrics.length) insights.push(`Parametri biomeccanici mancanti per: ${missingMetrics.slice(0, 3).join(", ")}.`);
+    const forgotten = this.forgottenSkills(skillStats);
+    if (forgotten.length) insights.push(`${forgotten.length} skill non ricompaiono da almeno 21 giorni.`);
+    const openCount = lessons.filter((lesson) => lessonStatus(lesson) === "aperta").length;
+    if (openCount) insights.push(`${openCount} lezion${openCount === 1 ? "e aperta" : "i aperte"}: chiuderle rende l'analisi piu affidabile.`);
+    if (!insights.length) insights.push("Bilanciamento didattico regolare nel periodo selezionato.");
+    return insights;
+  }
+};
+function loadAnalisi() {
+  return __async(this, null, function* () {
+    const el = document.getElementById("analisi-content");
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Caricamento analisi...</div>';
+    try {
+      yield renderAnalisi();
+    } catch (error) {
+      console.error("Analisi non caricata", error);
+      el.innerHTML = `<div class="empty">${esc(error.message || "Analisi non disponibile.")}</div>`;
+    }
+  });
+}
+function renderAnalisi() {
+  return __async(this, null, function* () {
+    const el = document.getElementById("analisi-content");
+    if (!el) return;
+    const previous = analysisSelectedFilters();
+    const data = yield AnalysisService.getOverview(previous);
+    el.innerHTML = `
+    <div class="analysis-hero">
+      <div>
+        <h2>Analisi</h2>
+        <div class="analysis-subtitle">Dashboard didattica su lezioni, skill, rami e parametri biomeccanici.</div>
+      </div>
+      ${data.isMock ? '<span class="pill warn">Dati demo</span>' : '<span class="pill ok">Dati reali</span>'}
+    </div>
+    <div class="analysis-filters">
+      <label class="field"><span>Periodo</span><select id="analysis-period" onchange="renderAnalisi()">${ANALYSIS_PERIODS.map((period) => `<option value="${period.value}" ${period.value === previous.period ? "selected" : ""}>${esc(period.label)}</option>`).join("")}</select></label>
+      <label class="field"><span>Target</span><select id="analysis-target" onchange="renderAnalisi()">${analysisTargetOptions()}</select></label>
+      <label class="field"><span>Ramo</span><select id="analysis-branch" onchange="renderAnalisi()"><option value="all">Tutti i rami</option>${ANALYSIS_BRANCHES.map((branch) => `<option value="${branch.id}" ${branch.id === previous.branch ? "selected" : ""}>${esc(branch.label)}</option>`).join("")}<option value="other" ${previous.branch === "other" ? "selected" : ""}>EXTRA</option></select></label>
+      <label class="field"><span>Stato lezioni</span><select id="analysis-status" onchange="renderAnalisi()"><option value="all">Tutte</option><option value="chiusa" ${previous.status === "chiusa" ? "selected" : ""}>Chiuse</option><option value="aperta" ${previous.status === "aperta" ? "selected" : ""}>Aperte</option></select></label>
+    </div>
+    ${renderAnalysisKpis(data)}
+    <div class="analysis-grid-2">
+      ${renderAnalysisTimeline(data)}
+      ${renderAnalysisBranchRadar(data)}
+    </div>
+    <div class="analysis-grid-2">
+      ${renderAnalysisBiomechanics(data)}
+      ${renderAnalysisDistribution(data)}
+    </div>
+    <div class="analysis-grid-3">
+      ${renderAnalysisTopSkills(data)}
+      ${renderAnalysisForgottenSkills(data)}
+      ${renderAnalysisCriticalSkills(data)}
+    </div>
+    <div class="analysis-grid-2" style="margin-top:1rem">
+      ${renderAnalysisStudentTimeline(data)}
+      ${renderAnalysisInsights(data)}
+    </div>`;
+    const targetEl = document.getElementById("analysis-target");
+    if (targetEl && [...targetEl.options].some((option) => option.value === previous.target)) targetEl.value = previous.target;
+  });
+}
+function renderAnalysisKpis(data) {
+  const d = data.distribution;
+  const kpis = [
+    { icon: "\u25A6", value: d.totalLessons, label: "Lezioni", note: `${d.closed} chiuse, ${d.open} aperte` },
+    { icon: "\u25F7", value: Math.round(d.totalMinutes / 60 * 10) / 10, label: "Ore didattiche", note: `${d.totalMinutes} minuti registrati` },
+    { icon: "\u25C8", value: d.uniqueSkills, label: "Skill diverse", note: `${d.avgSkills.toFixed(1)} skill per lezione` },
+    { icon: "\u25A4", value: data.branchStats.filter((row) => row.count).length, label: "Rami attivi", note: "STANCE, GAIT, ROTATION, BRAKING" }
+  ];
+  return `<div class="analysis-kpi-grid">${kpis.map((kpi) => `
+    <div class="analysis-kpi">
+      <div class="analysis-kpi-top"><span>${kpi.icon}</span></div>
+      <div class="analysis-kpi-value">${esc(kpi.value)}</div>
+      <div class="analysis-kpi-label">${esc(kpi.label)}</div>
+      <div class="analysis-kpi-note">${esc(kpi.note)}</div>
+    </div>`).join("")}</div>`;
+}
+function renderAnalysisTimeline(data) {
+  const max = Math.max(1, ...data.timeline.cells.map((cell) => cell.count));
+  const weekdayLabels = ["L", "M", "M", "G", "V", "S", "D"];
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Timeline lezioni</h3><span class="analysis-section-note">Intensita per giorno</span></div>
+    <div class="analysis-timeline-layout">
+      <div class="analysis-timeline-chart">
+        <div class="analysis-heatmap-wrap">
+          <div class="analysis-heatmap-weekdays">${weekdayLabels.map((label) => `<span>${esc(label)}</span>`).join("")}</div>
+          <div class="analysis-heatmap" style="--analysis-weeks:${Math.max(1, data.timeline.weeks || 1)}">${data.timeline.cells.map((cell) => {
+    const alpha = cell.count ? 0.18 + cell.count / max * 0.62 : 0;
+    const styleBits = [`grid-column:${cell.weekIndex}`, `grid-row:${cell.dayIndex}`];
+    if (cell.count) styleBits.push(`background:rgba(110,231,249,${alpha.toFixed(2)})`);
+    if (!cell.inRange) styleBits.push("opacity:.28");
+    const style = `style="${styleBits.join(";")}"`;
+    const lessonLabels = [...new Set((cell.lessons || []).flatMap((lesson) => {
+      const names = analysisLessonParticipants(lesson).map((p) => p.label).filter(Boolean);
+      return names.length ? names : [tipoLabel(lesson.tipo)];
+    }))];
+    const more = lessonLabels.length > 6 ? ` +${lessonLabels.length - 6}` : "";
+    const detail = lessonLabels.length ? ` \xB7 ${lessonLabels.slice(0, 6).join(" \xB7 ")}${more}` : "";
+    const title = `${formatDate(cell.iso)}: ${cell.count} lezion${cell.count === 1 ? "e" : "i"}${detail}`;
+    return `<span class="analysis-day${cell.count ? " has-lessons" : ""}${cell.gapEnd ? " gap-end" : ""}" ${style} title="${esc(title)}" aria-label="${esc(title)}"></span>`;
+  }).join("")}</div>
+        </div>
+        <div class="analysis-heatmap-note">Colore piu intenso = piu lezioni. Lascia il mouse su un giorno per i dettagli.</div>
+      </div>
+      <div class="analysis-timeline-meta">
+        <div class="analysis-meta-box"><strong>${data.timeline.longestGap} giorni</strong>Gap massimo senza lezioni nel periodo mostrato.</div>
+        <div class="analysis-meta-box"><strong>${data.lessons.length ? formatDate(data.lessons[data.lessons.length - 1].data) : "-"}</strong>Ultima lezione nel filtro corrente.</div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderAnalysisBranchRadar(data) {
+  const max = Math.max(1, ...data.branchStats.map((row) => row.count));
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Rami didattici</h3><span class="analysis-section-note">Distribuzione skill lavorate</span></div>
+    <div class="analysis-bars">${data.branchStats.map((row) => `
+      <div class="analysis-bar-row">
+        <strong>${esc(row.label)}</strong>
+        <span class="analysis-bar-track"><span class="analysis-bar-fill" style="width:${Math.round(row.count / max * 100)}%"></span></span>
+        <span>${row.count}</span>
+      </div>`).join("")}</div>
+  </div>`;
+}
+function renderAnalysisBiomechanics(data) {
+  const max = 5;
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Parametri biomeccanici</h3><span class="analysis-section-note">Media 0-5 dalle skill</span></div>
+    <div class="analysis-bars">${data.biomechanicStats.map((row) => `
+      <div class="analysis-bar-row">
+        <strong>${esc(row.label)}</strong>
+        <span class="analysis-bar-track"><span class="analysis-bar-fill" style="width:${Math.round(row.value / max * 100)}%"></span></span>
+        <span>${row.count ? row.value.toFixed(1) : "-"}</span>
+      </div>`).join("")}</div>
+  </div>`;
+}
+function renderAnalysisDistribution(data) {
+  const rows = [
+    ["Individuali", data.lessons.filter((lesson) => lesson.tipo === "individuale").length],
+    ["Gruppo", data.lessons.filter((lesson) => lesson.tipo === "gruppo").length],
+    ["Campo libero", data.lessons.filter((lesson) => lesson.tipo === "campo_libero").length],
+    ["Skill totali", data.skillStats.reduce((sum, row) => sum + row.count, 0)]
+  ];
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Distribuzione</h3><span class="analysis-section-note">Composizione lezioni</span></div>
+    <table class="analysis-table"><tbody>${rows.map(([label, value]) => `<tr><th>${esc(label)}</th><td>${value}</td></tr>`).join("")}</tbody></table>
+  </div>`;
+}
+function renderAnalysisTopSkills(data) {
+  const rows = data.skillStats.slice(0, 8);
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Top skill</h3><span class="analysis-section-note">Piu lavorate</span></div>
+    ${rows.length ? `<table class="analysis-table"><tbody>${rows.map((row) => `<tr><td><span class="analysis-skill-line"><strong>${esc(row.nome)}</strong><span class="analysis-pill">${esc(analysisBranchLabel(analysisBranchForSkill(row.skill)))}</span></span></td><td>${row.count}</td></tr>`).join("")}</tbody></table>` : '<div class="empty">Nessuna skill nel filtro.</div>'}
+  </div>`;
+}
+function renderAnalysisForgottenSkills(data) {
+  const rows = data.forgottenSkills;
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Skill dimenticate</h3><span class="analysis-section-note">Assenti da 21+ giorni</span></div>
+    ${rows.length ? `<table class="analysis-table"><tbody>${rows.map((row) => `<tr><td><span class="analysis-skill-line"><strong>${esc(row.nome)}</strong><span class="analysis-stage">${esc(row.lastDate ? formatDate(analysisIsoFromDate(row.lastDate)) : "Mai ripresa")}</span></span></td><td>${row.daysAgo}g</td></tr>`).join("")}</tbody></table>` : '<div class="empty">Nessuna skill critica per oblio.</div>'}
+  </div>`;
+}
+function renderAnalysisCriticalSkills(data) {
+  const rows = data.criticalSkills;
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Skill critiche</h3><span class="analysis-section-note">Ripetute ma non consolidate</span></div>
+    ${rows.length ? `<table class="analysis-table analysis-critical-table"><tbody>${rows.map((row) => `
+      <tr>
+        <td><span class="analysis-skill-line"><strong>${esc(row.nome)}</strong><span class="analysis-stage">${esc(stadioLabel(row.maxStadio))}</span></span></td>
+        <td>${row.count}x</td>
+      </tr>`).join("")}</tbody></table>` : '<div class="empty">Nessuna criticita evidente.</div>'}
+  </div>`;
+}
+function renderAnalysisStudentTimeline(data) {
+  if (!data.filters.target.startsWith("allievo:")) {
+    return `<div class="card"><div class="analysis-section-head"><h3>Timeline allievo</h3><span class="analysis-section-note">Seleziona un allievo</span></div><div class="empty">Disponibile scegliendo un allievo specifico nel filtro Target.</div></div>`;
+  }
+  const rows = data.studentTimeline;
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Timeline allievo</h3><span class="analysis-section-note">Ultimi passaggi didattici</span></div>
+    <div class="analysis-student-timeline">${rows.length ? rows.map((lesson) => `
+      <div class="analysis-timeline-item">
+        <div class="analysis-timeline-date">${esc(formatDate(lesson.data))}</div>
+        <div class="analysis-timeline-body"><strong>${esc(analysisLessonSkills(lesson).map((row) => row.nome).slice(0, 4).join(", ") || "Nessuna skill")}</strong>${esc(lesson.note_speciali || lesson.luogo || tipoLabel(lesson.tipo))}</div>
+      </div>`).join("") : '<div class="empty">Nessuna lezione per questo allievo nel filtro.</div>'}</div>
+  </div>`;
+}
+function renderAnalysisInsights(data) {
+  return `<div class="card">
+    <div class="analysis-section-head"><h3>Bilanciamento</h3><span class="analysis-section-note">Lettura didattica automatica</span></div>
+    <div class="analysis-insight-list">${data.insights.map((text) => `<div class="analysis-insight">${esc(text)}</div>`).join("")}</div>
+  </div>`;
+}
 function maestroAvailabilityStorageKey() {
   return `${MAESTRO_AVAILABILITY_STORAGE_PREFIX}:${currentUid || currentEmail || "local"}`;
 }
@@ -2991,6 +4069,26 @@ function setAvailabilityStatus(owner, text, cls = "") {
   el.textContent = text || "";
   el.style.color = cls === "err" ? "var(--danger)" : cls === "ok" ? "var(--success)" : "var(--muted)";
 }
+function allievoSoloGruppo(allievo) {
+  return !!(allievo == null ? void 0 : allievo.gruppo) && allievo.solo_gruppo === true;
+}
+function gruppoSoloGruppo(gruppo, membri = allAllievi) {
+  return !!gruppo && membri.some((a) => a.gruppo === gruppo && allievoSoloGruppo(a));
+}
+function lezionePresetPerAllievo(allievo) {
+  return allievoSoloGruppo(allievo) ? `gruppo:${allievo.gruppo}` : `modo:prep:${allievo.id}`;
+}
+function saveGroupOnlyRule(gruppo, value) {
+  return __async(this, null, function* () {
+    const { data, error } = yield sb.from("allievi").update({ solo_gruppo: !!value }).eq("gruppo", gruppo).select("id,solo_gruppo");
+    if (error) throw error;
+    if (!(data == null ? void 0 : data.length)) throw new Error("Nessun membro aggiornato. Ricarica il gruppo e riprova.");
+    const updated = new Map(data.map((a) => [a.id, a.solo_gruppo]));
+    allAllievi.forEach((a) => {
+      if (updated.has(a.id)) a.solo_gruppo = updated.get(a.id);
+    });
+  });
+}
 function activeAppointmentAllievi() {
   return ordinaAllieviLista(allieviVisibiliGod().filter((a) => a.stato !== "archiviato" && !allievoInVacanza(a)));
 }
@@ -3003,6 +4101,10 @@ function normalizeAllievoTier(value, vip = false) {
 function allievoTier(allievo = {}) {
   var _a2;
   return normalizeAllievoTier(allievo.tier || ((_a2 = allievo.profilo) == null ? void 0 : _a2.tier), allievo.vip);
+}
+function allievoTierListLabel(allievo = {}) {
+  const tier = allievoTier(allievo);
+  return tier === "VIP" ? "V" : tier;
 }
 function allievoTierRank(allievo = {}) {
   var _a2;
@@ -3152,6 +4254,17 @@ function appointmentSelectionStats() {
   const selected = entries.filter(appointmentSelectionEntryIsSelected).length;
   return { selected, total };
 }
+function appointmentFilteredStats(allievi = filteredAppointmentAllievi()) {
+  const stats = appointmentSelectionStats();
+  return {
+    filtered: allievi.length,
+    selected: stats.selected
+  };
+}
+function appointmentFilteredStatusHtml(allievi = filteredAppointmentAllievi()) {
+  const stats = appointmentFilteredStats(allievi);
+  return `${stats.filtered} alliev${stats.filtered === 1 ? "o" : "i"} nel filtro corrente \xB7 ${stats.selected} selezionat${stats.selected === 1 ? "o" : "i"} per il planner.`;
+}
 function appointmentSelectedAllievi() {
   ensureAppointmentSelectionDefaults();
   const selected = appointmentSelectedAllieviIds || /* @__PURE__ */ new Set();
@@ -3175,7 +4288,7 @@ function appointmentGroupMembers(gruppo) {
 function appointmentTargetExists(value) {
   if (!value) return false;
   if (appointmentTargetIsGroup(value)) return appointmentGroupMembers(appointmentGroupFromTarget(value)).length > 0;
-  return activeAppointmentAllievi().some((a) => String(a.id) === String(value));
+  return activeAppointmentAllievi().some((a) => String(a.id) === String(value) && !allievoSoloGruppo(a));
 }
 function selectedAppointmentTarget() {
   const selected = appuntamentiSelectedAllievoId;
@@ -3193,7 +4306,7 @@ function selectedAppointmentTarget() {
     };
   }
   const allievo = allievoById(selected);
-  return allievo ? {
+  return allievo && !allievoSoloGruppo(allievo) ? {
     type: "allievo",
     value: String(allievo.id),
     allievo,
@@ -3216,7 +4329,7 @@ function availabilityTargetOptions(selected = "") {
       </optgroup>` : ""}
     ${gruppi.map((gruppo) => `
       <optgroup label="Allievi \xB7 ${esc(gruppo)}">
-        ${attivi.filter((a) => a.gruppo === gruppo).map((a) => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? "selected" : ""}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join("")}
+        ${attivi.filter((a) => a.gruppo === gruppo && !allievoSoloGruppo(a)).map((a) => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? "selected" : ""}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join("")}
       </optgroup>`).join("")}
     ${attivi.some((a) => !a.gruppo) ? `
       <optgroup label="Senza gruppo">
@@ -3310,16 +4423,28 @@ function appointmentWeeklyCountForTarget(target = selectedAppointmentTarget()) {
   }
   return appointmentWeeklyCountForAllievo(target.allievo);
 }
+function lessonAllievoIds(lezione = {}) {
+  return (lezione.lezioni_allievi || []).map((row) => {
+    var _a2;
+    return row.allievo_id || ((_a2 = row.allievi) == null ? void 0 : _a2.id);
+  }).filter(Boolean).map((id) => String(id));
+}
+function allievoHasIndividualLessonHistory(allievo) {
+  if (!(allievo == null ? void 0 : allievo.id) || !lezioniCache) return false;
+  const id = String(allievo.id);
+  return (lezioniCache || []).some((lezione) => {
+    if ((lezione == null ? void 0 : lezione.tipo) !== "individuale") return false;
+    const ids = lessonAllievoIds(lezione);
+    return ids.length === 1 && ids.includes(id);
+  });
+}
 function appointmentIndividualLessonsActiveForAllievo(allievo) {
+  if (allievoSoloGruppo(allievo)) return false;
   if (!(allievo == null ? void 0 : allievo.gruppo)) return true;
   const profilo = allievo.profilo || {};
   if (profilo.appuntamenti_individuali_attivi === false) return false;
-  if (profilo.appuntamenti_individuali_attivi || profilo.disponibilita_individuale_attiva) return true;
-  const logisticaIndividuale = logisticaIndividualeProfilo(profilo, true);
-  if (logisticaHaValori(logisticaIndividuale)) return true;
-  const personalSlots = availabilitySlotsForAllievo(allievo);
-  const groupSlots = appointmentGroupMembers(allievo.gruppo).map((member) => availabilityGroupDedicatedSlotsForMember(member)).find((slots) => slots.length) || [];
-  return !!(personalSlots.length && groupSlots.length && availabilitySlotsSignature(personalSlots) !== availabilitySlotsSignature(groupSlots));
+  if (profilo.appuntamenti_individuali_attivi === true) return true;
+  return allievoHasIndividualLessonHistory(allievo);
 }
 function normalizeAppointmentConsecutiveMode(value, legacyAvoid = void 0) {
   const raw = String(value || "").toLowerCase();
@@ -3437,13 +4562,45 @@ function availabilityModeControlsHtml(owner) {
   const availableActive = mode === "available";
   const excludedActive = mode === "excluded";
   const excludedOwner = `${owner}-excluded`;
+  const availabilityCount = availabilitySlotsForOwner(owner).length;
+  const excludedCount = availabilitySlotsForOwner(excludedOwner).length;
   return `
     <div class="availability-card-actions">
       <button type="button" class="btn ${availableActive ? "btn-primary" : "btn-outline"} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','available')">Inserisci disponibilita</button>
       <button type="button" class="btn ${excludedActive ? "btn-primary" : "btn-outline"} btn-sm" onclick="setAvailabilityPlannerMode('${owner}','excluded')">Inserisci fasce escluse</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? "" : "disabled"}>Undo disp.</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? "" : "disabled"}>Undo escl.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${owner}')" ${availabilityCanUndo(owner) ? "" : "disabled"}>Annulla disp.</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="undoAvailability('${excludedOwner}')" ${availabilityCanUndo(excludedOwner) ? "" : "disabled"}>Annulla escl.</button>
+      <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${owner}')" ${availabilityCount ? "" : "disabled"}>Cancella disp.</button>
+      <button type="button" class="btn btn-delete-soft btn-sm" onclick="clearAvailabilitySlots('${excludedOwner}')" ${excludedCount ? "" : "disabled"}>Cancella escl.</button>
     </div>`;
+}
+function availabilityDeleteTargetLabel(owner, target = selectedAppointmentTarget()) {
+  if (availabilityBaseOwner(owner) === "maestro") return "maestro";
+  if ((target == null ? void 0 : target.type) === "gruppo") return `gruppo ${target.gruppo}`;
+  if ((target == null ? void 0 : target.type) === "allievo") return target.label;
+  return "selezione corrente";
+}
+function availabilityDeleteKindLabel(owner, singular = false) {
+  if (availabilityOwnerIsExcluded(owner)) return singular ? "fascia esclusa" : "fasce escluse";
+  return singular ? "disponibilita" : "disponibilita";
+}
+function clearAvailabilitySlots(owner) {
+  return __async(this, null, function* () {
+    const slots = availabilitySlotsForOwner(owner);
+    if (!slots.length) {
+      setAvailabilityStatus(owner, `Nessuna ${availabilityDeleteKindLabel(owner)} da cancellare.`);
+      return;
+    }
+    const targetLabel = availabilityDeleteTargetLabel(owner);
+    const kind = availabilityDeleteKindLabel(owner);
+    if (!confirm(`Cancellare tutte le ${kind} per ${targetLabel}?
+Verranno rimosse ${slots.length} fasc${slots.length === 1 ? "ia" : "e"}.`)) return;
+    try {
+      yield saveAvailabilitySlotsForOwner(owner, [], `Tutte le ${kind} sono state cancellate.`);
+    } catch (e) {
+      setAvailabilityStatus(owner, e.message || `Errore cancellazione ${kind}.`, "err");
+    }
+  });
 }
 function undoAvailability(owner) {
   return __async(this, null, function* () {
@@ -3467,7 +4624,26 @@ function undoAvailability(owner) {
   });
 }
 function availabilityGridHeight() {
-  return (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN) / 60 * AVAILABILITY_HOUR_PX;
+  return (AVAILABILITY_END_MIN - AVAILABILITY_START_MIN) / 60 * availabilityHourPx();
+}
+function availabilityHourPx() {
+  var _a2;
+  return ((_a2 = window.ResponsiveShell) == null ? void 0 : _a2.isMobile()) ? 24 : AVAILABILITY_HOUR_PX;
+}
+function availabilityGridRangeHtml() {
+  return `<div class="availability-grid-range" aria-label="Orari visualizzati nella tabella">
+    <span>Orari tabella</span>
+    <label><span>Inizio</span><input type="time" value="${minutesToTime(AVAILABILITY_START_MIN)}" step="3600" onchange="setAvailabilityGridRange('start',this.value)"></label>
+    <label><span>Fine</span><input type="time" value="${minutesToTime(AVAILABILITY_END_MIN)}" step="3600" onchange="setAvailabilityGridRange('end',this.value)"></label>
+  </div>`;
+}
+function setAvailabilityGridRange(bound, value) {
+  const minutes = timeToMinutes(value);
+  if (minutes == null) return;
+  const snapped = Math.round(minutes / 60) * 60;
+  if (bound === "start") AVAILABILITY_START_MIN = Math.max(0, Math.min(AVAILABILITY_END_MIN - 60, snapped));
+  if (bound === "end") AVAILABILITY_END_MIN = Math.min(24 * 60, Math.max(AVAILABILITY_START_MIN + 60, snapped));
+  renderAppuntamenti();
 }
 function availabilityHourLabels() {
   const labels = [];
@@ -3485,14 +4661,14 @@ function availabilitySnap(value) {
 }
 function availabilityMinutesFromEvent(event, col) {
   const rect = col.getBoundingClientRect();
-  const raw = AVAILABILITY_START_MIN + (event.clientY - rect.top) / AVAILABILITY_HOUR_PX * 60;
+  const raw = AVAILABILITY_START_MIN + (event.clientY - rect.top) / availabilityHourPx() * 60;
   return Math.max(AVAILABILITY_START_MIN, Math.min(AVAILABILITY_END_MIN, availabilitySnap(raw)));
 }
 function availabilitySlotStyle(slot) {
   const startMin = timeToMinutes(slot.start);
   const endMin = timeToMinutes(slot.end);
-  const top = (startMin - AVAILABILITY_START_MIN) / 60 * AVAILABILITY_HOUR_PX;
-  const height = Math.max(18, (endMin - startMin) / 60 * AVAILABILITY_HOUR_PX);
+  const top = (startMin - AVAILABILITY_START_MIN) / 60 * availabilityHourPx();
+  const height = Math.max(18, (endMin - startMin) / 60 * availabilityHourPx());
   return `top:${top}px;height:${height}px`;
 }
 function availabilitySlotBlockHtml(owner, slot, preview = false) {
@@ -3521,7 +4697,7 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
     return (_a2 = byDay.get(Number(slot.day))) == null ? void 0 : _a2.push({ owner: `${owner}-excluded`, slot });
   });
   byDay.forEach((items) => items.sort((a, b) => timeToMinutes(a.slot.start) - timeToMinutes(b.slot.start) || timeToMinutes(a.slot.end) - timeToMinutes(b.slot.end) || (availabilityOwnerIsExcluded(a.owner) ? 1 : 0) - (availabilityOwnerIsExcluded(b.owner) ? 1 : 0)));
-  const style = `--availability-hour-px:${AVAILABILITY_HOUR_PX}px;--availability-grid-height:${availabilityGridHeight()}px`;
+  const style = `--availability-hour-px:${availabilityHourPx()}px;--availability-grid-height:${availabilityGridHeight()}px`;
   const mode = availabilityPlannerMode(owner);
   const editable = !!mode;
   return `
@@ -3534,7 +4710,7 @@ function availabilityPlannerHtml(owner, slots, excludedSlots = []) {
         </div>
         <div class="availability-week-body">
           <div class="availability-time-axis">
-            ${availabilityHourLabels().map((min) => `<div class="availability-time-label" style="top:${(min - AVAILABILITY_START_MIN) / 60 * AVAILABILITY_HOUR_PX}px">${minutesToTime(min)}</div>`).join("")}
+            ${availabilityHourLabels().map((min) => `<div class="availability-time-label" style="top:${(min - AVAILABILITY_START_MIN) / 60 * availabilityHourPx()}px">${minutesToTime(min)}</div>`).join("")}
           </div>
           ${AVAILABILITY_DAYS.map((day) => `
             <div class="availability-day-col" data-owner="${owner}" data-day="${day.value}" onpointerdown="startAvailabilityCreate(event,'${owner}',${day.value})">
@@ -3592,6 +4768,17 @@ function appointmentAgendaTypesHtml() {
         </button>`).join("")}
     </div>`;
 }
+function loadAppuntamenti() {
+  return __async(this, null, function* () {
+    const el = document.getElementById("appuntamenti-content");
+    if (!el) return;
+    if (!lezioniCache) {
+      el.innerHTML = '<div class="loading">Caricamento\u2026</div>';
+      yield loadLezioni(true);
+    }
+    if (visibleViewName() === "appuntamenti") renderAppuntamenti();
+  });
+}
 function renderAppuntamenti() {
   var _a2;
   const el = document.getElementById("appuntamenti-content");
@@ -3599,18 +4786,16 @@ function renderAppuntamenti() {
   const attivi = activeAppointmentAllievi();
   ensureAppointmentSelectionDefaults();
   if (appuntamentiSelectedAllievoId && !appointmentTargetExists(appuntamentiSelectedAllievoId)) appuntamentiSelectedAllievoId = null;
-  if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id;
+  if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = allievoSoloGruppo(attivi[0]) ? appointmentGroupTargetValue(attivi[0].gruppo) : attivi[0].id;
   const selectedTarget = selectedAppointmentTarget();
   const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget);
   const selectedExcludedSlots = availabilityExcludedSlotsForAppointmentTarget(selectedTarget);
   const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget);
   const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget);
   const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget);
-  const selectedIndividualToggle = (selectedTarget == null ? void 0 : selectedTarget.type) === "allievo" && !!((_a2 = selectedTarget.allievo) == null ? void 0 : _a2.gruppo);
+  const selectedIndividualToggle = (selectedTarget == null ? void 0 : selectedTarget.type) === "allievo" && !!((_a2 = selectedTarget.allievo) == null ? void 0 : _a2.gruppo) && !allievoSoloGruppo(selectedTarget.allievo);
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false;
-  const gruppi = appointmentGroups();
   const filteredAllievi = filteredAppointmentAllievi();
-  const selectedStats = appointmentSelectionStats();
   el.innerHTML = `
     <div class="appointments-grid">
       <div class="card">
@@ -3621,6 +4806,7 @@ function renderAppuntamenti() {
           </div>
           ${availabilityModeControlsHtml("maestro")}
         </div>
+        ${availabilityGridRangeHtml()}
         ${availabilityPlannerHtml("maestro", maestroAvailabilitySlots, maestroExcludedSlots)}
         <div class="appointments-status" id="maestro-availability-status"></div>
       </div>
@@ -3683,23 +4869,15 @@ function renderAppuntamenti() {
         <div class="appointments-toolbar">
           <div class="field">
             <label>Cerca allievo</label>
-            <input type="search" id="appointments-search" value="${esc(appuntamentiAllieviQuery)}" placeholder="Nome, nickname, gruppo" oninput="setAppuntamentiQuery(this.value)">
+            <input type="search" id="appointments-search" value="${esc(appuntamentiAllieviQuery)}" placeholder="Nome, nickname, gruppo" oninput="setAppuntamentiQuery(this)">
           </div>
           <div class="field">
-            <label>Gruppo</label>
-            <select id="appointments-group-filter" onchange="setAppuntamentiGroupFilter(this.value)">
-              <option value="all">Tutti</option>
-              ${gruppi.map((g) => `<option value="${esc(g)}" ${appuntamentiGruppoFiltro === g ? "selected" : ""}>${esc(g)}</option>`).join("")}
-              <option value="__no_group__" ${appuntamentiGruppoFiltro === "__no_group__" ? "selected" : ""}>Senza gruppo</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Durata fallback</label>
+            <label>Durata lezione se mancante (min)</label>
             <input type="number" id="appointments-min-duration" min="${APPOINTMENT_MIN_LESSON_MIN}" step="5" value="${APPOINTMENT_MIN_LESSON_MIN}" oninput="clearAppointmentAgendaPreview()">
           </div>
         </div>
-        <div class="appointments-status">${filteredAllievi.length} alliev${filteredAllievi.length === 1 ? "o" : "i"} nel filtro corrente \xB7 ${selectedStats.selected} selezionat${selectedStats.selected === 1 ? "o" : "i"} per il planner.</div>
-        ${appointmentSelectionPanelHtml(filteredAllievi)}
+        <div class="appointments-status" id="appointments-filter-status">${appointmentFilteredStatusHtml(filteredAllievi)}</div>
+        <div id="appointment-selection-panel-holder">${appointmentSelectionPanelHtml(filteredAllievi)}</div>
         <div class="appointments-explainer">
           <strong>Generazione agenda</strong>
           <span>Clicca una tipologia per generare una proposta. Ogni click sulla stessa tipologia prova un'alternativa diversa; le lezioni bloccate restano ferme.</span>
@@ -3715,17 +4893,20 @@ function setAppuntamentiAllievo(id) {
   appuntamentiSelectedAllievoId = id || null;
   renderAppuntamenti();
 }
-function setAppuntamentiQuery(value) {
-  var _a2;
+function renderAppointmentSelectionOnly() {
+  const filteredAllievi = filteredAppointmentAllievi();
+  const status = document.getElementById("appointments-filter-status");
+  if (status) status.textContent = appointmentFilteredStatusHtml(filteredAllievi);
+  const holder = document.getElementById("appointment-selection-panel-holder");
+  if (holder) holder.innerHTML = appointmentSelectionPanelHtml(filteredAllievi);
+  renderAppointmentAgendaPreview();
+}
+function setAppuntamentiQuery(inputOrValue) {
+  const input = inputOrValue && typeof inputOrValue === "object" ? inputOrValue : null;
+  const value = input ? input.value : inputOrValue;
   appuntamentiAllieviQuery = value || "";
   appointmentCurrentVariant = null;
-  renderAppuntamenti();
-  (_a2 = document.getElementById("appointments-search")) == null ? void 0 : _a2.focus();
-}
-function setAppuntamentiGroupFilter(value) {
-  appuntamentiGruppoFiltro = value || "all";
-  appointmentCurrentVariant = null;
-  renderAppuntamenti();
+  renderAppointmentSelectionOnly();
 }
 function toggleAppointmentAllievoSelection(allievoId, checked) {
   ensureAppointmentSelectionDefaults();
@@ -3785,10 +4966,6 @@ function filteredAppointmentAllievi() {
   const query = normalizeText(appuntamentiAllieviQuery);
   return activeAppointmentAllievi().filter((a) => {
     var _a2;
-    if (appuntamentiGruppoFiltro !== "all") {
-      if (appuntamentiGruppoFiltro === "__no_group__" && a.gruppo) return false;
-      if (appuntamentiGruppoFiltro !== "__no_group__" && a.gruppo !== appuntamentiGruppoFiltro) return false;
-    }
     if (!query) return true;
     const haystack = normalizeText([a.nome, a.cognome, a.nickname, a.gruppo, (_a2 = a.profilo) == null ? void 0 : _a2.disponibilita].filter(Boolean).join(" "));
     return haystack.includes(query);
@@ -4020,8 +5197,15 @@ function removeAvailabilitySlot(owner, slotId) {
       setAvailabilityStatus(owner, "Attiva la modalita corretta prima di cambiare questa fascia.");
       return;
     }
+    const slots = availabilitySlotsForOwner(owner);
+    const slot = slots.find((item) => String(item.id) === String(slotId));
+    if (!slot) return;
+    const kind = availabilityDeleteKindLabel(owner, true);
+    const details = `${availabilityDayLabel(slot.day)} ${slot.start}-${slot.end}${slot.note ? ` \xB7 ${slot.note}` : ""}`;
+    if (!confirm(`Cancellare questa ${kind}?
+${details}`)) return;
     try {
-      const next = availabilitySlotsForOwner(owner).filter((slot) => String(slot.id) !== String(slotId));
+      const next = slots.filter((slot2) => String(slot2.id) !== String(slotId));
       yield saveAvailabilitySlotsForOwner(owner, next, availabilityOwnerIsExcluded(owner) ? "Fascia esclusa rimossa." : "Fascia rimossa.");
     } catch (e) {
       setAvailabilityStatus(owner, e.message || "Errore rimozione fascia.", "err");
@@ -4121,6 +5305,7 @@ function saveAllievoAppointmentPreferences(allievoId, preferences) {
   return __async(this, null, function* () {
     const allievo = allievoById(allievoId);
     if (!allievo) throw new Error("Allievo non trovato.");
+    if (allievoSoloGruppo(allievo) && preferences.individualActive) throw new Error("Questo allievo \xE8 solo di gruppo. Cambia la modalit\xE0 dalla scheda del gruppo.");
     const consecutiveMode = normalizeAppointmentConsecutiveMode(preferences.consecutiveMode, preferences.avoidConsecutive);
     const profilo = __spreadProps(__spreadValues({}, allievo.profilo || {}), {
       appuntamenti_settimanali: normalizeAppointmentWeeklyCount(preferences.weeklyCount),
@@ -5310,7 +6495,10 @@ function loadLocation(luogo) {
   });
 }
 function showLocationsIndex() {
-  showView("location", "__index__");
+  mappaPuntiEspansi = true;
+  mappaPuntiEspansiLoaded = true;
+  safeStorage.setItem(MAP_POINTS_EXPANDED_STORAGE_KEY, "1");
+  showView("mappa", mappaSelectedLocationName || null);
 }
 function formatMapCoordinate(value) {
   const n = parseMapCoordinate(value);
@@ -6287,6 +7475,7 @@ function resetActionPanelPosition(panel) {
   panel.style.removeProperty("left");
   panel.style.removeProperty("top");
   panel.style.removeProperty("width");
+  panel.style.removeProperty("max-height");
 }
 function positionInlineActionPanel(panel) {
   if (!panel || panel.hidden) return;
@@ -6296,24 +7485,24 @@ function positionInlineActionPanel(panel) {
   const trigger = menu == null ? void 0 : menu.querySelector("button");
   const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
   const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
-  const rect = panel.getBoundingClientRect();
-  const triggerRect = (trigger == null ? void 0 : trigger.getBoundingClientRect()) || rect;
-  const constrainedWidth = Math.min(Math.max(rect.width, 170), Math.max(170, viewportW - margin * 2));
-  const constrainedHeight = Math.min(rect.height, Math.max(140, viewportH - margin * 2));
-  const clippedByViewport = rect.left < margin || rect.right > viewportW - margin || rect.top < margin || rect.bottom > viewportH - margin;
-  const clipParent = panel.closest(".table-wrap, .modal");
-  const parentRect = clipParent == null ? void 0 : clipParent.getBoundingClientRect();
-  const clippedByParent = !!parentRect && (rect.left < parentRect.left || rect.right > parentRect.right || rect.bottom > parentRect.bottom);
-  if (!clippedByViewport && !clippedByParent) return;
+  if (!trigger || !viewportW || !viewportH) return;
+  const triggerRect = trigger.getBoundingClientRect();
+  const measured = panel.getBoundingClientRect();
+  const constrainedWidth = Math.min(Math.max(measured.width, 170), Math.max(170, viewportW - margin * 2));
+  const naturalHeight = Math.min(measured.height, Math.max(140, viewportH - margin * 2));
+  const spaceBelow = viewportH - triggerRect.bottom - margin;
+  const spaceAbove = triggerRect.top - margin;
+  const openUp = spaceBelow < naturalHeight && spaceAbove > spaceBelow;
+  const constrainedHeight = Math.min(naturalHeight, Math.max(80, openUp ? spaceAbove : spaceBelow));
   let left = Math.min(Math.max(margin, triggerRect.right - constrainedWidth), viewportW - constrainedWidth - margin);
   if (!Number.isFinite(left)) left = margin;
-  let top = triggerRect.bottom + 6;
-  if (top + constrainedHeight > viewportH - margin) top = triggerRect.top - constrainedHeight - 6;
+  let top = openUp ? triggerRect.top - constrainedHeight - 6 : triggerRect.bottom + 6;
   top = Math.min(Math.max(margin, top), Math.max(margin, viewportH - constrainedHeight - margin));
   panel.classList.add("is-fixed");
   panel.style.left = `${left}px`;
   panel.style.top = `${top}px`;
   panel.style.width = `${constrainedWidth}px`;
+  panel.style.maxHeight = `${constrainedHeight}px`;
   const placed = panel.getBoundingClientRect();
   const dx = left - placed.left;
   const dy = top - placed.top;
@@ -6542,6 +7731,195 @@ function lessonSpecialNotes(lezione) {
   const parsed = lessonParsedNotes(lezione);
   return (lezione == null ? void 0 : lezione.note_speciali) || parsed.speciali || (lezione == null ? void 0 : lezione.nota_speciale) || (lezione == null ? void 0 : lezione.nota) || "";
 }
+function normalizeHexCode(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^#?([0-9a-f]{6})$/i);
+  return match ? `#${match[1].toUpperCase()}` : "";
+}
+function hexToRgb(hex) {
+  const normalized = normalizeHexCode(hex);
+  if (!normalized) return null;
+  return {
+    r: parseInt(normalized.slice(1, 3), 16),
+    g: parseInt(normalized.slice(3, 5), 16),
+    b: parseInt(normalized.slice(5, 7), 16)
+  };
+}
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((value) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
+function darkerHex(hex, factor = 0.72) {
+  const rgb = hexToRgb(hex);
+  return rgb ? rgbToHex({ r: rgb.r * factor, g: rgb.g * factor, b: rgb.b * factor }) : DEFAULT_PRIMARY_DARK;
+}
+function primaryColorLightValue(hex) {
+  const rgb = hexToRgb(hex) || hexToRgb(DEFAULT_PRIMARY_COLOR);
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},.13)`;
+}
+function readThemeColorPresets() {
+  const raw = safeStorage.getItem(THEME_PRIMARY_COLOR_PRESETS_KEY);
+  if (raw === null) {
+    const seeded = [{ name: "Aymara", hex: "#4FD8EB" }];
+    safeStorage.setItem(THEME_PRIMARY_COLOR_PRESETS_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+  try {
+    return (JSON.parse(raw || "[]") || []).map((row) => ({ name: String(row.name || "").trim(), hex: normalizeHexCode(row.hex) })).filter((row) => row.name && row.hex);
+  } catch (e) {
+    return [];
+  }
+}
+function writeThemeColorPresets(rows = []) {
+  safeStorage.setItem(THEME_PRIMARY_COLOR_PRESETS_KEY, JSON.stringify(rows));
+}
+function activePrimaryColorHex() {
+  return normalizeHexCode(safeStorage.getItem(THEME_PRIMARY_COLOR_KEY)) || DEFAULT_PRIMARY_COLOR;
+}
+function applyPrimaryColor(hex = activePrimaryColorHex()) {
+  const normalized = normalizeHexCode(hex) || DEFAULT_PRIMARY_COLOR;
+  const rgb = hexToRgb(normalized) || hexToRgb(DEFAULT_PRIMARY_COLOR);
+  const root = document.documentElement;
+  root.style.setProperty("--blu", normalized);
+  root.style.setProperty("--blu-rgb", `${rgb.r},${rgb.g},${rgb.b}`);
+  root.style.setProperty("--blu-scuro", normalized === DEFAULT_PRIMARY_COLOR ? DEFAULT_PRIMARY_DARK : darkerHex(normalized));
+  root.style.setProperty("--blu-chiaro", primaryColorLightValue(normalized));
+}
+function applyPrimaryColorFromStorage() {
+  applyPrimaryColor(activePrimaryColorHex());
+}
+function setThemeColorStatus(text = "", cls = "msg-ok") {
+  const status = document.getElementById("theme-color-status");
+  if (!status) return;
+  status.className = `msg ${cls}${text ? " show" : ""}`;
+  status.textContent = text;
+}
+function renderThemeColorPanel() {
+  const tbody = document.getElementById("theme-color-table-body");
+  if (!tbody) return;
+  const active = activePrimaryColorHex();
+  const savedPresets = readThemeColorPresets();
+  const presets = [
+    { name: "Default", hex: DEFAULT_PRIMARY_COLOR, isDefault: true },
+    ...savedPresets
+  ];
+  tbody.innerHTML = presets.length ? presets.map((row, index) => {
+    const savedIndex = index - 1;
+    return `
+    <tr>
+      <td><strong>${esc(row.name)}</strong>${row.hex === active ? '<span class="theme-color-active">attivo</span>' : ""}</td>
+      <td>${esc(row.hex)}</td>
+      <td><span class="theme-color-swatch" style="background:${esc(row.hex)}"></span></td>
+      <td>
+        <div class="theme-color-actions">
+          <button type="button" class="btn btn-outline btn-xs theme-color-icon-btn" title="Usa colore" aria-label="Usa colore" onclick="${row.isDefault ? "restoreDefaultPrimaryColor()" : `applyThemeColorPreset(${jsArg(row.hex)})`}">\u2713</button>
+          ${row.isDefault ? "" : `
+            <button type="button" class="btn btn-ghost btn-xs theme-color-icon-btn" title="Modifica" aria-label="Modifica" onclick="editThemeColorPreset(${jsArg(row.name)})">${editIcon()}</button>
+            <button type="button" class="btn btn-ghost btn-xs theme-color-icon-btn" title="Sposta su" aria-label="Sposta su" onclick="moveThemeColorPreset(${jsArg(row.name)}, -1)" ${savedIndex <= 0 ? "disabled" : ""}>\u2191</button>
+            <button type="button" class="btn btn-ghost btn-xs theme-color-icon-btn" title="Sposta gi\xF9" aria-label="Sposta gi\xF9" onclick="moveThemeColorPreset(${jsArg(row.name)}, 1)" ${savedIndex >= savedPresets.length - 1 ? "disabled" : ""}>\u2193</button>
+            <button type="button" class="btn btn-ghost btn-xs theme-color-icon-btn" title="Cancella" aria-label="Cancella" onclick="deleteThemeColorPreset(${jsArg(row.name)})">\xD7</button>
+          `}
+        </div>
+      </td>
+    </tr>`;
+  }).join("") : '<tr><td colspan="4" style="color:var(--muted)">Nessun colore salvato.</td></tr>';
+  const nameInput = document.getElementById("theme-color-name");
+  const hexInput = document.getElementById("theme-color-hex");
+  if (nameInput && !nameInput.value) nameInput.value = "";
+  if (hexInput && !hexInput.value) hexInput.value = active === DEFAULT_PRIMARY_COLOR ? "" : active;
+}
+function previewThemeColorHex(value) {
+  const hex = normalizeHexCode(value);
+  if (!hex) return;
+  applyPrimaryColor(hex);
+  setThemeColorStatus("Anteprima colore applicata. Salva per conservarla.", "msg-info");
+}
+function applyThemeColorPreset(hex) {
+  const normalized = normalizeHexCode(hex);
+  if (!normalized) return;
+  safeStorage.setItem(THEME_PRIMARY_COLOR_KEY, normalized);
+  applyPrimaryColor(normalized);
+  renderThemeColorPanel();
+  setThemeColorStatus(`Colore primario applicato: ${normalized}`, "msg-ok");
+}
+function restoreDefaultPrimaryColor() {
+  safeStorage.removeItem(THEME_PRIMARY_COLOR_KEY);
+  applyPrimaryColor(DEFAULT_PRIMARY_COLOR);
+  const nameInput = document.getElementById("theme-color-name");
+  const hexInput = document.getElementById("theme-color-hex");
+  if (nameInput) nameInput.value = "";
+  if (hexInput) hexInput.value = "";
+  editingThemeColorName = null;
+  renderThemeColorPanel();
+  setThemeColorStatus("Colore primario ripristinato al default.", "msg-ok");
+}
+function saveThemeColorPreset() {
+  const nameInput = document.getElementById("theme-color-name");
+  const hexInput = document.getElementById("theme-color-hex");
+  const name = String((nameInput == null ? void 0 : nameInput.value) || "").trim();
+  const hex = normalizeHexCode(hexInput == null ? void 0 : hexInput.value);
+  if (!name) {
+    setThemeColorStatus("Dai un nome al colore.", "msg-err");
+    return;
+  }
+  if (!hex) {
+    setThemeColorStatus("Inserisci un hex code valido, es. #4FD8EB.", "msg-err");
+    return;
+  }
+  const presets = readThemeColorPresets();
+  const editingKey = normalizeText(editingThemeColorName);
+  const existingIndex = editingKey ? presets.findIndex((row) => normalizeText(row.name) === editingKey) : presets.findIndex((row) => normalizeText(row.name) === normalizeText(name));
+  const duplicateIndex = presets.findIndex((row) => normalizeText(row.name) === normalizeText(name));
+  if (editingKey && duplicateIndex >= 0 && duplicateIndex !== existingIndex) {
+    setThemeColorStatus(`Esiste gi\xE0 un colore chiamato "${name}".`, "msg-err");
+    return;
+  }
+  const next = { name, hex };
+  if (existingIndex >= 0) presets[existingIndex] = next;
+  else presets.push(next);
+  writeThemeColorPresets(presets);
+  safeStorage.setItem(THEME_PRIMARY_COLOR_KEY, hex);
+  applyPrimaryColor(hex);
+  if (nameInput) nameInput.value = "";
+  editingThemeColorName = null;
+  renderThemeColorPanel();
+  setThemeColorStatus(`Colore "${name}" salvato e applicato.`, "msg-ok");
+}
+function editThemeColorPreset(name) {
+  const target = normalizeText(name);
+  const found = readThemeColorPresets().find((row) => normalizeText(row.name) === target);
+  if (!found) return;
+  const nameInput = document.getElementById("theme-color-name");
+  const hexInput = document.getElementById("theme-color-hex");
+  if (nameInput) nameInput.value = found.name;
+  if (hexInput) hexInput.value = found.hex;
+  editingThemeColorName = found.name;
+  setThemeColorStatus(`Modifica "${found.name}" e premi Salva colore.`, "msg-info");
+}
+function moveThemeColorPreset(name, direction = 0) {
+  const presets = readThemeColorPresets();
+  const from = presets.findIndex((row2) => normalizeText(row2.name) === normalizeText(name));
+  const to = from + Number(direction);
+  if (from < 0 || to < 0 || to >= presets.length) return;
+  const [row] = presets.splice(from, 1);
+  presets.splice(to, 0, row);
+  writeThemeColorPresets(presets);
+  renderThemeColorPanel();
+}
+function deleteThemeColorPreset(name) {
+  const presets = readThemeColorPresets();
+  const target = normalizeText(name);
+  const found = presets.find((row) => normalizeText(row.name) === target);
+  if (!found) return;
+  const active = activePrimaryColorHex();
+  writeThemeColorPresets(presets.filter((row) => normalizeText(row.name) !== target));
+  if (found.hex === active) {
+    safeStorage.removeItem(THEME_PRIMARY_COLOR_KEY);
+    applyPrimaryColor(DEFAULT_PRIMARY_COLOR);
+  }
+  if (normalizeText(editingThemeColorName) === target) editingThemeColorName = null;
+  renderThemeColorPanel();
+  setThemeColorStatus(`Colore "${found.name}" cancellato.`, "msg-ok");
+}
 function renderGodPanel() {
   const panel = document.getElementById("god-panel");
   const toggle = document.getElementById("god-toggle");
@@ -6575,7 +7953,7 @@ function toggleGodMode() {
   godMode = !godMode;
   if (!godMode) godScope = "all";
   renderGodPanel();
-  if (!godMode && ["tuning", "app-notes"].includes(visibleViewName())) showView("allievi");
+  if (!godMode && ["tuning", "theme-colors", "app-notes"].includes(visibleViewName())) showView("allievi");
   renderAllievi();
   if (!document.getElementById("view-lezioni").hidden) loadLezioni();
 }
@@ -6671,47 +8049,53 @@ function setGodScope(scope) {
 }
 function renderAllievi() {
   const el = document.getElementById("allievi-content");
+  el.dataset.mobileCards = "true";
   renderDashboard();
   const listaVisibile = allieviVisibiliGod();
-  const baseLista = filtroVacanza ? listaVisibile.filter((a) => allievoInVacanza(a)) : listaVisibile;
-  if (!baseLista.length) {
-    el.innerHTML = mostraArchiviati ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;justify-content:flex-end"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="setArchivio(true)" class="chip chip-on">Archivio</button></div><div class="empty">Nessun allievo archiviato.</div>' : filtroVacanza ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center"><button type="button" onclick="mostraTuttiAllievi()" class="chip">Tutti</button><button type="button" onclick="toggleFiltroVacanza()" class="chip chip-on">\u{1F3D6} In vacanza</button></div><div class="empty">Nessun allievo o gruppo in vacanza.</div>' : '<div class="empty">Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.</div>';
-    return;
-  }
-  const gruppi = [...new Set(baseLista.map((a) => a.gruppo).filter(Boolean))].sort();
-  const mostraToggleGruppi = !mostraArchiviati && filtroGruppo === null && gruppi.length > 0;
-  const tuttiGruppiEspansi = mostraToggleGruppi && gruppi.every((g) => gruppiEspansi.has(g));
+  const gruppiCorrenti = allieviGroupNamesForCurrentMode(listaVisibile);
+  const mostraToggleGruppi = gruppiCorrenti.length > 0;
+  const tuttiGruppiEspansi = mostraToggleGruppi && gruppiCorrenti.every((g) => gruppiEspansi.has(g));
   const chipsHtml = `
-    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.85rem;align-items:center">
-      <button type="button" onclick="mostraTuttiAllievi()" class="chip${!mostraArchiviati && filtroGruppo === null && !filtroVacanza ? " chip-on" : ""}">Tutti</button>
-      ${gruppi.map((g) => `<button type="button" onclick="setFiltroGruppo('${g.replace(/'/g, "\\'")}')" class="chip${filtroGruppo === g ? " chip-on" : ""}">${esc(g)}</button>`).join("")}
-      ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? "Raggruppa tutti i gruppi" : "Espandi tutti i gruppi"}">${tuttiGruppiEspansi ? "\u25B4 Raggruppa" : "\u25BE Espandi"}</button>` : ""}
-      <button type="button" onclick="toggleFiltroVacanza()" class="chip${filtroVacanza ? " chip-on" : ""}" title="Mostra solo chi e in vacanza">\u{1F3D6} In vacanza</button>
-      <button type="button" onclick="setArchivio(true)" class="chip${mostraArchiviati ? " chip-on" : ""}" style="margin-left:auto">Archivio</button>
+    <div class="allievi-filter-bar">
+      <button type="button" onclick="setAllieviListMode('attivi')" class="chip${filtroListaAllievi === "attivi" ? " chip-on" : ""}">Attivi</button>
+      <button type="button" onclick="setAllieviListMode('tutti')" class="chip${filtroListaAllievi === "tutti" ? " chip-on" : ""}">Tutti gli allievi</button>
+      <button type="button" onclick="setAllieviListMode('gruppi')" class="chip${filtroListaAllievi === "gruppi" ? " chip-on" : ""}">Gruppi</button>
+      <div class="allievi-filter-secondary">
+        <button type="button" onclick="setAllieviListMode('vacanza')" class="chip${filtroListaAllievi === "vacanza" ? " chip-on" : ""}" title="Mostra solo chi e in vacanza">\u{1F3D6} In vacanza</button>
+        <button type="button" onclick="setAllieviListMode('archivio')" class="chip${filtroListaAllievi === "archivio" ? " chip-on" : ""}">Archivio</button>
+        ${mostraToggleGruppi ? `<button type="button" onclick="toggleTuttiGruppi()" class="chip" title="${tuttiGruppiEspansi ? "Raggruppa tutti i gruppi" : "Espandi tutti i gruppi"}">${tuttiGruppiEspansi ? "\u25B4 Raggruppa" : "\u25BE Espandi"}</button>` : ""}
+      </div>
     </div>`;
-  const lista = ordinaAllieviLista(filtroGruppo ? baseLista.filter((a) => a.gruppo === filtroGruppo) : baseLista);
   const allieviColgroup = `
     <colgroup>
       <col style="width:46px">
       <col style="width:28%">
-      <col style="width:19%">
-      <col style="width:14%">
-      <col style="width:7%">
+      <col style="width:16%">
+      <col style="width:76px">
+      <col style="width:13%">
+      <col style="width:72px">
       <col>
       <col style="width:118px">
     </colgroup>`;
+  const allievoBadgesHtml = (a, { mobile = false } = {}) => {
+    const margin = mobile ? "" : "margin-left:4px;";
+    const vacationColor = mobile ? "#fbbf24" : "#b45309";
+    return `
+      ${a.tipo === "associazione" ? `<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;${margin}">ass.</span>` : ""}
+      ${a.stato === "archiviato" ? `<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;${margin}">arch.</span>` : ""}
+      ${allievoInVacanza(a) ? `<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:${vacationColor};padding:1px 5px;border-radius:10px;${margin}">vacanza</span>` : ""}`;
+  };
   const renderAllievoRow = (a, extraClass = "") => `
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === "archiviato" ? "opacity:.55" : ""};cursor:pointer">
       <td style="width:42px;text-align:center;white-space:nowrap">${allievoTier(a) === "VIP" ? '<span class="vip-star">\u2605</span>' : ""}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
-        <strong>${esc(a.nome)}</strong>
-        ${a.tipo === "associazione" ? '<span style="font-size:.7rem;font-weight:700;background:var(--blu-chiaro);color:var(--blu);padding:1px 5px;border-radius:10px;margin-left:4px">ass.</span>' : ""}
-        ${a.stato === "archiviato" ? '<span style="font-size:.7rem;font-weight:700;background:rgba(148,163,184,.14);color:var(--muted);padding:1px 5px;border-radius:10px;margin-left:4px">arch.</span>' : ""}
-        ${allievoInVacanza(a) ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}
+        ${studentAvatarHtml(a)}<strong>${esc(a.nome)}</strong>
+        ${allievoBadgesHtml(a)}
       </td>
       <td>${a.tipo === "associazione" ? "" : esc(a.cognome)}</td>
+      <td style="color:var(--muted);font-size:.84rem;white-space:nowrap">${esc(allievoEtaLabel(a.data_nascita) || "")}</td>
       <td style="color:var(--muted);font-size:.85rem">${a.nickname ? esc(a.nickname) : ""}</td>
-      <td><span class="chip" title="Tier">${esc(allievoTier(a))}</span></td>
+      <td><span class="chip" title="Tier ${esc(allievoTier(a))}">${esc(allievoTierListLabel(a))}</span></td>
       <td>${esc(a.blocco_attuale)}</td>
       <td style="width:40px;text-align:center">
         <div style="display:flex;justify-content:flex-end;gap:.25rem;flex-wrap:wrap">
@@ -6719,60 +8103,160 @@ function renderAllievi() {
         </div>
       </td>
     </tr>`;
-  if (!filtroGruppo) {
-    const senzaGruppo = lista.filter((a) => !a.gruppo);
-    const gruppiRows = gruppi.map((gruppo, index) => {
-      const membri = ordinaAllieviLista(lista.filter((a) => a.gruppo === gruppo));
-      const expanded = gruppiEspansi.has(gruppo);
-      const blocchi = [...new Set(membri.map((a) => a.blocco_attuale).filter(Boolean))].join(", ") || "\u2014";
-      const gruppoVacanza = gruppoInVacanza(gruppo);
-      const actionId = `gruppo-list-actions-${index}`;
-      return `
+  const renderAllievoCard = (a, actionSuffix = "") => {
+    const fullName = [a.nome, a.tipo === "associazione" ? "" : a.cognome].filter(Boolean).join(" ");
+    const actionId = `allievo-list-mobile-actions-${a.id}${actionSuffix ? `-${actionSuffix}` : ""}`;
+    const age = String(allievoEtaLabel(a.data_nascita) || "").replace(/\s*anni?$/i, "y");
+    return `
+      <article class="allievi-mobile-card${a.stato === "archiviato" ? " is-archived" : ""}">
+        <div class="allievi-mobile-card-head">
+          <a class="allievi-mobile-card-open" href="#scheda:${esc(a.id)}" onclick="event.preventDefault(); loadScheda('${a.id}')">
+            <div class="allievi-mobile-card-title">
+              ${allievoTier(a) === "VIP" ? '<span class="vip-star" aria-label="VIP">\u2605</span>' : ""}
+              ${studentAvatarHtml(a)}<strong>${esc(fullName)}</strong>
+            </div>
+            <div class="allievi-mobile-meta">
+              ${age ? `<span>${esc(age)}</span>` : ""}
+              <span>Tier ${esc(allievoTierListLabel(a))}</span>
+            </div>
+          </a>
+          ${renderAllievoActionMenu(a, actionId)}
+        </div>
+      </article>`;
+  };
+  const renderGruppoRows = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
+    const membri = ordinaAllieviLista(sourceList.filter((a) => a.gruppo === gruppo));
+    const soloGruppo = gruppoSoloGruppo(gruppo, membri);
+    const expanded = !soloGruppo && gruppiEspansi.has(gruppo);
+    const blocchi = [...new Set(membri.map((a) => a.blocco_attuale).filter(Boolean))].join(", ") || "\u2014";
+    const gruppoVacanza = groupRowInVacanza(gruppo, membri);
+    const actionId = `gruppo-list-actions-${filtroListaAllievi}-${index}`;
+    return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
-          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
+          <td><strong>${esc(gruppo)}</strong>${soloGruppo ? ' <span class="chip">Solo gruppo</span>' : ""}${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ""}</td>
+          <td></td>
           <td></td>
           <td></td>
           <td></td>
           <td>${esc(blocchi)}</td>
           <td style="width:40px;text-align:center">
             <div style="display:flex;justify-content:flex-end;gap:.25rem">
-              <button class="btn btn-ghost btn-sm" title="${expanded ? "Compatta membri" : "Espandi membri"}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? "\u25B4" : "\u25BE"}</button>
+              ${!soloGruppo ? `<button class="btn btn-ghost btn-sm" title="${expanded ? "Compatta membri" : "Espandi membri"}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? "\u25B4" : "\u25BE"}</button>` : ""}
               ${renderGruppoActionMenu(gruppo, actionId)}
             </div>
           </td>
         </tr>
         ${expanded ? membri.map((m, i) => renderAllievoRow(m, [
-        "group-member-row",
-        i === 0 ? "group-member-first" : "",
-        i === membri.length - 1 ? "group-member-last" : ""
-      ].filter(Boolean).join(" "))).join("") : ""}`;
-    }).join("");
-    el.innerHTML = chipsHtml + `
-      <div class="table-wrap">
-        <table>
-          ${allieviColgroup}
-          <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
-          <tbody>
-            ${senzaGruppo.map(renderAllievoRow).join("")}
-            ${gruppiRows}
-          </tbody>
-        </table>
-      </div>`;
-    requestAnimationFrame(() => motion.tableRows(el));
+      "group-member-row",
+      i === 0 ? "group-member-first" : "",
+      i === membri.length - 1 ? "group-member-last" : ""
+    ].filter(Boolean).join(" "))).join("") : ""}`;
+  }).join("");
+  const renderGruppoCards = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
+    const membri = ordinaAllieviLista(sourceList.filter((a) => a.gruppo === gruppo));
+    const soloGruppo = gruppoSoloGruppo(gruppo, membri);
+    const expanded = !soloGruppo && gruppiEspansi.has(gruppo);
+    const actionId = `gruppo-list-mobile-actions-${filtroListaAllievi}-${index}`;
+    return `
+        <article class="allievi-mobile-card is-group">
+          <div class="allievi-mobile-card-head">
+            <a class="allievi-mobile-card-open" href="#gruppo:${encodeURIComponent(gruppo)}" onclick="event.preventDefault(); showView('gruppo',${jsArg(gruppo)})">
+              <div class="allievi-mobile-card-title">
+                <strong>${esc(gruppo)}</strong>
+              </div>
+              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? "allievo" : "allievi"}${soloGruppo ? " \xB7 Solo gruppo" : ""}</span></div>
+            </a>
+            <div class="allievi-mobile-group-tools">
+              ${!soloGruppo ? `<button class="btn btn-ghost btn-sm" type="button" title="${expanded ? "Compatta membri" : "Espandi membri"}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})">${expanded ? "\u25B4" : "\u25BE"}</button>` : ""}
+              ${renderGruppoActionMenu(gruppo, actionId)}
+            </div>
+          </div>
+        </article>
+        ${expanded ? `<div class="allievi-mobile-members">${membri.map((m) => renderAllievoCard(m, `group-${index}`)).join("")}</div>` : ""}`;
+  }).join("");
+  const groupNames = (list) => [...new Set(list.map((a) => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }));
+  const byVacation = (list) => ({
+    presenti: ordinaAllieviLista(list.filter((a) => !allievoInVacanza(a))),
+    vacanza: ordinaAllieviLista(list.filter((a) => allievoInVacanza(a)))
+  });
+  const groupsByVacation = (list) => {
+    const names = groupNames(list);
+    return {
+      presenti: names.filter((g) => !groupRowInVacanza(g, list.filter((a) => a.gruppo === g))),
+      vacanza: names.filter((g) => groupRowInVacanza(g, list.filter((a) => a.gruppo === g)))
+    };
+  };
+  const contentForCurrentMode = (renderStudent, renderGroups) => {
+    if (filtroListaAllievi === "tutti") {
+      const split = byVacation(listaVisibile.filter((a) => !allievoSoloGruppo(a)));
+      const classi = groupNames(listaVisibile.filter(allievoSoloGruppo));
+      return [...split.presenti, ...split.vacanza].map((a) => renderStudent(a)).join("") + renderGroups(classi, listaVisibile);
+    }
+    if (filtroListaAllievi === "gruppi") {
+      const split = groupsByVacation(listaVisibile);
+      return renderGroups(split.presenti, listaVisibile) + renderGroups(split.vacanza, listaVisibile);
+    }
+    if (filtroListaAllievi === "vacanza") {
+      const inVacanza = listaVisibile.filter((a) => allievoInVacanza(a));
+      const privati2 = ordinaAllieviLista(inVacanza.filter((a) => !a.gruppo));
+      const gruppiVacanza = groupNames(listaVisibile).filter((g) => groupRowInVacanza(g, listaVisibile.filter((a) => a.gruppo === g)));
+      return privati2.map((a) => renderStudent(a)).join("") + renderGroups(gruppiVacanza, listaVisibile);
+    }
+    const privati = listaVisibile.filter((a) => !a.gruppo);
+    const privatiSplit = byVacation(privati);
+    const gruppiSplit = groupsByVacation(listaVisibile);
+    return [
+      privatiSplit.presenti.map((a) => renderStudent(a)).join(""),
+      renderGroups(gruppiSplit.presenti, listaVisibile),
+      privatiSplit.vacanza.map((a) => renderStudent(a)).join(""),
+      renderGroups(gruppiSplit.vacanza, listaVisibile)
+    ].join("");
+  };
+  const rowsHtml = contentForCurrentMode(renderAllievoRow, renderGruppoRows);
+  const cardsHtml = contentForCurrentMode(renderAllievoCard, renderGruppoCards);
+  if (!rowsHtml) {
+    const emptyText = filtroListaAllievi === "archivio" ? "Nessun allievo archiviato." : filtroListaAllievi === "vacanza" ? "Nessun allievo o gruppo in vacanza." : filtroListaAllievi === "gruppi" ? "Nessun gruppo attivo." : 'Nessun allievo ancora.<br>Premi "+ Nuovo allievo" per iniziare.';
+    el.innerHTML = chipsHtml + `<div class="empty">${emptyText}</div>`;
     return;
   }
   el.innerHTML = chipsHtml + `
-    <div class="table-wrap">
+    <div class="table-wrap allievi-table-view">
       <table>
         ${allieviColgroup}
-        <thead><tr><th></th><th>Nome</th><th>Cognome</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Nome / gruppo</th><th>Cognome</th><th>Et\xE0</th><th>Nick</th><th>Tier</th><th>Blocco</th><th></th></tr></thead>
         <tbody>
-          ${lista.map(renderAllievoRow).join("")}
+          ${rowsHtml}
         </tbody>
       </table>
+    </div>
+    <div class="allievi-mobile-list" aria-label="Elenco allievi">
+      ${cardsHtml}
     </div>`;
   requestAnimationFrame(() => motion.tableRows(el));
+}
+function groupRowInVacanza(gruppo, membri = []) {
+  return gruppoInVacanza(gruppo) || membri.length > 0 && membri.every((a) => allievoInVacanza(a));
+}
+function allieviGroupNamesForCurrentMode(lista = allieviVisibiliGod()) {
+  const names = [...new Set(lista.map((a) => a.gruppo).filter(Boolean))].filter((g) => !gruppoSoloGruppo(g, lista)).sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }));
+  if (filtroListaAllievi === "tutti") return [];
+  if (filtroListaAllievi === "vacanza") return names.filter((g) => groupRowInVacanza(g, lista.filter((a) => a.gruppo === g)));
+  return names;
+}
+function setAllieviListMode(mode = "attivi") {
+  return __async(this, null, function* () {
+    const normalized = ["attivi", "tutti", "gruppi", "vacanza", "archivio"].includes(mode) ? mode : "attivi";
+    const nextArchivio = normalized === "archivio";
+    const serveRicarica = mostraArchiviati !== nextArchivio;
+    filtroListaAllievi = normalized;
+    mostraArchiviati = nextArchivio;
+    filtroVacanza = normalized === "vacanza";
+    filtroGruppo = null;
+    gruppiEspansi.clear();
+    if (serveRicarica) yield ricaricaAllievi();
+    else renderAllievi();
+  });
 }
 function setFiltroGruppo(g) {
   filtroGruppo = g;
@@ -6780,20 +8264,11 @@ function setFiltroGruppo(g) {
   renderAllievi();
 }
 function toggleFiltroVacanza() {
-  filtroVacanza = !filtroVacanza;
-  mostraArchiviati = false;
-  gruppiEspansi.clear();
-  renderAllievi();
+  setAllieviListMode(filtroListaAllievi === "vacanza" ? "attivi" : "vacanza");
 }
 function mostraTuttiAllievi() {
   return __async(this, null, function* () {
-    const serveRicarica = mostraArchiviati;
-    mostraArchiviati = false;
-    filtroGruppo = null;
-    filtroVacanza = false;
-    gruppiEspansi.clear();
-    if (serveRicarica) yield ricaricaAllievi();
-    else renderAllievi();
+    yield setAllieviListMode("attivi");
   });
 }
 function toggleGruppoLista(gruppo) {
@@ -6802,7 +8277,7 @@ function toggleGruppoLista(gruppo) {
   renderAllievi();
 }
 function toggleTuttiGruppi() {
-  const gruppi = [...new Set(allieviVisibiliGod().map((a) => a.gruppo).filter(Boolean))].sort();
+  const gruppi = allieviGroupNamesForCurrentMode();
   const tuttiEspansi = gruppi.length > 0 && gruppi.every((g) => gruppiEspansi.has(g));
   gruppiEspansi.clear();
   if (!tuttiEspansi) gruppi.forEach((g) => gruppiEspansi.add(g));
@@ -6828,16 +8303,63 @@ function renderGruppoActionMenu(gruppo, actionId = "gruppo-actions", options = {
   const isArchiviato = !membriAttivi.length && gruppoMembri(gruppo, { includeArchived: true }).length > 0;
   const showScheda = options.showScheda !== false;
   const canShare = !isArchiviato && canShareGruppo(gruppo);
+  const inVacanza = gruppoInVacanza(gruppo);
   return `
     <div class="inline-action-menu">
       <button class="btn btn-outline btn-sm" onclick="toggleActionMenu(${jsArg(actionId)}, event)" type="button">Azioni</button>
       <div class="inline-action-panel" id="${esc(actionId)}" hidden>
         ${showScheda ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('gruppo',${jsArg(gruppo)})">Scheda gruppo</button>` : ""}
         ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-gruppo',${jsArg(gruppo)})">${editIcon()} Modifica</button>` : ""}
+        ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); toggleVacanzaGruppo(${jsArg(gruppo)})">${inVacanza ? "Togli vacanza" : "Metti in vacanza"}</button>` : ""}
         ${canShare ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); apriCondividiGruppo(${jsArg(gruppo)})">Condividi</button>` : ""}
         ${!isArchiviato ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); archiviaGruppo(${jsArg(gruppo)})">Archivia</button>` : '<div class="inline-action-meta">Gruppo archiviato</div>'}
       </div>
     </div>`;
+}
+function profiloConVacanzaGruppo(profilo = {}, inVacanza = false) {
+  const dedicata = profilo.logistica_gruppo && typeof profilo.logistica_gruppo === "object" ? profilo.logistica_gruppo : null;
+  const logisticaBase = dedicata && (logisticaHaValori(dedicata) || hasVacationField(dedicata)) ? dedicata : logisticaGruppoProfilo(profilo);
+  const logisticaGruppo = __spreadProps(__spreadValues({}, logisticaBase), { in_vacanza: inVacanza });
+  return __spreadProps(__spreadValues({}, profilo), { in_vacanza: inVacanza, logistica_gruppo: logisticaGruppo });
+}
+function salvaProfiloAllievo(id, profilo) {
+  return __async(this, null, function* () {
+    let payload = { profilo, aggiornato_il: (/* @__PURE__ */ new Date()).toISOString() };
+    let { data, error } = yield sb.from("allievi").update(payload).eq("id", id).select().single();
+    if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
+      payload = { profilo };
+      ({ data, error } = yield sb.from("allievi").update(payload).eq("id", id).select().single());
+    }
+    if (error) throw error;
+    return data;
+  });
+}
+function toggleVacanzaGruppo(gruppo) {
+  return __async(this, null, function* () {
+    const membri = gruppoMembri(gruppo);
+    if (!membri.length) {
+      alert("Nessun allievo attivo da aggiornare in questo gruppo.");
+      return;
+    }
+    const nextVacanza = !gruppoInVacanza(gruppo);
+    if (nextVacanza && !confirm(`Mettere il gruppo "${gruppo}" in vacanza? I ${membri.length} membri non compariranno nelle liste operative e negli appuntamenti finche resta in vacanza.`)) return;
+    try {
+      const aggiornati = [];
+      for (const membro of membri) {
+        const profilo = profiloConVacanzaGruppo(membro.profilo || {}, nextVacanza);
+        const data = yield salvaProfiloAllievo(membro.id, profilo);
+        aggiornati.push(data || __spreadProps(__spreadValues({}, membro), { profilo }));
+      }
+      const aggiornatiById = new Map(aggiornati.map((a) => [String(a.id), a]));
+      allAllievi = allAllievi.map((a) => aggiornatiById.get(String(a.id)) || a);
+      logModificaLocale("gruppo", gruppo, nextVacanza ? "Gruppo messo in vacanza" : "Gruppo tolto dalla vacanza");
+      yield ricaricaAllievi();
+      if (document.body.dataset.view === "gruppo" && currentGruppoNome === gruppo) yield loadGruppo(gruppo);
+      else renderAllievi();
+    } catch (e) {
+      alert("Errore aggiornamento vacanza gruppo: " + (e.message || e));
+    }
+  });
 }
 function archiviaGruppo(gruppo) {
   return __async(this, null, function* () {
@@ -6853,6 +8375,7 @@ function archiviaGruppo(gruppo) {
       if (error) throw error;
       logModificaLocale("gruppo", gruppo, `Archiviato gruppo: ${membri.length} allievi`);
       mostraArchiviati = true;
+      filtroListaAllievi = "archivio";
       filtroGruppo = null;
       filtroVacanza = false;
       gruppiEspansi.clear();
@@ -6865,18 +8388,7 @@ function archiviaGruppo(gruppo) {
 }
 function setArchivio(on) {
   return __async(this, null, function* () {
-    if (mostraArchiviati === on) {
-      filtroGruppo = null;
-      filtroVacanza = false;
-      gruppiEspansi.clear();
-      renderAllievi();
-      return;
-    }
-    mostraArchiviati = on;
-    filtroGruppo = null;
-    filtroVacanza = false;
-    gruppiEspansi.clear();
-    yield ricaricaAllievi();
+    yield setAllieviListMode(on ? "archivio" : "attivi");
   });
 }
 function toggleVip() {
@@ -6923,10 +8435,11 @@ function initNuovoAllievo(id) {
   document.getElementById("na-nome").value = (allievo == null ? void 0 : allievo.nome) || "";
   document.getElementById("na-cognome").value = (allievo == null ? void 0 : allievo.cognome) || "";
   document.getElementById("na-nascita").value = dateIsoToInput(allievo == null ? void 0 : allievo.data_nascita);
-  document.getElementById("na-iscrizione").value = dateIsoToInput(allievo == null ? void 0 : allievo.data_iscrizione);
+  document.getElementById("na-iscrizione").value = dateIsoToInput((allievo == null ? void 0 : allievo.data_iscrizione) || localDateIso());
   document.getElementById("na-email").value = (allievo == null ? void 0 : allievo.email) || "";
   document.getElementById("na-tel").value = (allievo == null ? void 0 : allievo.telefono) || "";
   document.getElementById("na-note").value = (allievo == null ? void 0 : allievo.note_generali) || "";
+  document.getElementById("na-note-lezione").value = allievoLessonNote(allievo);
   document.getElementById("na-blocco").value = (allievo == null ? void 0 : allievo.blocco_attuale) || "Base";
   document.getElementById("na-in-vacanza").checked = allievo ? allievoInVacanzaDiretta(allievo) : false;
   calcolaEtaForm();
@@ -7257,6 +8770,9 @@ function vacationLabel(allievo = {}) {
   if (!allievoInVacanza(allievo)) return "";
   return allievo.gruppo && gruppoInVacanza(allievo.gruppo) && !allievoInVacanzaDiretta(allievo) ? "In vacanza (gruppo)" : "In vacanza";
 }
+function allievoLessonNote(allievo = {}) {
+  return studentLessonReminderValue(allievo);
+}
 function salvaAllievo() {
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
@@ -7319,6 +8835,7 @@ function salvaAllievo() {
         indirizzo_condiviso: addressEditable ? !!((_j = document.getElementById("na-indirizzo-condiviso")) == null ? void 0 : _j.checked) : !!profiloOriginale.indirizzo_condiviso,
         tier: tierValue,
         cultura: document.getElementById("na-cultura").value.trim() || null,
+        note_lezione: document.getElementById("na-note-lezione").value.trim() || null,
         note_salute: document.getElementById("na-note-salute").value.trim() || null,
         scadenza_cert: dateInputToIso(document.getElementById("na-cert").value) || null,
         disponibilita: document.getElementById("na-disponibilita").value.trim() || null,
@@ -7369,6 +8886,10 @@ function salvaAllievo() {
       btnTop.textContent = labelOrig;
       return;
     }
+    const savedId = editingAllieviId;
+    const originalAllievo = savedId ? allAllievi.find((a) => String(a.id) === String(savedId)) || {} : {};
+    const dataIscrizioneInput = dateInputToIso(document.getElementById("na-iscrizione").value);
+    const dataIscrizione = dataIscrizioneInput || originalAllievo.data_iscrizione || localDateIso();
     const payload = __spreadValues({
       nome,
       cognome,
@@ -7378,15 +8899,14 @@ function salvaAllievo() {
       blocco_attuale: isAss ? "Base" : document.getElementById("na-blocco").value,
       gruppo: isAss ? document.getElementById("ass-gruppo").value.trim() || null : gruppoAttivo ? document.getElementById("na-gruppo").value.trim() || null : null,
       data_nascita: isAss ? null : dateInputToIso(document.getElementById("na-nascita").value) || null,
-      data_iscrizione: isAss ? null : dateInputToIso(document.getElementById("na-iscrizione").value) || null,
+      data_iscrizione: dataIscrizione,
       email: isAss ? null : document.getElementById("na-email").value.trim() || null,
       telefono: isAss ? null : document.getElementById("na-tel").value.trim() || null,
       note_generali: isAss ? document.getElementById("ass-note").value.trim() || null : document.getElementById("na-note").value.trim() || null,
       profilo,
       aggiornato_il: (/* @__PURE__ */ new Date()).toISOString()
     }, editingAllieviId ? {} : { maestro_id: writeUid });
-    const savedId = editingAllieviId;
-    const originalAllievo = savedId ? allAllievi.find((a) => String(a.id) === String(savedId)) || {} : {};
+    payload.solo_gruppo = !isAss && gruppoSoloGruppo(payload.gruppo);
     try {
       let data, error;
       if (savedId) {
@@ -7463,6 +8983,7 @@ function initNuovoGruppo(nomeGruppo = null) {
   document.getElementById("btn-salva-gr-top").textContent = editingGruppoNome ? "Aggiorna gruppo" : "Salva gruppo";
   document.getElementById("btn-cancella-gr").hidden = !editingGruppoNome;
   document.getElementById("gr-nome").value = editingGruppoNome || "";
+  document.getElementById("gr-solo-gruppo").checked = !!profilo.solo_gruppo;
   document.getElementById("gr-orario").value = profilo.appuntamento || "";
   document.getElementById("gr-luogo").value = profilo.luogo_incontro || "";
   document.getElementById("gr-durata").value = profilo.durata_lezione || "";
@@ -7694,6 +9215,7 @@ function salvaGruppo() {
   return __async(this, null, function* () {
     var _a2, _b2;
     const nomeGruppo = document.getElementById("gr-nome").value.trim();
+    const soloGruppo = !!document.getElementById("gr-solo-gruppo").checked;
     const orario = document.getElementById("gr-orario").value.trim();
     const luogo = document.getElementById("gr-luogo").value.trim();
     const durata = parseInt(document.getElementById("gr-durata").value) || null;
@@ -7793,20 +9315,23 @@ function salvaGruppo() {
             if (error) throw error;
           }
         }
+        yield saveGroupOnlyRule(nomeGruppo, soloGruppo);
         filtroGruppo = nomeGruppo;
         const nextGroup = nomeGruppo;
         const destination = editReturnTarget;
         editReturnTarget = null;
         editingGruppoNome = null;
-        yield ricaricaAllievi();
         if (archiviato) {
           mostraArchiviati = true;
+          filtroListaAllievi = "archivio";
           filtroGruppo = null;
           filtroVacanza = false;
           gruppiEspansi.clear();
+          yield ricaricaAllievi();
           showView("allievi");
           return;
         }
+        yield ricaricaAllievi();
         yield goToReturnTarget(destination, { name: "gruppo", id: nextGroup });
       } catch (e) {
         errEl.textContent = saveErrorMessage(e);
@@ -7856,17 +9381,20 @@ function salvaGruppo() {
         const { error } = yield sb.from("allievi").insert(nuovi);
         if (error) throw error;
       }
+      yield saveGroupOnlyRule(nomeGruppo, soloGruppo);
       filtroGruppo = nomeGruppo;
       editReturnTarget = null;
-      yield ricaricaAllievi();
       if (archiviato) {
         mostraArchiviati = true;
+        filtroListaAllievi = "archivio";
         filtroGruppo = null;
         filtroVacanza = false;
         gruppiEspansi.clear();
+        yield ricaricaAllievi();
         showView("allievi");
         return;
       }
+      yield ricaricaAllievi();
       showView("gruppo", nomeGruppo);
     } catch (e) {
       errEl.textContent = saveErrorMessage(e);
@@ -7900,7 +9428,8 @@ function profiloComuneGruppo(membri) {
     pagamento_metodo: firstValue("pagamento_metodo"),
     pagamento_stato: firstValue("pagamento_stato"),
     pagamento_note: firstValue("pagamento_note"),
-    in_vacanza: firstVacationValue ? vacationValue(firstVacationValue) : false
+    in_vacanza: firstVacationValue ? vacationValue(firstVacationValue) : false,
+    solo_gruppo: membri.some(allievoSoloGruppo)
   };
 }
 function loadGruppo(nomeGruppo) {
@@ -7944,7 +9473,7 @@ function loadGruppo(nomeGruppo) {
     const membriHtml = membri.map((a) => `
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
-        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(" "))}${a.nickname ? ` \xB7 ${esc(a.nickname)}` : ""}${vacationIconHtml(allievoInVacanza(a))}</div>
+        <div class="gruppo-member-name">${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(" "))}${a.nickname ? ` \xB7 ${esc(a.nickname)}` : ""}${vacationIconHtml(allievoInVacanza(a))}</div>
         <div class="gruppo-member-meta">Lv ${a.livello_attuale || "\u2014"} \xB7 ${esc(a.blocco_attuale || "\u2014")}${allievoInVacanza(a) ? " \xB7 In vacanza" : ""}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
@@ -7965,7 +9494,7 @@ function loadGruppo(nomeGruppo) {
       <div class="lezione-read-head">
         <div>
           <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
-          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? "o" : "i"} ${gruppoArchiviato ? "archiviat" : "attiv"}${membri.length === 1 ? "o" : "i"}${profilo.in_vacanza ? " \xB7 In vacanza" : ""}</div>
+          <div class="scheda-meta">${profilo.solo_gruppo ? "Solo gruppo \xB7 " : ""}${membri.length} alliev${membri.length === 1 ? "o" : "i"} ${gruppoArchiviato ? "archiviat" : "attiv"}${membri.length === 1 ? "o" : "i"}${profilo.in_vacanza ? " \xB7 In vacanza" : ""}</div>
         </div>
         <div class="lezione-read-when">
           ${profilo.appuntamento ? `<div class="lezione-read-date">${esc(profilo.appuntamento)}</div>` : "<span>Orario non indicato</span>"}
@@ -7989,6 +9518,7 @@ function loadGruppo(nomeGruppo) {
             ${info("Compenso", compenso)}
             ${info("Pagamento", [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(" \xB7 "))}
             ${info("Note pagamento", profilo.pagamento_note)}
+            ${info("Modalit\xE0", profilo.solo_gruppo ? "Solo lezioni di gruppo" : "Lezioni di gruppo e individuali")}
             ${info("Stato lezioni", profilo.in_vacanza ? "In vacanza" : "")}
           </div>
         </div>
@@ -8010,7 +9540,7 @@ function loadScheda(id) {
     recordAppHistory("scheda", id);
     const prepShortcut = document.getElementById("scheda-prepara-lezione");
     prepShortcut.hidden = false;
-    prepShortcut.onclick = () => showView("nuova-lezione", `modo:prep:${id}`);
+    prepShortcut.onclick = () => showView("nuova-lezione", lezionePresetPerAllievo(allAllievi.find((a) => a.id === id) || { id }));
     document.getElementById("scheda-content").innerHTML = '<div class="loading">Caricamento\u2026</div>';
     const allievo = allAllievi.find((a) => a.id === id);
     if (!allievo) {
@@ -8063,7 +9593,7 @@ function loadScheda(id) {
     const byRamo = {};
     (progressi || []).forEach((p2) => {
       var _a3;
-      const r = ((_a3 = p2.skills) == null ? void 0 : _a3.ramo) || "Altro";
+      const r = skillBranchName((_a3 = p2.skills) == null ? void 0 : _a3.ramo);
       if (!byRamo[r]) byRamo[r] = [];
       byRamo[r].push(p2);
     });
@@ -8109,10 +9639,11 @@ function loadScheda(id) {
     const hasLogisticaGruppo = !!(logisticaGruppoScheda.appuntamento || logisticaGruppoScheda.luogo_incontro || logisticaGruppoScheda.durata_lezione || hasPagamentoGruppo || logisticaGruppoScheda.in_vacanza);
     const isAss = allievo.tipo === "associazione";
     const statoVacanza = vacationLabel(allievo);
+    const noteLezione = allievoLessonNote(allievo);
     const headerExtra = isAss ? `<div class="scheda-meta" style="margin-top:.3rem">
          <span style="background:var(--blu-chiaro);color:var(--blu);font-size:.75rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase">Associazione</span>
          ${p.categoria_accompagnatori ? `<span style="margin-left:.5rem;color:var(--muted);font-size:.87rem">${esc(p.categoria_accompagnatori)}</span>` : ""}
-       </div>` : `<div class="scheda-meta">
+       </div>` : `<div class="scheda-meta" style="margin-bottom:0">
 	         Livello ${allievo.livello_attuale} \xB7 ${esc(allievo.blocco_attuale)}
 	         ${allievo.data_nascita ? ` \xB7 Nato il ${formatDate(allievo.data_nascita)}${etaScheda ? ` \xB7 ${esc(etaScheda)}` : ""}` : ""}
 	       </div>`;
@@ -8120,10 +9651,12 @@ function loadScheda(id) {
     <div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
+          ${studentPhotoControls(allievo)}
           <div class="scheda-nome">
             ${esc(allievo.nome)}${!isAss && allievo.cognome ? " " + esc(allievo.cognome) : ""}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ""}${allievoTier(allievo) === "VIP" ? ' <span class="vip-star">\u2605</span>' : ""}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
+          ${allievoSoloGruppo(allievo) ? `<div class="scheda-meta" style="margin-top:.4rem">Solo lezioni di gruppo \xB7 <button type="button" class="linkish" onclick="showView('gruppo',${jsArg(allievo.gruppo)})">${esc(allievo.gruppo)}</button></div>` : ""}
           ${renderBirthdayReminders([allievo], { links: false })}
        </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
@@ -8132,6 +9665,7 @@ function loadScheda(id) {
             <div class="inline-action-panel" id="scheda-actions-${id}" hidden>
               <button class="btn btn-ghost btn-sm" onclick="showView('nuovo-allievo','${id}')">${editIcon()} Modifica</button>
               ${canShareAllievo(allievo) ? `<button class="btn btn-ghost btn-sm" onclick="apriCondividiAllievo('${id}')">Condividi</button>` : ""}
+              <button class="btn btn-ghost btn-sm" onclick="toggleVacanzaAllievo('${id}')">${allievoInVacanzaDiretta(allievo) ? "Togli vacanza" : "Metti in vacanza"}</button>
               <button class="btn btn-ghost btn-sm" onclick="eliminaAllievo('${id}')">${allievo.stato === "archiviato" ? "Elimina definitivamente" : "Archivia"}</button>
               <button class="btn btn-ghost btn-sm" onclick="esportaAllievo('${id}')">JSON</button>
               <button class="btn btn-ghost btn-sm" onclick="stampaScheda('${id}')">Stampa</button>
@@ -8141,7 +9675,7 @@ function loadScheda(id) {
           </div>
         </div>
       </div>
-      ${!isAss ? renderStudentLessonReminder(allievo) : ''}
+      ${!isAss ? renderStudentLessonReminder(allievo) : ""}
       ${!isAss && allievo.note_generali ? `<p style="font-size:.88rem;color:var(--muted);margin-top:.6rem">${esc(allievo.note_generali)}</p>` : ""}
     </div>
 
@@ -8271,6 +9805,12 @@ function renderSkillsCatalog() {
   if (!el) return;
   const total = (allSkills == null ? void 0 : allSkills.length) || 0;
   const required = (allSkills || []).filter((skill) => skill.obbligatoria).length;
+  const preferredBranches = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
+  const foundBranches = [...new Set((allSkills || []).map((skill) => skillBranchName(skill.ramo)))];
+  const branches = preferredBranches.filter((branch) => branch === "Extra" || foundBranches.includes(branch));
+  catalogSkillBranchFilters.forEach((branch) => {
+    if (!branches.includes(branch)) catalogSkillBranchFilters.delete(branch);
+  });
   el.innerHTML = `
     <div class="skill-tree-head">
       <div class="skill-tree-legend">
@@ -8279,32 +9819,46 @@ function renderSkillsCatalog() {
         <span>${(allPrereqs == null ? void 0 : allPrereqs.length) || 0} prerequisiti</span>
       </div>
       <div class="skill-tree-actions">
-        ${catalogSkillEditMode ? `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(false)">Fine modifica</button>
-             <button type="button" class="btn btn-outline btn-sm" onclick="openSkillCatalogModal('catalog')">+ Skill</button>` : `<button type="button" class="btn btn-outline btn-sm" onclick="setCatalogSkillEditMode(true)">${editIcon()} Modifica catalogo</button>`}
+        <div class="skill-catalog-filter" aria-label="Filtra per ramo">
+          <button type="button" class="chip${catalogSkillBranchFilters.size === 0 ? " chip-on" : ""}" aria-pressed="${catalogSkillBranchFilters.size === 0}" onclick="setCatalogSkillBranchFilter('all')">Tutti</button>
+          <div class="skill-catalog-branch-buttons">
+            ${branches.map((branch) => `<button type="button" class="chip${catalogSkillBranchFilters.has(branch) ? " chip-on" : ""}" aria-pressed="${catalogSkillBranchFilters.has(branch)}" onclick="toggleCatalogSkillBranchFilter(${jsArg(branch)})">${esc(branch)}</button>`).join("")}
+          </div>
+        </div>
       </div>
     </div>
     <div id="skills-catalog-status" class="msg" style="display:none"></div>
-    ${renderCatalogSkillTree()}`;
+    ${renderCatalogSkillTree(catalogSkillBranchFilters)}`;
   const btn = document.getElementById("skills-edit-toggle");
   if (btn) {
-    btn.textContent = catalogSkillEditMode ? "Fine modifica" : "Modifica";
+    btn.textContent = catalogSkillEditMode ? "Fine modifica" : "Modifica catalogo";
     btn.classList.toggle("btn-primary", catalogSkillEditMode);
     btn.classList.toggle("btn-outline", !catalogSkillEditMode);
   }
   requestAnimationFrame(() => motion.cards(el));
 }
+function setCatalogSkillBranchFilter(branch) {
+  if (!branch || branch === "all") catalogSkillBranchFilters.clear();
+  renderSkillsCatalog();
+}
+function toggleCatalogSkillBranchFilter(branch) {
+  if (!branch) return;
+  if (catalogSkillBranchFilters.has(branch)) catalogSkillBranchFilters.delete(branch);
+  else catalogSkillBranchFilters.add(branch);
+  renderSkillsCatalog();
+}
 function setCatalogSkillEditMode(on) {
   catalogSkillEditMode = !!on;
   renderSkillsCatalog();
 }
-function renderCatalogSkillTree() {
-  const RAMI = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air"];
-  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Altro: [] };
+function renderCatalogSkillTree(branchFilters = /* @__PURE__ */ new Set()) {
+  const RAMI = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
+  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Extra: [] };
   (allSkills || []).forEach((skill) => {
-    const ramo = RAMI.includes(skill.ramo) ? skill.ramo : "Altro";
+    const ramo = skillBranchName(skill.ramo);
     byRamo[ramo].push(skill);
   });
-  const cols = [...RAMI, "Altro"].filter((ramo) => byRamo[ramo].length);
+  const cols = RAMI.filter((ramo) => byRamo[ramo].length && (!branchFilters.size || branchFilters.has(ramo)));
   if (!cols.length) return '<div class="empty">Nessuna skill nel catalogo.</div>';
   const colsHtml = cols.map((ramo) => {
     const nodes = byRamo[ramo].sort((a, b) => Number(a.livello || 0) - Number(b.livello || 0) || String(a.nome || "").localeCompare(String(b.nome || ""), "it", { sensitivity: "base" })).map((skill) => {
@@ -8334,15 +9888,15 @@ function renderCatalogSkillTree() {
 }
 function renderSkillTree(allSkills2, progressiMap, allievoId, fakieProgressMap = {}) {
   var _a2;
-  const RAMI = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air"];
+  const RAMI = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
   const ICONS = ["\u25CB", "\u25D0", "\u25CF", "\u2605"];
   const ICON_COLORS = ["color:var(--muted)", "color:#facc15", "color:var(--blu)", "color:var(--success)"];
-  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Altro: [] };
+  const byRamo = { Equilibrio: [], Andatura: [], Frenata: [], Rotazione: [], Air: [], Extra: [] };
   (allSkills2 || []).forEach((s) => {
-    const r = RAMI.includes(s.ramo) ? s.ramo : "Altro";
+    const r = skillBranchName(s.ramo);
     byRamo[r].push(s);
   });
-  const cols = [...RAMI, "Altro"].filter((r) => byRamo[r].length);
+  const cols = RAMI.filter((r) => byRamo[r].length);
   const acquired = (allSkills2 || []).filter((s) => {
     var _a3;
     return ((_a3 = progressiMap[s.id]) != null ? _a3 : 0) >= 2;
@@ -8427,7 +9981,7 @@ function stageLabelShort(stadio) {
 }
 function skillDetailMeta(skill) {
   return [
-    skill.ramo || "Altro",
+    skillBranchName(skill.ramo),
     skill.blocco,
     skill.livello ? `Livello ${skill.livello}` : "",
     openClosedLabel(skill.open_closed),
@@ -8731,10 +10285,16 @@ function salvaSkillTreeManuale(allievoId) {
   });
 }
 function skillCatalogBranchOptions(selected = "") {
-  const preferred = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Altro"];
-  const found = [...new Set((allSkills || []).map((skill) => skill.ramo || "Altro").filter(Boolean))];
+  const preferred = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
+  const normalizedSelected = skillBranchName(selected);
+  const found = [...new Set((allSkills || []).map((skill) => skillBranchName(skill.ramo)))];
   const branches = [...preferred, ...found.filter((branch) => !preferred.includes(branch)).sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }))];
-  return branches.map((branch) => `<option value="${esc(branch)}" ${branch === selected ? "selected" : ""}>${esc(branch)}</option>`).join("");
+  return branches.map((branch) => `<option value="${esc(branch)}" ${branch === normalizedSelected ? "selected" : ""}>${esc(branch)}</option>`).join("");
+}
+function skillBranchName(raw) {
+  const branch = String(raw || "").trim();
+  const known = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
+  return known.includes(branch) ? branch : "Extra";
 }
 function setSkillCatalogStatus(text, kind = "") {
   const el = document.getElementById("skill-catalog-status");
@@ -8826,8 +10386,8 @@ function chiudiSkillCatalogModal() {
   skillCatalogContext = null;
 }
 function openSelectedSkillDetailFromCatalog() {
-  if (skillCatalogIsSaving()) return;
   var _a2;
+  if (skillCatalogIsSaving()) return;
   const skillId = (_a2 = document.getElementById("skill-delete-select")) == null ? void 0 : _a2.value;
   if (!skillId) {
     setSkillCatalogStatus("Scegli una skill da vedere.", "msg-info");
@@ -8912,13 +10472,13 @@ function selectNewSkillInLessonOwner(ownerId, skillId) {
   onLessonSkillSelected(skillSelect);
 }
 function creaSkillCatalogo() {
-  if (skillCatalogContext && skillCatalogContext.editingSkillId) return aggiornaSkillCatalogo();
   return __async(this, null, function* () {
     var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j;
+    if (skillCatalogContext == null ? void 0 : skillCatalogContext.editingSkillId) return aggiornaSkillCatalogo();
     const btn = document.getElementById("btn-create-skill");
     const oldText = btn == null ? void 0 : btn.textContent;
     const nome = (_a2 = document.getElementById("skill-new-name")) == null ? void 0 : _a2.value.trim();
-    const ramo = ((_b2 = document.getElementById("skill-new-branch")) == null ? void 0 : _b2.value) || "Altro";
+    const ramo = ((_b2 = document.getElementById("skill-new-branch")) == null ? void 0 : _b2.value) || "Extra";
     const livello = parseInt(((_c = document.getElementById("skill-new-level")) == null ? void 0 : _c.value) || "1", 10) || 1;
     const blocco = ((_d = document.getElementById("skill-new-block")) == null ? void 0 : _d.value) || "Base";
     const openClosed = ((_e = document.getElementById("skill-new-open-closed")) == null ? void 0 : _e.value) || "OPEN";
@@ -9023,7 +10583,7 @@ function fetchSkillDeleteUsage(skillId) {
       const a = localAllievi.get(id);
       const progressiAllievo = rowsProgressi.filter((row) => row.allievo_id === id);
       const lezioniAllievo = rowsLezioni.filter((row) => row.allievo_id === id);
-      const nome = a ? [a.cognome, a.nome].filter(Boolean).join(" ") || a.nickname || id : id;
+      const nome = a ? [a.nome, a.cognome].filter(Boolean).join(" ") || a.nickname || id : id;
       return {
         id,
         nome,
@@ -9274,7 +10834,7 @@ function salvaDefinizioneVarianteSkill(_0, _1) {
     const payload = {
       skill_id: skill.id,
       skill_nome: skill.nome,
-      ramo: skill.ramo || "Altro",
+      ramo: skillBranchName(skill.ramo),
       fascia_livello: skill.blocco || "",
       livello_num: Number(skill.livello || 0) || null,
       prerequisiti: [],
@@ -9305,8 +10865,8 @@ function salvaDefinizioneVarianteSkill(_0, _1) {
   });
 }
 function cancellaSkillCatalogo() {
-  if (skillCatalogIsSaving()) return;
   return __async(this, null, function* () {
+    if (skillCatalogIsSaving()) return;
     const select = document.getElementById("skill-delete-select");
     const skillId = select == null ? void 0 : select.value;
     const skill = allSkills.find((s) => s.id === skillId);
@@ -9457,8 +11017,7 @@ function esportaAllievo(id) {
 }
 function esportaAllievi() {
   return __async(this, null, function* () {
-    const baseLista = allieviVisibiliGod();
-    const allievi = ordinaAllieviLista(filtroGruppo ? baseLista.filter((a2) => a2.gruppo === filtroGruppo) : baseLista);
+    const allievi = ordinaAllieviLista(allieviVisibiliGod());
     if (!allievi.length) {
       alert("Nessun allievo da esportare.");
       return;
@@ -9470,18 +11029,18 @@ function esportaAllievi() {
       return;
     }
     const stato = mostraArchiviati ? "archivio" : "attivi";
-    const gruppo = filtroGruppo ? filtroGruppo.replace(/\s+/g, "_").replace(/[^\w-]/g, "") : "tutti";
+    const modo = String(filtroListaAllievi || "attivi").replace(/\s+/g, "_").replace(/[^\w-]/g, "");
     const oggi = localDateIso();
     const blob = new Blob([JSON.stringify({
       tipo: "allievi_backup",
       esportato_il: (/* @__PURE__ */ new Date()).toISOString(),
-      filtro: { stato, gruppo: filtroGruppo },
+      filtro: { stato, modo: filtroListaAllievi },
       allievi,
       progressi: progressi || []
     }, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `allievi_${stato}_${gruppo}_${oggi}.json`;
+    a.download = `allievi_${stato}_${modo}_${oggi}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   });
@@ -9505,12 +11064,46 @@ function salvaBackupLocale(tipo, payload) {
 function backupAllievoCompleto(id) {
   return __async(this, null, function* () {
     const allievo = allAllievi.find((a) => a.id === id) || null;
-    const [{ data: progressi }, { data: lezioniAllievi }, { data: lezioniSkills }] = yield Promise.all([
+    const [progressiResult, lezioniAllieviResult, lezioniSkillsResult] = yield Promise.all([
       sb.from("progressi_allievo").select("*").eq("allievo_id", id),
       sb.from("lezioni_allievi").select("*, lezioni(*)").eq("allievo_id", id),
       sb.from("lezioni_skills").select("*, skills(*)").eq("allievo_id", id)
     ]);
-    return { allievo, progressi: progressi || [], lezioniAllievi: lezioniAllievi || [], lezioniSkills: lezioniSkills || [] };
+    return {
+      allievo,
+      progressi: requiredQueryData(progressiResult, "progressi del backup allievo"),
+      lezioniAllievi: requiredQueryData(lezioniAllieviResult, "presenze del backup allievo"),
+      lezioniSkills: requiredQueryData(lezioniSkillsResult, "skill del backup allievo")
+    };
+  });
+}
+function toggleVacanzaAllievo(id) {
+  return __async(this, null, function* () {
+    const allievo = allAllievi.find((a) => String(a.id) === String(id));
+    if (!allievo) return;
+    const nextVacanza = !allievoInVacanzaDiretta(allievo);
+    const nome = allievoDisplayName(id);
+    if (nextVacanza && !confirm(`Mettere ${nome} in vacanza? Non comparira nelle liste operative e negli appuntamenti finche resta in vacanza.`)) return;
+    const loadVersion = schedaLoadVersion;
+    try {
+      const profilo = __spreadProps(__spreadValues({}, allievo.profilo || {}), { in_vacanza: nextVacanza });
+      let payload = { profilo, aggiornato_il: (/* @__PURE__ */ new Date()).toISOString() };
+      let { data, error } = yield sb.from("allievi").update(payload).eq("id", id).select().single();
+      if (error && /aggiornato_il|updated_at|schema cache|column/i.test(error.message || error.details || error.hint || "")) {
+        payload = { profilo };
+        ({ data, error } = yield sb.from("allievi").update(payload).eq("id", id).select().single());
+      }
+      if (error) throw error;
+      allAllievi = allAllievi.map((a) => String(a.id) === String(id) ? data || __spreadProps(__spreadValues({}, a), { profilo }) : a);
+      logModificaLocale("allievo", id, nextVacanza ? "Messo in vacanza" : "Tolto dalla vacanza");
+      if (loadVersion === schedaLoadVersion && document.body.dataset.view === "scheda" && String(currentSchedaId) === String(id)) {
+        yield loadScheda(id);
+      } else {
+        renderAllievi();
+      }
+    } catch (e) {
+      alert("Errore aggiornamento vacanza: " + (e.message || e));
+    }
   });
 }
 function eliminaAllievo(id) {
@@ -9891,18 +11484,20 @@ function renderLezioni({ animate = false } = {}) {
   const el = document.getElementById("lezioni-content");
   aggiornaFiltroLezioni();
   aggiornaToggleDettagliLezioni();
-  if (!(lezioniCache == null ? void 0 : lezioniCache.length)) {
-    el.innerHTML = '<div class="empty">Nessuna lezione ancora.</div>';
-    return;
-  }
+  const sourceLezioni = lezioniCache || [];
   const scopeIds = new Set(allieviVisibiliGod().map((a) => a.id));
-  const lezioni = godMode && godScope !== "all" ? lezioniCache.filter((l) => {
+  const lezioni = godMode && godScope !== "all" ? sourceLezioni.filter((l) => {
     var _a2;
     return (_a2 = l.lezioni_allievi) == null ? void 0 : _a2.some((la) => {
       var _a3;
       return scopeIds.has((_a3 = la.allievi) == null ? void 0 : _a3.id);
     });
-  }) : lezioniCache;
+  }) : sourceLezioni;
+  renderLezioniSummary(lezioni);
+  if (!lezioni.length) {
+    el.innerHTML = '<div class="empty">Nessuna lezione ancora.</div>';
+    return;
+  }
   const lezioniFiltrate = filtraLezioniPerSelezione(lezioni).filter((l) => !filtroLezioniAperte || lessonStatus(l) === "aperta");
   if (!lezioniFiltrate.length) {
     el.innerHTML = `<div class="empty">${filtroLezioniAperte ? "Nessuna lezione aperta per questa selezione." : filtroLezioni === "all" ? "Nessuna lezione per questo account." : "Nessuna lezione per questa selezione."}</div>`;
@@ -9910,6 +11505,24 @@ function renderLezioni({ animate = false } = {}) {
   }
   el.innerHTML = renderLezioniTable(lezioniFiltrate);
   if (animate) requestAnimationFrame(() => motion.tableRows(el));
+}
+function renderLezioniSummary(lezioni = []) {
+  const el = document.getElementById("lezioni-summary");
+  if (!el) return;
+  const oggi = localDateIso();
+  const todayLessons = lezioni.filter((l) => String(l.data || "").slice(0, 10) === oggi);
+  const aperte = lezioni.filter((l) => lessonStatus(l) === "aperta");
+  el.innerHTML = `
+    <div class="view-summary-grid">
+      <button type="button" class="summary-tile" onclick="openDayLessonsWidget('${oggi}')">
+        <strong>${todayLessons.length}</strong>
+        <span>Lezioni oggi</span>
+      </button>
+      <button type="button" class="summary-tile" onclick="setFiltroLezioniAperte(true)">
+        <strong>${aperte.length}</strong>
+        <span>Lezioni aperte</span>
+      </button>
+    </div>`;
 }
 function renderLezioniTable(lezioni, { showYearGroups = true, variant = "lista", schedaId = null, gruppoNome = null } = {}) {
   const isScheda = variant === "scheda";
@@ -10038,37 +11651,23 @@ function renderLezioneListaRow(l, { variant = "lista", schedaId = null, gruppoNo
   const nomi = labelPartecipantiLezione(l);
   const detail = lezioniDettagliEspansi ? renderDettaglioLezione(l, { gruppoNome }) : "";
   const status = lessonStatus(l) === "aperta" ? '<span class="lesson-status-badge">Aperta</span>' : "";
-  const dataLink = `<span class="linkish" onclick="event.stopPropagation(); openDayLessonsWidget('${esc(String(l.data || "").slice(0, 10))}')">${formatLessonDate(l)}</span>`;
-  const luogoLink = l.luogo ? `<span class="linkish" onclick="event.stopPropagation(); openLocation(${jsArg(l.luogo)})">${esc(l.luogo)}</span>` : "\u2014";
+  const dataLabel = formatLessonDate(l);
+  const luogoLabel = l.luogo ? esc(l.luogo) : "\u2014";
   const noteSpeciali = lessonSpecialNotes(l);
   if (variant === "scheda") {
     return `<tr onclick="openLezione('${l.id}','${schedaId}')" style="cursor:pointer">
-      ${lessonColumnCell("data", `<strong>${dataLink}</strong> ${status}`)}
+      ${lessonColumnCell("data", `<strong>${dataLabel}</strong> ${status}`)}
       <td style="font-size:.84rem">${renderSkillChipsLezione(l, schedaId)}</td>
       ${lessonColumnCell("note", `<div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : "\u2014"}</div>`)}
-      ${lessonColumnCell("luogo", luogoLink)}
+      ${lessonColumnCell("luogo", luogoLabel)}
     </tr>`;
   }
   return `<tr onclick="openLezione(${jsArg(l.id)},null,${jsArg(gruppoNome)})" style="cursor:pointer">
-    ${lessonColumnCell("data", `<strong>${dataLink}</strong> ${status}`)}
-    <td style="font-size:.84rem"><span class="linkish" onclick="event.stopPropagation(); openLessonParticipantTarget(${jsArg(l.id)})">${esc(nomi)}</span></td>
+    ${lessonColumnCell("data", `<strong>${dataLabel}</strong> ${status}`)}
+    <td style="font-size:.84rem">${esc(nomi)}</td>
     ${lessonColumnCell("note", `<div class="lezione-note-cell">${noteSpeciali ? esc(noteSpeciali) : "\u2014"}</div>`)}
-    ${lessonColumnCell("luogo", luogoLink)}
+    ${lessonColumnCell("luogo", luogoLabel)}
   </tr>${detail}`;
-}
-function openLessonParticipantTarget(lezioneId) {
-  const l = (lezioniCache || []).find((item) => String(item.id) === String(lezioneId));
-  const partecipanti = ((l == null ? void 0 : l.lezioni_allievi) || []).map((la) => la.allievi).filter(Boolean);
-  if (partecipanti.length === 1) {
-    loadScheda(partecipanti[0].id);
-    return;
-  }
-  const gruppi = [...new Set(partecipanti.map((a) => a.gruppo).filter(Boolean))];
-  if ((l == null ? void 0 : l.tipo) === "gruppo" && gruppi.length === 1) {
-    showView("gruppo", gruppi[0]);
-    return;
-  }
-  openLezione(lezioneId);
 }
 function openDayLessonsWidget(date) {
   const day = String(date || "").slice(0, 10);
@@ -10175,6 +11774,7 @@ function toggleFiltroLezioniAperte() {
 function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
   const skillRows = lezione.lezioni_skills || [];
   const isGroupLesson = (lezione == null ? void 0 : lezione.tipo) === "gruppo";
+  const skillSectionTitle = (lezione == null ? void 0 : lezione.tipo) === "campo_libero" ? "Skill pianificate" : "Skill lavorate";
   const viste = /* @__PURE__ */ new Set();
   const skills = skillRows.map((ls) => {
     var _a2, _b2, _c, _d;
@@ -10197,7 +11797,7 @@ function renderDettaglioLezione(lezione, { gruppoNome = null } = {}) {
       <td colspan="4" class="lezione-detail-cell">
         <div class="lezione-detail-grid">
           <div>
-            <div class="lezione-detail-title">Skill lavorate</div>
+            <div class="lezione-detail-title">${skillSectionTitle}</div>
             <div class="lezione-skill-list">${skillsHtml}</div>
           </div>
           <div>
@@ -10346,6 +11946,7 @@ function loadLezione(id) {
     const partecipanti = (lezione.lezioni_allievi || []).map((la) => la.allievi).filter(Boolean);
     const gruppiLezione = [...new Set(partecipanti.map((a) => a.gruppo).filter(Boolean))];
     const titoloLezione = lezione.tipo === "gruppo" && gruppiLezione.length === 1 ? gruppiLezione[0] : labelPartecipantiLezione(lezione);
+    const titoloLezioneHtml = lezione.tipo === "gruppo" && gruppiLezione.length === 1 ? `<button type="button" class="linkish lezione-read-title" onclick="showView('gruppo',${jsArg(gruppiLezione[0])})">${esc(titoloLezione)}</button>` : `<div class="lezione-read-title">${esc(titoloLezione)}</div>`;
     const dettagliQuando = [
       lezione.durata_min ? `${lezione.durata_min} min` : "",
       lezione.luogo ? esc(lezione.luogo) : ""
@@ -10368,6 +11969,7 @@ function loadLezione(id) {
           </div>`;
     }).join("") : '<div class="empty">Nessun allievo collegato.</div>';
     const skillsByAllievo = {};
+    const skillSectionTitle = lezione.tipo === "campo_libero" ? "Skill pianificate" : "Skill lavorate";
     (lezione.lezioni_skills || []).forEach((row) => {
       var _a2;
       if (isFakieSkillName((_a2 = row.skills) == null ? void 0 : _a2.nome)) return;
@@ -10377,7 +11979,7 @@ function loadLezione(id) {
     });
     const skillsHtml = Object.keys(skillsByAllievo).length ? Object.entries(skillsByAllievo).map(([allievoId, rows]) => {
       const allievo = partecipanti.find((a) => a.id === allievoId);
-      const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(" ") : "Skill lavorate";
+      const titolo = allievo ? [allievo.nome, allievo.cognome].filter(Boolean).join(" ") : skillSectionTitle;
       const studentResult = lezione.tipo === "gruppo" ? lessonStudentResultFromRows(rows) : "";
       const titoloFeedback = studentResult ? ` \xB7 ${lessonResultLabel(studentResult)}` : "";
       const chips = rows.filter((r) => {
@@ -10439,14 +12041,14 @@ function loadLezione(id) {
     <div class="card">
       <div class="lezione-read-head">
         <div>
-          <div class="lezione-read-title">${esc(titoloLezione)}</div>
+          ${titoloLezioneHtml}
           ${lessonStatus(lezione) === "aperta" ? '<div style="margin-top:.4rem"><span class="lesson-status-badge">Aperta</span></div>' : ""}
         </div>
         <div class="lezione-read-when">
           <div class="lezione-when-nav">
             ${navArrow(navStessoAllievo.prev, "prev")}
             <div class="lezione-when-main">
-              <div class="lezione-read-date">${formatLessonDateWithWeekday(lezione)}</div>
+              <button type="button" class="linkish lezione-read-date" onclick="openDayLessonsWidget(${jsArg(String(lezione.data || "").slice(0, 10))})">${formatLessonDateWithWeekday(lezione)}</button>
               ${dettagliQuando || "<span>Orario e luogo non indicati</span>"}
             </div>
             ${navArrow(navStessoAllievo.next, "next")}
@@ -10456,7 +12058,7 @@ function loadLezione(id) {
       ${lezione.updated_at || lezione.aggiornato_il ? `<div style="color:var(--muted);font-size:.78rem;margin-top:.55rem">Ultima modifica: ${esc(formatDateTime(lezione.updated_at || lezione.aggiornato_il))}</div>` : ""}
     </div>
 
-    ${renderBirthdayReminders(partecipanti.map(a => allievoById(a.id) || a), { title: 'Compleanni dei partecipanti · oggi e prossimi 14 giorni' })}
+    ${renderBirthdayReminders(partecipanti.map((a) => allievoById(a.id) || a), { title: "Compleanni dei partecipanti \xB7 oggi e prossimi 14 giorni" })}
     ${noteSpecialiRead ? `
       <p class="sec-title">Note speciali</p>
       <div class="card"><div class="lezione-read-note">${esc(noteSpecialiRead)}</div></div>
@@ -10474,7 +12076,7 @@ function loadLezione(id) {
       </div>
       <div>
         ${pianoLezioneHtml}
-        <p class="sec-title">Skill lavorate</p>
+        <p class="sec-title">${skillSectionTitle}</p>
         <div class="card">${skillsHtml}</div>
       </div>
     </div>
@@ -10513,6 +12115,7 @@ function initNuovaLezione(presetAllievoId = null) {
     editingLezioneAllieviIds = [];
     editingLezioneSkillRows = {};
     lezioneFormMode = "standard";
+    let editingLezioneTipo = "";
     let explicitLezioneMode = false;
     if (typeof presetAllievoId === "string" && presetAllievoId.startsWith("modo:prep")) {
       lezioneFormMode = "prep";
@@ -10520,7 +12123,11 @@ function initNuovaLezione(presetAllievoId = null) {
       presetAllievoId = presetAllievoId.startsWith("modo:prep:") ? presetAllievoId.slice("modo:prep:".length) : null;
     }
     const editId = typeof presetAllievoId === "string" && presetAllievoId.startsWith("lezione:") ? presetAllievoId.slice("lezione:".length) : null;
-    const groupPreset = typeof presetAllievoId === "string" && presetAllievoId.startsWith("gruppo:") ? presetAllievoId.slice("gruppo:".length) : null;
+    let groupPreset = typeof presetAllievoId === "string" && presetAllievoId.startsWith("gruppo:") ? presetAllievoId.slice("gruppo:".length) : null;
+    if (!editId && allievoSoloGruppo(allievoById(presetAllievoId))) {
+      groupPreset = allievoById(presetAllievoId).gruppo;
+      presetAllievoId = null;
+    }
     if (!editId && !groupPreset && !explicitLezioneMode) {
       showView("lezioni");
       return;
@@ -10544,6 +12151,11 @@ function initNuovaLezione(presetAllievoId = null) {
     document.getElementById("lz-check-bene").value = "";
     document.getElementById("lz-check-non-fatto").value = "";
     document.getElementById("lz-note").value = "";
+    const studentNotes = document.getElementById("lz-student-notes");
+    if (studentNotes) {
+      studentNotes.hidden = true;
+      studentNotes.innerHTML = "";
+    }
     clearLezioneFormMessage();
     document.getElementById("lz-prep-board").hidden = true;
     document.getElementById("lz-prep-board").innerHTML = "";
@@ -10599,6 +12211,7 @@ function initNuovaLezione(presetAllievoId = null) {
         return;
       }
       editingLezioneId = editId;
+      editingLezioneTipo = lezione.tipo || "";
       editingLezioneAllieviIds = (lezione.lezioni_allievi || []).map((r) => r.allievo_id).filter(Boolean);
       (lezione.lezioni_skills || []).forEach((r) => {
         const ownerId = r.allievo_id || FREE_LESSON_SKILL_ROWS_KEY;
@@ -10630,11 +12243,11 @@ function initNuovaLezione(presetAllievoId = null) {
     if (editId) {
       const draft2 = loadLezioneDraft();
       if ((draft2 == null ? void 0 : draft2.editingLezioneId) && String(draft2.editingLezioneId) === String(editId)) {
-        restoredDraft = draft2;
-        draftSelectedIds = restoreLezioneDraft(draft2);
+        restoredDraft = normalizeEditingLessonDraft(draft2, editingLezioneTipo, editingLezioneAllieviIds);
+        draftSelectedIds = restoreLezioneDraft(restoredDraft);
         setLezioneFormMessage(`Bozza locale ripristinata: il salvataggio online precedente non era riuscito. Riprova quando sei online.`, "msg-info");
       } else {
-        setLezioneTargetFromEditing();
+        setLezioneTargetFromEditing(editingLezioneTipo);
       }
     } else if (groupPreset) {
       document.getElementById("lz-tipo").value = `gruppo:${groupPreset}`;
@@ -10657,7 +12270,9 @@ function initNuovaLezione(presetAllievoId = null) {
     if (!editId) renderLezioneLocationSelect("", ((_a2 = document.getElementById("lz-luogo")) == null ? void 0 : _a2.value) || "");
     renderLezionePartecipanti();
     if (editId) {
-      editingLezioneAllieviIds.filter((id) => !selectedLezioneAllieviIds().includes(id)).forEach((id) => addSpecialGuestToLesson(id));
+      const desiredParticipantIds = draftSelectedIds.length ? draftSelectedIds : editingLezioneAllieviIds;
+      restoreEditingLessonParticipantSelection(desiredParticipantIds);
+      desiredParticipantIds.filter((id) => !selectedLezioneAllieviIds().includes(id)).forEach((id) => addSpecialGuestToLesson(id));
     }
     draftSelectedIds.filter((id) => !selectedLezioneAllieviIds().includes(id)).forEach((id) => addSpecialGuestToLesson(id));
     if (pendingSpecialGuestId) {
@@ -10685,6 +12300,7 @@ function renderLezionePartecipanti() {
     errEl.classList.remove("show");
   }
   if (target === "campo_libero") {
+    renderLessonStudentNotes();
     renderFreeLessonSkillWorkspace();
     renderSpecialGuestPanel();
     renderPrepBoard();
@@ -10693,10 +12309,15 @@ function renderLezionePartecipanti() {
   }
   const attivi = allieviSelezionabiliLezione();
   if (!attivi.length) {
+    renderLessonStudentNotes();
     renderSpecialGuestPanel();
     return;
   }
   if (target.startsWith("allievo:")) {
+    if (allievoSoloGruppo(allievoById(target.slice("allievo:".length)))) {
+      setLezioneFormMessage("Questo allievo \xE8 solo di gruppo: seleziona il suo gruppo.");
+      return;
+    }
     setLezioneAllievi([target.slice("allievo:".length)]);
   } else if (target.startsWith("gruppo:")) {
     const gruppo = target.slice("gruppo:".length);
@@ -10709,6 +12330,7 @@ function renderLezionePartecipanti() {
   applyDefaultLessonLocationFromTarget();
   renderLezioneLocationSelect(((_a2 = document.getElementById("lz-location-id")) == null ? void 0 : _a2.value) || "", ((_b2 = document.getElementById("lz-luogo")) == null ? void 0 : _b2.value) || "");
   renderSpecialGuestPanel();
+  renderLessonStudentNotes();
   renderPrepBoard();
   refreshSuggerimentiLuogoSeAperti();
 }
@@ -10772,14 +12394,14 @@ function allievoById(id) {
 function allievoDisplayName(id) {
   const a = allievoById(id);
   if (!a) return id;
-  return [a.cognome, a.nome].filter(Boolean).join(" ") || a.nickname || id;
+  return [a.nome, a.cognome].filter(Boolean).join(" ") || a.nickname || id;
 }
 function allieviSelezionabiliLezione({ includeArchived = false } = {}) {
   const visibili = allieviVisibiliGod();
   return includeArchived ? visibili : visibili.filter((a) => a.stato !== "archiviato");
 }
 function lezioneTargetLabelAllievo(a) {
-  return `${[a.cognome, a.nome].filter(Boolean).join(" ")}${a.nickname ? " \xB7 " + a.nickname : ""}`;
+  return `${[a.nome, a.cognome].filter(Boolean).join(" ")}${a.nickname ? " \xB7 " + a.nickname : ""}`;
 }
 function renderLezioneTargetOptions(selected = "") {
   const sel = document.getElementById("lz-tipo");
@@ -10787,7 +12409,7 @@ function renderLezioneTargetOptions(selected = "") {
   let attivi = [];
   let gruppi = [];
   try {
-    attivi = ordinaAllieviLista(allieviSelezionabiliLezione());
+    attivi = ordinaAllieviLista(allieviSelezionabiliLezione().filter((a) => !allievoSoloGruppo(a)));
     gruppi = gruppiSelezionabiliLezione();
   } catch (error) {
     console.error("Lista allievi lezione non disponibile", error);
@@ -10799,25 +12421,64 @@ function renderLezioneTargetOptions(selected = "") {
     <option value="campo_libero">Campo libero</option>`;
   sel.value = [...sel.options].some((option) => option.value === selected) ? selected : "";
 }
-function setLezioneTargetFromEditing() {
+function lessonGroupTargetFromParticipants(ids = []) {
+  var _a2;
+  const counts = /* @__PURE__ */ new Map();
+  ids.forEach((id) => {
+    var _a3;
+    const gruppo = (_a3 = allievoById(id)) == null ? void 0 : _a3.gruppo;
+    if (gruppo) counts.set(gruppo, (counts.get(gruppo) || 0) + 1);
+  });
+  if (lezioneBackGruppoNome && counts.has(lezioneBackGruppoNome)) return lezioneBackGruppoNome;
+  return ((_a2 = [...counts.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "it", { sensitivity: "base" }))[0]) == null ? void 0 : _a2[0]) || "";
+}
+function editingLessonTarget(savedType = "", ids = editingLezioneAllieviIds) {
+  const participantIds = [...new Set((ids || []).filter(Boolean))];
+  if (!participantIds.length) return "campo_libero";
+  if (savedType === "gruppo") {
+    const gruppo2 = lessonGroupTargetFromParticipants(participantIds);
+    if (gruppo2) return `gruppo:${gruppo2}`;
+  }
+  if (savedType === "individuale" || participantIds.length === 1) return `allievo:${participantIds[0]}`;
+  const gruppo = lessonGroupTargetFromParticipants(participantIds);
+  return gruppo ? `gruppo:${gruppo}` : `allievo:${participantIds[0]}`;
+}
+function setLezioneTargetFromEditing(savedType = "") {
   const sel = document.getElementById("lz-tipo");
   if (!sel) return;
-  if (!editingLezioneAllieviIds.length) {
-    sel.value = "campo_libero";
-    return;
+  const target = editingLessonTarget(savedType);
+  sel.value = [...sel.options].some((option) => option.value === target) ? target : editingLezioneAllieviIds.length ? `allievo:${editingLezioneAllieviIds[0]}` : "campo_libero";
+}
+function normalizeEditingLessonDraft(draft, savedType, participantIds) {
+  const canonicalTarget = editingLessonTarget(savedType, participantIds);
+  if (!canonicalTarget || draft.target !== "campo_libero" || canonicalTarget === "campo_libero") return draft;
+  const skillRows = __spreadValues({}, draft.skillRows || {});
+  const freeRows = skillRows[FREE_LESSON_SKILL_ROWS_KEY] || [];
+  if (freeRows.length) {
+    const ownerId = canonicalTarget.startsWith("gruppo:") ? GROUP_SKILL_ROWS_KEY : canonicalTarget.slice("allievo:".length);
+    skillRows[ownerId] = [...skillRows[ownerId] || [], ...freeRows];
+    delete skillRows[FREE_LESSON_SKILL_ROWS_KEY];
   }
-  const gruppo = gruppoDaAllieviLezione(editingLezioneAllieviIds);
-  const membriGruppo = gruppo ? allieviSelezionabiliLezione().filter((a) => a.gruppo === gruppo).map((a) => a.id).sort() : [];
-  const editingIds = [...editingLezioneAllieviIds].sort();
-  if (gruppo && membriGruppo.length && membriGruppo.every((id) => editingIds.includes(id))) {
-    sel.value = `gruppo:${gruppo}`;
-    return;
-  }
-  if (editingLezioneAllieviIds.length === 1) {
-    sel.value = `allievo:${editingLezioneAllieviIds[0]}`;
-    return;
-  }
-  sel.value = "campo_libero";
+  return __spreadProps(__spreadValues({}, draft), {
+    target: canonicalTarget,
+    selectedIds: (draft.selectedIds || []).length ? draft.selectedIds : [...participantIds],
+    skillRows
+  });
+}
+function restoreEditingLessonParticipantSelection(ids = []) {
+  if (!currentLessonTargetIsGroup()) return;
+  const selected = new Set(ids);
+  document.querySelectorAll("#lz-hidden-checks input[type=checkbox]").forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  document.querySelectorAll("#lz-gruppo-panel input[type=checkbox][value]").forEach((input) => {
+    var _a2, _b2;
+    input.checked = selected.has(input.value);
+    (_b2 = (_a2 = input.closest(".group-presence-row")) == null ? void 0 : _a2.querySelector(".group-student-feedback")) == null ? void 0 : _b2.classList.toggle("is-unselected", !input.checked);
+  });
+  refreshGroupExclusionControls();
+  renderGroupIndividualControls();
+  renderLessonStudentNotes();
 }
 function gruppiSelezionabiliLezione({ includeArchived = false } = {}) {
   return [...new Set(allieviSelezionabiliLezione({ includeArchived }).map((a) => a.gruppo).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -10848,8 +12509,8 @@ function renderAllieviGruppoLezione(gruppo, presentiSet = null) {
   }
   listEl.innerHTML = membri.map((a) => `
     <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
-      <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? "" : "checked"} onchange="toggleAllievo(this,'${esc([a.nome, a.cognome].filter(Boolean).join(" "))}')">
-      ${esc([a.cognome, a.nome].filter(Boolean).join(" "))}
+      <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? "" : "checked"} onchange="toggleAllievo(this,${jsArg([a.nome, a.cognome].filter(Boolean).join(" "))})">
+      ${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(" "))}
     </label>`).join("");
   [...listEl.querySelectorAll("input[type=checkbox]:checked")].forEach((cb) => {
     const a = membri.find((m) => m.id === cb.value);
@@ -10870,7 +12531,7 @@ function renderGroupLessonPanel(gruppo) {
           <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
             <label class="group-presence-name">
               <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? "checked" : ""} onchange="togglePresenzaGruppoLezione(this)">
-              <span>${esc(allievoDisplayName(a.id))}</span>
+              ${studentAvatarHtml(a)}<span>${esc(allievoDisplayName(a.id))}</span>
             </label>
             ${renderGroupStudentFeedbackControls(a.id, selected.has(a.id))}
           </div>`).join("")}
@@ -10879,7 +12540,7 @@ function renderGroupLessonPanel(gruppo) {
         <div class="lesson-skill-hint">Guest</div>
         ${guests.map((a) => `
           <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
-            <div class="group-presence-name"><span>${esc(allievoDisplayName(a.id))}</span></div>
+            <div class="group-presence-name">${studentAvatarHtml(a)}<span>${esc(allievoDisplayName(a.id))}</span></div>
             ${renderGroupStudentFeedbackControls(a.id, true)}
           </div>`).join("")}
       </div>` : ""}
@@ -10895,6 +12556,7 @@ function togglePresenzaGruppoLezione(cb) {
   refreshGroupExclusionControls();
   renderGroupIndividualControls();
   renderSpecialGuestPanel();
+  renderLessonStudentNotes();
   renderPrepBoard();
   refreshSuggerimentiLuogoSeAperti();
   suggerisciDurataDaUltimaLezione();
@@ -10904,6 +12566,7 @@ function setLezioneAllievi(ids) {
   document.getElementById("lz-skills-container").innerHTML = "";
   holder.innerHTML = ids.map((id) => `<input type="checkbox" value="${id}" checked>`).join("");
   if (currentLessonTargetIsGroup()) {
+    renderLessonStudentNotes();
     refreshSuggerimentiLuogoSeAperti();
     suggerisciDurataDaUltimaLezione();
     return;
@@ -10913,11 +12576,34 @@ function setLezioneAllievi(ids) {
     if (a) toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(" "));
   });
   refreshSuggerimentiLuogoSeAperti();
+  renderLessonStudentNotes();
   renderPrepBoard();
   suggerisciDurataDaUltimaLezione();
 }
 function selectedLezioneAllieviIds() {
   return [...document.querySelectorAll("#lz-hidden-checks input[type=checkbox]:checked")].map((input) => input.value);
+}
+function renderLessonStudentNotes() {
+  renderLessonBirthdayReminders();
+  const panel = document.getElementById("lz-student-notes");
+  if (!panel) return;
+  if (editingLezioneId) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+  const rows = selectedLezioneAllieviIds().map((id) => allievoById(id)).filter(Boolean).map((allievo) => ({ allievo, note: allievoLessonNote(allievo) })).filter((row) => row.note);
+  if (!rows.length) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="lesson-student-notes-title">${rows.length === 1 ? "Promemoria allievo" : "Promemoria allievi"}</div>
+    ${rows.map((row) => `
+      <div class="lesson-student-note-row"><strong>${esc(allievoDisplayName(row.allievo.id))}</strong> \xB7 ${esc(row.note)}</div>
+    `).join("")}`;
 }
 function luoghiCacheKey(ids) {
   return [...new Set(ids || [])].sort().join("|");
@@ -11115,7 +12801,7 @@ function renderFreeLessonSkillWorkspace() {
     <div class="allievo-block">
       <h4>Skill da preparare</h4>
       <div class="lesson-skill-tools">
-        <div class="lesson-skill-hint">Aggiungi skill o esercizi senza collegarli ancora a un allievo.</div>
+      <div class="lesson-skill-hint">Prepara skill o esercizi per una lezione futura. Restano pianificati, senza allievo e senza aggiornare i progressi.</div>
         ${renderLessonWorkButtons(FREE_LESSON_SKILL_ROWS_KEY)}
       </div>
       <div id="skill-rows-${FREE_LESSON_SKILL_ROWS_KEY}"></div>
@@ -11169,7 +12855,7 @@ function addIndividualSkillWork(id, rows = null) {
 function renderSpecialGuestPanel() {
   const panel = document.getElementById("lz-special-guest-panel");
   const selectedIds = new Set(selectedLezioneAllieviIds());
-  const options = ordinaAllieviLista(allieviSelezionabiliLezione().filter((a) => !selectedIds.has(a.id)));
+  const options = ordinaAllieviLista(allieviSelezionabiliLezione().filter((a) => !selectedIds.has(a.id) && (currentLessonTargetIsGroup() || !allievoSoloGruppo(a))));
   panel.hidden = false;
   panel.innerHTML = `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem;align-items:end">
@@ -11185,6 +12871,10 @@ function renderSpecialGuestPanel() {
 }
 function addSpecialGuestToLesson(id) {
   if (!id || selectedLezioneAllieviIds().includes(id)) return;
+  if (!currentLessonTargetIsGroup() && allievoSoloGruppo(allievoById(id))) {
+    setLezioneFormMessage("Questo allievo partecipa solo a lezioni di gruppo.");
+    return;
+  }
   const holder = document.getElementById("lz-hidden-checks");
   holder.insertAdjacentHTML("beforeend", `<input type="checkbox" value="${id}" checked>`);
   const a = allieviSelezionabiliLezione().find((x) => x.id === id) || allAllievi.find((x) => x.id === id);
@@ -11197,6 +12887,7 @@ function addSpecialGuestToLesson(id) {
     toggleAllievo({ checked: true, value: id }, [a.nome, a.cognome].filter(Boolean).join(" "));
   }
   renderSpecialGuestPanel();
+  renderLessonStudentNotes();
   renderPrepBoard();
   refreshSuggerimentiLuogoSeAperti();
 }
@@ -11305,11 +12996,11 @@ function toggleAllievo(cb, nomeCompleto) {
   } else {
     (_a2 = document.getElementById(`block-${cb.value}`)) == null ? void 0 : _a2.remove();
   }
-  renderLessonBirthdayReminders();
+  renderLessonStudentNotes();
 }
 function renderPrepBoard() {
-  renderLessonBirthdayReminders();
   return __async(this, null, function* () {
+    renderLessonBirthdayReminders();
     const board = document.getElementById("lz-prep-board");
     if (!board) return;
     board.hidden = true;
@@ -11322,10 +13013,10 @@ function sortedSkillsForLesson() {
   });
 }
 function skillMetaLabel(skill) {
-  return [skill.ramo || "Altro", skill.blocco, skill.livello ? `Lv.${skill.livello}` : ""].filter(Boolean).join(" \xB7 ");
+  return [skillBranchName(skill.ramo), skill.blocco, skill.livello ? `Lv.${skill.livello}` : ""].filter(Boolean).join(" \xB7 ");
 }
 function lessonSkillHint(allievo) {
-  return allievo ? "Aggiungi solo il lavoro effettivamente fatto in questa lezione." : "Aggiungi le skill lavorate in questa lezione.";
+  return allievo ? "Aggiungi solo il lavoro effettivamente fatto in questa lezione." : "Aggiungi le skill da preparare per una lezione futura.";
 }
 function renderLessonWorkButtons(allieviId) {
   const ownerArg = jsArg(allieviId);
@@ -11626,8 +13317,8 @@ function renderLessonSkillSuggestionGroups(allieviId, groups) {
     </div>`).join("");
 }
 function lessonSkillBranches() {
-  const preferred = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air"];
-  const found = [...new Set((allSkills || []).map((skill) => skill.ramo || "Altro").filter(Boolean))];
+  const preferred = ["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"];
+  const found = [...new Set((allSkills || []).map((skill) => skillBranchName(skill.ramo)))];
   return [...preferred.filter((branch) => found.includes(branch)), ...found.filter((branch) => !preferred.includes(branch)).sort((a, b) => a.localeCompare(b))];
 }
 function renderLessonBranchOptions(selectedBranch = "") {
@@ -11640,7 +13331,7 @@ function renderLessonSkillOptions(selectedSkillId = "", filter = "", branch = ""
   const allowedSkillIds = options.allowedSkillIds || null;
   const list = sortedSkillsForLesson().filter((skill) => {
     if (allowedSkillIds && !allowedSkillIds.has(String(skill.id)) && String(skill.id) !== String(selectedSkillId)) return false;
-    if (selectedBranch && (skill.ramo || "Altro") !== selectedBranch) return false;
+    if (selectedBranch && skillBranchName(skill.ramo) !== selectedBranch) return false;
     if (!q) return true;
     return normalizeText(skill.nome).includes(q);
   });
@@ -11734,7 +13425,7 @@ function lessonFormIsOpen() {
   return ((_a2 = document.getElementById("lz-stato")) == null ? void 0 : _a2.value) !== "chiusa";
 }
 function lessonFeedbackHiddenByState() {
-  return lezioneFormMode !== "prep" && lessonFormIsOpen();
+  return lessonFormIsOpen();
 }
 function renderLessonFeedbackControls(result = "bene", sideFeedback = "bilaterale") {
   return `<div class="lesson-feedback-controls" ${lessonFeedbackHiddenByState() ? "hidden" : ""}>
@@ -12166,7 +13857,7 @@ function lessonHistoryChanges(originalLesson, payloadLezione, relationSnapshot, 
     if (beforeAllievi !== afterAllievi) changes.push("allievi");
     const beforeSkills = historySetSignature((relationSnapshot.skills || []).map(skillHistorySignature));
     const afterSkills = historySetSignature(pendingSkillHistorySignatures(pendingSkillsByAllievo));
-    if (beforeSkills !== afterSkills) changes.push("skill lavorate");
+    if (beforeSkills !== afterSkills) changes.push((payloadLezione == null ? void 0 : payloadLezione.tipo) === "campo_libero" ? "skill pianificate" : "skill lavorate");
   }
   return changes;
 }
@@ -12192,11 +13883,11 @@ function salvaLezione() {
     var _a2, _b2, _c, _d, _e, _f;
     clearLezioneFormMessage();
     const oraInput = document.getElementById("lz-ora");
-    const oraRaw = (oraInput && oraInput.value || "").trim();
+    const oraRaw = ((oraInput == null ? void 0 : oraInput.value) || "").trim();
     const ora = normalizeLessonTime(oraRaw);
-    if (oraRaw && !ora || oraInput && oraInput.validity && oraInput.validity.badInput) {
-      setLezioneFormMessage("Inserisci un’ora valida nel formato 24 ore, ad esempio 14:30, oppure lascia il campo vuoto.");
-      if (oraInput) oraInput.focus();
+    if (oraRaw && !ora || ((_a2 = oraInput == null ? void 0 : oraInput.validity) == null ? void 0 : _a2.badInput)) {
+      setLezioneFormMessage("Inserisci un\u2019ora valida nel formato 24 ore, ad esempio 14:30, oppure lascia il campo vuoto.");
+      oraInput == null ? void 0 : oraInput.focus();
       return;
     }
     const data = document.getElementById("lz-data").value;
@@ -12227,6 +13918,10 @@ function salvaLezione() {
       return;
     }
     const lezioneAllieviIds = checkedAllievi.map((cb) => cb.value);
+    if (tipo !== "gruppo" && lezioneAllieviIds.some((id) => allievoSoloGruppo(allievoById(id)))) {
+      setLezioneFormMessage("Questi allievi partecipano solo a lezioni di gruppo. Seleziona il gruppo prima di salvare.");
+      return;
+    }
     const locationEntries = lessonLocationEntries(luogo, lezioneAllieviIds);
     const effectiveLocationId = locationEntries.length === 1 ? selectedLocationId : null;
     const buttons = [document.getElementById("btn-salva-lz"), document.getElementById("btn-salva-lz-top")].filter(Boolean);
@@ -12500,15 +14195,360 @@ const TUNING_PARAMS = [
   }
 ];
 function initTuning() {
-  tuningLocal = JSON.parse(safeStorage.getItem("tuningLocal") || "[]");
-  tuningAlertCount = Number(safeStorage.getItem("tuningAlertCount") || 0);
-  renderTuningStats();
-  setTuningMode(tuningMode, true);
+  return __async(this, null, function* () {
+    tuningLocal = JSON.parse(safeStorage.getItem("tuningLocal") || "[]");
+    tuningAlertCount = Number(safeStorage.getItem("tuningAlertCount") || 0);
+    renderSkillLab();
+    if (!skillLabLoaded && !skillLabLoading) yield loadSkillLabUsage();
+  });
+}
+function setSkillLabStatus(text, kind = "") {
+  const el = document.getElementById("skill-lab-status");
+  if (!el) return;
+  el.className = `msg ${kind}`.trim();
+  el.style.display = text ? "block" : "none";
+  el.textContent = text || "";
+}
+function loadSkillLabUsage() {
+  return __async(this, arguments, function* ({ force = false } = {}) {
+    if (skillLabLoading || skillLabLoaded && !force) return;
+    skillLabLoading = true;
+    renderSkillLab();
+    setSkillLabStatus("Aggiornamento degli utilizzi reali in corso\u2026", "msg-info");
+    try {
+      const { data, error } = yield sb.from("lezioni_skills").select("skill_id,allievo_id,lezione_id");
+      if (error) throw error;
+      skillLabUsageRows = data || [];
+      skillLabLoaded = true;
+      setSkillLabStatus(`Analisi aggiornata: ${skillLabUsageRows.length} registrazioni lezione esaminate.`, "msg-ok");
+    } catch (error) {
+      skillLabUsageRows = [];
+      setSkillLabStatus(`Utilizzo nelle lezioni non disponibile: ${error.message || error}. Le altre analisi restano valide.`, "msg-err");
+    } finally {
+      skillLabLoading = false;
+      renderSkillLab();
+    }
+  });
+}
+function refreshSkillLab() {
+  loadSkillLabUsage({ force: true });
+}
+function setSkillLabView(view) {
+  skillLabView = view;
+  ["overview", "inventory", "quality", "anomalies", "guided"].forEach((name) => {
+    var _a2;
+    (_a2 = document.getElementById(`skill-lab-tab-${name}`)) == null ? void 0 : _a2.classList.toggle("chip-on", name === view);
+  });
+  renderSkillLab();
+}
+function skillLabDefinitionQuality(skill) {
+  const def = skillDefinitionForSkill(skill);
+  const checks = [
+    ["livello", Number(skill.livello || 0) > 0, 10],
+    ["ramo", !!String(skill.ramo || "").trim(), 10],
+    ["descrizione", !!String(skill.descrizione || "").trim(), 15],
+    ["scheda definizione", !!def, 10],
+    ["cosa fa", !!String((def == null ? void 0 : def.cosa_fa) || "").trim(), 20],
+    ["come si fa", !!String((def == null ? void 0 : def.come_si_fa) || "").trim(), 20],
+    ["prerequisiti", Number(skill.livello || 0) <= 1 || allPrereqs.some((row) => String(row.skill_id) === String(skill.id)), 10],
+    ["metadati essenziali", !!String(skill.blocco || "").trim(), 5]
+  ];
+  return {
+    score: checks.reduce((sum, [, ok, weight]) => sum + (ok ? weight : 0), 0),
+    missing: checks.filter(([, ok]) => !ok).map(([label]) => label),
+    definition: def
+  };
+}
+function skillLabNameBigrams(value) {
+  const text = ` ${normalizeText(value).replace(/[^a-z0-9à-ÿ]+/g, " ").replace(/\s+/g, " ").trim()} `;
+  const grams = /* @__PURE__ */ new Set();
+  for (let i = 0; i < text.length - 1; i++) grams.add(text.slice(i, i + 2));
+  return grams;
+}
+function skillLabNameSimilarity(a, b) {
+  const left = skillLabNameBigrams(a);
+  const right = skillLabNameBigrams(b);
+  if (!left.size || !right.size) return 0;
+  let common = 0;
+  left.forEach((gram) => {
+    if (right.has(gram)) common++;
+  });
+  return 2 * common / (left.size + right.size);
+}
+function skillLabCycles(outgoing) {
+  const found = /* @__PURE__ */ new Map();
+  const visiting = /* @__PURE__ */ new Set();
+  const visited = /* @__PURE__ */ new Set();
+  const path = [];
+  const canonical = (ids) => {
+    const ring = ids.slice(0, -1);
+    const rotations = ring.map((_, index) => [...ring.slice(index), ...ring.slice(0, index)]);
+    rotations.sort((a, b) => a.join("|").localeCompare(b.join("|")));
+    return rotations[0];
+  };
+  const walk = (id) => {
+    if (visiting.has(id)) {
+      const start = path.indexOf(id);
+      if (start >= 0) {
+        const cycle = canonical([...path.slice(start), id]);
+        found.set(cycle.join("|"), cycle);
+      }
+      return;
+    }
+    if (visited.has(id)) return;
+    visiting.add(id);
+    path.push(id);
+    (outgoing.get(id) || []).forEach(walk);
+    path.pop();
+    visiting.delete(id);
+    visited.add(id);
+  };
+  allSkills.forEach((skill) => walk(String(skill.id)));
+  return [...found.values()];
+}
+function buildSkillLabAnalysis() {
+  const outgoing = /* @__PURE__ */ new Map();
+  const incoming = /* @__PURE__ */ new Map();
+  allSkills.forEach((skill) => {
+    outgoing.set(String(skill.id), []);
+    incoming.set(String(skill.id), []);
+  });
+  allPrereqs.forEach((row) => {
+    const skillId = String(row.skill_id);
+    const requirementId = String(row.richiede_skill_id);
+    if (outgoing.has(skillId) && outgoing.has(requirementId)) {
+      outgoing.get(skillId).push(requirementId);
+      incoming.get(requirementId).push(skillId);
+    }
+  });
+  const progressStudents = /* @__PURE__ */ new Map();
+  allProgressi.forEach((row) => {
+    const id = String(row.skill_id);
+    if (!progressStudents.has(id)) progressStudents.set(id, /* @__PURE__ */ new Set());
+    if (row.allievo_id) progressStudents.get(id).add(String(row.allievo_id));
+  });
+  const actualLessons = /* @__PURE__ */ new Map();
+  const plannedLessons = /* @__PURE__ */ new Map();
+  skillLabUsageRows.forEach((row) => {
+    const id = String(row.skill_id);
+    const target = row.allievo_id ? actualLessons : plannedLessons;
+    if (!target.has(id)) target.set(id, /* @__PURE__ */ new Set());
+    target.get(id).add(String(row.lezione_id || `${id}:${target.get(id).size}`));
+  });
+  const cycles = skillLabCycles(outgoing);
+  const cycleIds = new Set(cycles.flat());
+  const similarPairs = [];
+  for (let i = 0; i < allSkills.length; i++) {
+    for (let j = i + 1; j < allSkills.length; j++) {
+      const left = allSkills[i];
+      const right = allSkills[j];
+      const similarity = skillLabNameSimilarity(left.nome, right.nome);
+      if (similarity >= 0.78) similarPairs.push({ left, right, similarity });
+    }
+  }
+  similarPairs.sort((a, b) => b.similarity - a.similarity);
+  const similarIds = new Set(similarPairs.flatMap((pair) => [String(pair.left.id), String(pair.right.id)]));
+  const inconsistentEdges = allPrereqs.map((row) => {
+    const skill = allSkills.find((item) => String(item.id) === String(row.skill_id));
+    const requirement = allSkills.find((item) => String(item.id) === String(row.richiede_skill_id));
+    return { row, skill, requirement };
+  }).filter((item) => item.skill && item.requirement && Number(item.requirement.livello || 0) > Number(item.skill.livello || 0));
+  const records = allSkills.map((skill) => {
+    var _a2, _b2, _c, _d, _e;
+    const id = String(skill.id);
+    const prerequisites = ((_a2 = outgoing.get(id)) == null ? void 0 : _a2.length) || 0;
+    const children = ((_b2 = incoming.get(id)) == null ? void 0 : _b2.length) || 0;
+    const assigned = ((_c = progressStudents.get(id)) == null ? void 0 : _c.size) || 0;
+    const lessons = ((_d = actualLessons.get(id)) == null ? void 0 : _d.size) || 0;
+    const planned = ((_e = plannedLessons.get(id)) == null ? void 0 : _e.size) || 0;
+    const quality = skillLabDefinitionQuality(skill);
+    const anomalies = [];
+    if (!prerequisites && !children) anomalies.push("isolata");
+    if (cycleIds.has(id)) anomalies.push("ciclo");
+    if (similarIds.has(id)) anomalies.push("nome simile");
+    if (prerequisites + children >= 8) anomalies.push("molti collegamenti");
+    if (inconsistentEdges.some((edge) => String(edge.skill.id) === id || String(edge.requirement.id) === id)) anomalies.push("livelli incoerenti");
+    return {
+      skill,
+      id,
+      prerequisites,
+      children,
+      assigned,
+      lessons,
+      planned,
+      quality,
+      anomalies,
+      unused: assigned === 0 && lessons === 0
+    };
+  }).sort((a, b) => Number(a.skill.livello || 0) - Number(b.skill.livello || 0) || String(a.skill.nome).localeCompare(String(b.skill.nome), "it", { sensitivity: "base" }));
+  return { records, outgoing, incoming, cycles, cycleIds, similarPairs, inconsistentEdges };
+}
+function skillLabKpi(value, label) {
+  return `<div class="skill-lab-kpi"><strong>${value}</strong><span>${esc(label)}</span></div>`;
+}
+function skillLabBadge(label, tone = "") {
+  return `<span class="skill-lab-badge ${tone}">${esc(label)}</span>`;
+}
+function renderSkillLabBars(entries) {
+  const max = Math.max(1, ...entries.map(([, value]) => value));
+  return `<div class="skill-lab-bars">${entries.map(([label, value]) => `
+    <div class="skill-lab-bar-row"><span>${esc(label)}</span><div class="skill-lab-bar-track"><span style="width:${Math.round(value / max * 100)}%"></span></div><strong>${value}</strong></div>`).join("")}</div>`;
+}
+function skillLabRecordButton(record, extra = "") {
+  const usage = record.lessons ? `${record.lessons} lezioni` : record.assigned ? `${record.assigned} allievi` : "mai usata";
+  return `<button type="button" class="skill-lab-item" onclick="openSkillDetailModal(${jsArg(record.skill.id)})">
+    <span class="skill-lab-item-main"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} \xB7 Lv.${esc(record.skill.livello || "\u2014")} \xB7 ${esc(usage)}${extra ? ` \xB7 ${esc(extra)}` : ""}</span></span>
+    <span class="skill-lab-badges">${skillLabBadge(`${record.quality.score}%`, record.quality.score >= 80 ? "good" : record.quality.score < 50 ? "bad" : "warn")}${record.anomalies.slice(0, 2).map((label) => skillLabBadge(label, "warn")).join("")}</span>
+  </button>`;
+}
+function renderSkillLabOverview(analysis) {
+  const { records } = analysis;
+  const branchCounts = /* @__PURE__ */ new Map();
+  const levelCounts = /* @__PURE__ */ new Map();
+  records.forEach((record) => {
+    const branch = skillBranchName(record.skill.ramo) || "Senza ramo";
+    const level = `Livello ${record.skill.livello || "\u2014"}`;
+    branchCounts.set(branch, (branchCounts.get(branch) || 0) + 1);
+    levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
+  });
+  const critical = records.filter((record) => record.quality.score < 50).sort((a, b) => a.quality.score - b.quality.score).slice(0, 7);
+  const unused = records.filter((record) => record.unused).sort((a, b) => a.quality.score - b.quality.score).slice(0, 7);
+  return `
+    <div class="skill-lab-kpis">
+      ${skillLabKpi(records.length, "Skill catalogo")}
+      ${skillLabKpi(records.filter((record) => record.unused).length, "Mai assegnate n\xE9 usate")}
+      ${skillLabKpi(records.filter((record) => record.quality.score < 70).length, "Documentazione incompleta")}
+      ${skillLabKpi(records.filter((record) => record.anomalies.includes("isolata")).length, "Skill isolate")}
+      ${skillLabKpi(analysis.cycles.length, "Cicli nel grafo")}
+      ${skillLabKpi(analysis.similarPairs.length, "Nomi simili sospetti")}
+    </div>
+    <div class="skill-lab-grid">
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Distribuzione per ramo</h3><span>${branchCounts.size} rami</span></div>${renderSkillLabBars([...branchCounts.entries()].sort((a, b) => b[1] - a[1]))}</section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Distribuzione per livello</h3><span>struttura attuale</span></div>${renderSkillLabBars([...levelCounts.entries()].sort((a, b) => Number(a[0].replace(/\D/g, "")) - Number(b[0].replace(/\D/g, ""))))}</section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Priorit\xE0 documentazione</h3><span>completezza sotto il 50%</span></div><div class="skill-lab-list">${critical.length ? critical.map((record) => skillLabRecordButton(record, record.quality.missing.join(", "))).join("") : '<div class="empty">Nessuna criticit\xE0 grave.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Candidati alla pulizia</h3><span>nessun uso reale rilevato</span></div><div class="skill-lab-list">${unused.length ? unused.map((record) => skillLabRecordButton(record, `${record.prerequisites} prereq \xB7 ${record.children} figli`)).join("") : '<div class="empty">Tutte le skill risultano utilizzate.</div>'}</div></section>
+    </div>`;
+}
+function skillLabFilteredRecords(analysis) {
+  const query = normalizeText(skillLabFilters.query);
+  return analysis.records.filter((record) => {
+    if (query && !normalizeText(`${record.skill.nome} ${record.skill.descrizione || ""} ${record.skill.ramo || ""}`).includes(query)) return false;
+    if (skillLabFilters.branch && skillBranchName(record.skill.ramo) !== skillLabFilters.branch) return false;
+    if (skillLabFilters.usage === "unused" && !record.unused) return false;
+    if (skillLabFilters.usage === "never-assigned" && record.assigned > 0) return false;
+    if (skillLabFilters.usage === "never-lessons" && record.lessons > 0) return false;
+    if (skillLabFilters.usage === "used" && record.lessons === 0 && record.assigned === 0) return false;
+    if (skillLabFilters.quality === "critical" && record.quality.score >= 50) return false;
+    if (skillLabFilters.quality === "incomplete" && (record.quality.score < 50 || record.quality.score >= 80)) return false;
+    if (skillLabFilters.quality === "good" && record.quality.score < 80) return false;
+    if (skillLabFilters.quality === "anomaly" && !record.anomalies.length) return false;
+    return true;
+  });
+}
+function setSkillLabFilter(key, value) {
+  skillLabFilters[key] = value;
+  renderSkillLab();
+  if (key === "query") {
+    requestAnimationFrame(() => {
+      const input = document.getElementById("skill-lab-query");
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  }
+}
+function setSkillLabPreset(preset) {
+  skillLabFilters = { query: "", branch: "", usage: "", quality: "" };
+  if (preset === "unused") skillLabFilters.usage = "unused";
+  if (preset === "critical") skillLabFilters.quality = "critical";
+  if (preset === "anomaly") skillLabFilters.quality = "anomaly";
+  renderSkillLab();
+}
+function renderSkillLabInventory(analysis) {
+  const branches = [...new Set(analysis.records.map((record) => skillBranchName(record.skill.ramo)))].sort((a, b) => a.localeCompare(b, "it"));
+  const records = skillLabFilteredRecords(analysis);
+  return `
+    <div class="skill-lab-filters">
+      <input id="skill-lab-query" aria-label="Cerca skill" placeholder="Cerca nome, descrizione o ramo\u2026" value="${esc(skillLabFilters.query)}" oninput="setSkillLabFilter('query',this.value)">
+      <select aria-label="Filtra ramo" onchange="setSkillLabFilter('branch',this.value)"><option value="">Tutti i rami</option>${branches.map((branch) => `<option value="${esc(branch)}"${skillLabFilters.branch === branch ? " selected" : ""}>${esc(branch)}</option>`).join("")}</select>
+      <select aria-label="Filtra utilizzo" onchange="setSkillLabFilter('usage',this.value)"><option value="">Qualsiasi utilizzo</option><option value="unused"${skillLabFilters.usage === "unused" ? " selected" : ""}>Mai assegnate n\xE9 usate</option><option value="never-assigned"${skillLabFilters.usage === "never-assigned" ? " selected" : ""}>Mai assegnate</option><option value="never-lessons"${skillLabFilters.usage === "never-lessons" ? " selected" : ""}>Mai in lezione</option><option value="used"${skillLabFilters.usage === "used" ? " selected" : ""}>Utilizzate</option></select>
+      <select aria-label="Filtra qualit\xE0" onchange="setSkillLabFilter('quality',this.value)"><option value="">Qualsiasi qualit\xE0</option><option value="critical"${skillLabFilters.quality === "critical" ? " selected" : ""}>Critica (&lt;50%)</option><option value="incomplete"${skillLabFilters.quality === "incomplete" ? " selected" : ""}>Incompleta (50\u201379%)</option><option value="good"${skillLabFilters.quality === "good" ? " selected" : ""}>Buona (80%+)</option><option value="anomaly"${skillLabFilters.quality === "anomaly" ? " selected" : ""}>Con anomalie</option></select>
+    </div>
+    <div class="skill-lab-presets"><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('unused')">Inutilizzate</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('critical')">Qualit\xE0 critica</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('anomaly')">Con anomalie</button><button class="btn btn-outline btn-sm" onclick="setSkillLabPreset('reset')">Azzera filtri</button></div>
+    <div class="skill-lab-section-title"><h3>${records.length} skill</h3><span>clicca il nome per aprire la scheda</span></div>
+    <div class="skill-lab-results">${records.length ? records.map((record) => `
+      <article class="skill-lab-result">
+        <div><button class="skill-lab-result-action" onclick="openSkillDetailModal(${jsArg(record.skill.id)})"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} \xB7 Lv.${esc(record.skill.livello || "\u2014")}</span></button></div>
+        <div><span class="skill-lab-result-label">Uso</span><span class="skill-lab-result-value">${record.lessons} lez. \xB7 ${record.assigned} all.</span></div>
+        <div><span class="skill-lab-result-label">Grafo</span><span class="skill-lab-result-value">${record.prerequisites} prereq \xB7 ${record.children} figli</span></div>
+        <div><span class="skill-lab-result-label">Qualit\xE0</span>${skillLabBadge(`${record.quality.score}%`, record.quality.score >= 80 ? "good" : record.quality.score < 50 ? "bad" : "warn")}</div>
+        <div><span class="skill-lab-result-label">Segnali</span><span class="skill-lab-result-value">${record.anomalies.length ? esc(record.anomalies.join(", ")) : "\u2014"}</span></div>
+      </article>`).join("") : '<div class="empty">Nessuna skill corrisponde ai filtri.</div>'}</div>`;
+}
+function renderSkillLabQuality(analysis) {
+  const records = [...analysis.records].sort((a, b) => a.quality.score - b.quality.score || String(a.skill.nome).localeCompare(String(b.skill.nome), "it"));
+  const missingCounts = /* @__PURE__ */ new Map();
+  records.forEach((record) => record.quality.missing.forEach((label) => missingCounts.set(label, (missingCounts.get(label) || 0) + 1)));
+  const groups = [
+    ["Critica", records.filter((record) => record.quality.score < 50), "bad"],
+    ["Da completare", records.filter((record) => record.quality.score >= 50 && record.quality.score < 80), "warn"],
+    ["Buona", records.filter((record) => record.quality.score >= 80), "good"]
+  ];
+  return `<div class="skill-lab-grid">
+    <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Campi mancanti</h3><span>conteggio sul catalogo</span></div>${renderSkillLabBars([...missingCounts.entries()].sort((a, b) => b[1] - a[1]))}</section>
+    <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Criterio provvisorio</h3><span>0\u2013100%</span></div><p class="tuning-context">Livello 10, ramo 10, descrizione 15, scheda definizione 10, \u201Ccosa fa\u201D 20, \u201Ccome si fa\u201D 20, prerequisiti 10, metadati 5. Il modello definitivo aggiunger\xE0 esercizi, errori comuni, media e revisione editoriale.</p></section>
+  </div>${groups.map(([label, rows, tone]) => `<section><div class="skill-lab-section-title"><h3>${esc(label)}</h3><span>${rows.length} skill</span></div><div class="skill-lab-results">${rows.map((record) => `<article class="skill-lab-result"><div><button class="skill-lab-result-action" onclick="openSkillDetailModal(${jsArg(record.skill.id)})"><strong>${esc(record.skill.nome)}</strong><span class="skill-lab-meta">${esc(skillBranchName(record.skill.ramo))} \xB7 Lv.${esc(record.skill.livello || "\u2014")}</span></button></div><div>${skillLabBadge(`${record.quality.score}%`, tone)}</div><div style="grid-column:span 3"><span class="skill-lab-result-label">Manca</span><span class="skill-lab-result-value">${record.quality.missing.length ? esc(record.quality.missing.join(", ")) : "Nessun campo essenziale"}</span></div></article>`).join("")}</div></section>`).join("")}`;
+}
+function renderSkillLabAnomalies(analysis) {
+  const recordById = new Map(analysis.records.map((record) => [record.id, record]));
+  const isolated = analysis.records.filter((record) => record.anomalies.includes("isolata"));
+  const hubs = analysis.records.filter((record) => record.anomalies.includes("molti collegamenti")).sort((a, b) => b.prerequisites + b.children - (a.prerequisites + a.children));
+  return `<div class="skill-lab-kpis">${skillLabKpi(analysis.cycles.length, "Cicli")}${skillLabKpi(analysis.inconsistentEdges.length, "Prerequisiti di livello superiore")}${skillLabKpi(isolated.length, "Isolate")}${skillLabKpi(hubs.length, "Molti collegamenti")}${skillLabKpi(analysis.similarPairs.length, "Coppie di nomi simili")}</div>
+    <div class="skill-lab-grid">
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Prerequisiti circolari</h3><span>da risolvere prima di automatizzare</span></div><div class="skill-lab-list">${analysis.cycles.length ? analysis.cycles.map((cycle) => {
+    var _a2;
+    return `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${cycle.map((id) => {
+      var _a3;
+      return ((_a3 = recordById.get(id)) == null ? void 0 : _a3.skill.nome) || id;
+    }).join(" \u2192 ")} \u2192 ${((_a2 = recordById.get(cycle[0])) == null ? void 0 : _a2.skill.nome) || cycle[0]}</strong><span class="skill-lab-meta">Il percorso torna al punto di partenza.</span></span>${skillLabBadge("ciclo", "bad")}</div>`;
+  }).join("") : '<div class="empty">Nessun ciclo rilevato.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Livelli incoerenti</h3><span>prerequisito pi\xF9 avanzato della skill</span></div><div class="skill-lab-list">${analysis.inconsistentEdges.length ? analysis.inconsistentEdges.slice(0, 20).map((edge) => `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${esc(edge.skill.nome)} richiede ${esc(edge.requirement.nome)}</strong><span class="skill-lab-meta">Lv.${edge.skill.livello} richiede Lv.${edge.requirement.livello}</span></span>${skillLabBadge("verificare", "warn")}</div>`).join("") : '<div class="empty">Nessuna incoerenza di livello rilevata.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Skill isolate</h3><span>senza prerequisiti n\xE9 figli</span></div><div class="skill-lab-list">${isolated.length ? isolated.map((record) => skillLabRecordButton(record)).join("") : '<div class="empty">Nessuna skill isolata.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Nomi simili</h3><span>suggerimenti, non duplicati certi</span></div><div class="skill-lab-list">${analysis.similarPairs.length ? analysis.similarPairs.slice(0, 20).map((pair) => `<div class="skill-lab-item"><span class="skill-lab-item-main"><strong>${esc(pair.left.nome)} / ${esc(pair.right.nome)}</strong><span class="skill-lab-meta">Somiglianza ${Math.round(pair.similarity * 100)}%</span></span>${skillLabBadge("confrontare", "warn")}</div>`).join("") : '<div class="empty">Nessun nome molto simile.</div>'}</div></section>
+      <section class="skill-lab-panel"><div class="skill-lab-panel-head"><h3>Nodi molto collegati</h3><span>soglia provvisoria: 8</span></div><div class="skill-lab-list">${hubs.length ? hubs.map((record) => skillLabRecordButton(record, `${record.prerequisites + record.children} collegamenti`)).join("") : '<div class="empty">Nessun nodo supera la soglia.</div>'}</div></section>
+    </div>`;
+}
+function renderSkillLabGuided() {
+  return `<div class="tuning-top"><div class="tuning-modes"><button class="chip" id="tune-mode-parametri" onclick="setTuningMode('parametri')" type="button">Parametri</button><button class="chip" id="tune-mode-requisiti" onclick="setTuningMode('requisiti')" type="button">Requisiti</button><button class="chip" id="tune-mode-progressione" onclick="setTuningMode('progressione')" type="button">Progressione</button><button class="chip" id="tune-mode-livelli" onclick="setTuningMode('livelli')" type="button">Livelli</button></div><select id="tune-scope" onchange="nextTuningCard()" style="max-width:220px"><option value="">Tutti i rami</option>${["Equilibrio", "Andatura", "Frenata", "Rotazione", "Air", "Extra"].map((branch) => `<option value="${branch}">${branch}</option>`).join("")}</select></div><div class="tuning-card" id="tuning-card"><div class="loading">Caricamento scheda\u2026</div></div><div class="tuning-stats" id="tuning-stats"></div>`;
+}
+function renderSkillLab() {
+  const el = document.getElementById("skill-lab-content");
+  if (!el) return;
+  ["overview", "inventory", "quality", "anomalies", "guided"].forEach((name) => {
+    var _a2;
+    return (_a2 = document.getElementById(`skill-lab-tab-${name}`)) == null ? void 0 : _a2.classList.toggle("chip-on", name === skillLabView);
+  });
+  if (skillLabLoading && !skillLabLoaded) {
+    el.innerHTML = '<div class="loading">Analisi dello Skill Tree e degli utilizzi reali\u2026</div>';
+    return;
+  }
+  if (skillLabView === "guided") {
+    el.innerHTML = renderSkillLabGuided();
+    setTuningMode(tuningMode, true);
+    renderTuningStats();
+    return;
+  }
+  const analysis = buildSkillLabAnalysis();
+  if (skillLabView === "inventory") el.innerHTML = renderSkillLabInventory(analysis);
+  else if (skillLabView === "quality") el.innerHTML = renderSkillLabQuality(analysis);
+  else if (skillLabView === "anomalies") el.innerHTML = renderSkillLabAnomalies(analysis);
+  else el.innerHTML = renderSkillLabOverview(analysis);
 }
 function setTuningMode(mode, keepCard = false) {
   tuningMode = mode;
   ["parametri", "requisiti", "progressione", "livelli"].forEach((m) => {
-    document.getElementById(`tune-mode-${m}`).classList.toggle("chip-on", m === mode);
+    var _a2;
+    (_a2 = document.getElementById(`tune-mode-${m}`)) == null ? void 0 : _a2.classList.toggle("chip-on", m === mode);
   });
   if (!keepCard) nextTuningCard();
   else if (!tuningCard) nextTuningCard();
@@ -12516,7 +14556,7 @@ function setTuningMode(mode, keepCard = false) {
 function tuningSkills() {
   var _a2;
   const scope = ((_a2 = document.getElementById("tune-scope")) == null ? void 0 : _a2.value) || "";
-  return (allSkills || []).filter((s) => !scope || (scope === "Altro" ? !s.ramo : s.ramo === scope)).sort((a, b) => a.livello - b.livello || String(a.nome).localeCompare(String(b.nome)));
+  return (allSkills || []).filter((s) => !scope || skillBranchName(s.ramo) === scope).sort((a, b) => a.livello - b.livello || String(a.nome).localeCompare(String(b.nome)));
 }
 function pickTuningSkill() {
   const list = tuningSkills();
@@ -12537,7 +14577,7 @@ function skillById(id) {
 }
 function shortSkillMeta(skill) {
   if (!skill) return "";
-  return `${skill.ramo || "Altro"} \xB7 Lv.${skill.livello}`;
+  return `${skillBranchName(skill.ramo)} \xB7 Lv.${skill.livello}`;
 }
 function getRequirementContext(skill) {
   const sameRamo = allSkills.filter((s) => (s.ramo || "Altro") === (skill.ramo || "Altro") && s.id !== skill.id).sort((a, b) => a.livello - b.livello || String(a.nome).localeCompare(String(b.nome)));
@@ -12707,7 +14747,7 @@ function renderTuningCard() {
       <span>${tuningCount}/10</span>
     </div>
     <div id="tune-status" class="msg" style="display:none;margin-bottom:.65rem"></div>
-    <div class="tuning-kicker"><span>${card.tipo}</span><span>\xB7</span><span>${esc(((_a2 = card.skill) == null ? void 0 : _a2.ramo) || "Altro")}</span></div>
+    <div class="tuning-kicker"><span>${card.tipo}</span><span>\xB7</span><span>${esc(skillBranchName((_a2 = card.skill) == null ? void 0 : _a2.ramo))}</span></div>
     <h3 class="tuning-title">${esc(card.title)}</h3>
     <p class="tuning-context">${esc(card.context)} Le risposte non chiudono la skill: potra tornare nei ripassi.</p>
     ${paramContext}

@@ -1124,7 +1124,7 @@ function renderHome() {
         </aside>
       </div>
 
-      <section class="home-section"><div class="home-section-head"><h3>Allievi di oggi</h3><span>${involvedById.size} coinvolti</span></div><div class="home-students">${students.length ? students.map(student => { const name = [student.nome, student.cognome].filter(Boolean).join(' '); const initials = [student.nome, student.cognome].filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase(); return `<button type="button" class="home-student" onclick="showView('scheda',${jsArg(student.id)})"><div class="home-student-head"><div class="home-avatar">${esc(initials)}</div><div><strong>${esc(name)}</strong><span>${esc(student.gruppo || allievoTier(student))}</span></div></div></button>` }).join('') : '<div class="empty">Nessun allievo coinvolto nelle lezioni di oggi.</div>'}</div></section>
+      <section class="home-section"><div class="home-section-head"><h3>Allievi di oggi</h3><span>${involvedById.size} coinvolti</span></div><div class="home-students">${students.length ? students.map(student => { const name = [student.nome, student.cognome].filter(Boolean).join(' '); const initials = [student.nome, student.cognome].filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase(); return `<button type="button" class="home-student" onclick="showView('scheda',${jsArg(student.id)})"><div class="home-student-head">${studentAvatarHtml(student)}<div><strong>${esc(name)}</strong><span>${esc(student.gruppo || allievoTier(student))}</span></div></div></button>` }).join('') : '<div class="empty">Nessun allievo coinvolto nelle lezioni di oggi.</div>'}</div></section>
 
       <section class="home-section"><div class="home-section-head"><h3>Riepilogo settimana</h3><span>Dati registrati</span></div><div class="home-week"><div class="home-week-stat"><strong>${weekLessons.length}</strong><span>Lezioni</span></div><div class="home-week-stat"><strong>${String(Math.round(weeklyMinutes / 6) / 10).replace('.', ',')}</strong><span>Ore insegnate</span></div><div class="home-week-stat"><strong>${weeklyStudentIds.size}</strong><span>Allievi allenati</span></div><div class="home-week-stat"><strong>${weeklySkills}</strong><span>Skill lavorate</span></div></div></section>
     </div>`
@@ -2591,6 +2591,27 @@ function setAvailabilityStatus(owner, text, cls = '') {
   el.style.color = cls === 'err' ? 'var(--danger)' : (cls === 'ok' ? 'var(--success)' : 'var(--muted)')
 }
 
+// A class-only membership is a durable constraint, not a planner preference.
+function allievoSoloGruppo(allievo) {
+  return !!allievo?.gruppo && allievo.solo_gruppo === true
+}
+
+function gruppoSoloGruppo(gruppo, membri = allAllievi) {
+  return !!gruppo && membri.some(a => a.gruppo === gruppo && allievoSoloGruppo(a))
+}
+
+function lezionePresetPerAllievo(allievo) {
+  return allievoSoloGruppo(allievo) ? `gruppo:${allievo.gruppo}` : `modo:prep:${allievo.id}`
+}
+
+async function saveGroupOnlyRule(gruppo, value) {
+  const { data, error } = await sb.from('allievi').update({ solo_gruppo: !!value }).eq('gruppo', gruppo).select('id,solo_gruppo')
+  if (error) throw error
+  if (!data?.length) throw new Error('Nessun membro aggiornato. Ricarica il gruppo e riprova.')
+  const updated = new Map(data.map(a => [a.id, a.solo_gruppo]))
+  allAllievi.forEach(a => { if (updated.has(a.id)) a.solo_gruppo = updated.get(a.id) })
+}
+
 function activeAppointmentAllievi() {
   return ordinaAllieviLista(allieviVisibiliGod().filter(a => a.stato !== 'archiviato' && !allievoInVacanza(a)))
 }
@@ -2817,7 +2838,7 @@ function appointmentGroupMembers(gruppo) {
 function appointmentTargetExists(value) {
   if (!value) return false
   if (appointmentTargetIsGroup(value)) return appointmentGroupMembers(appointmentGroupFromTarget(value)).length > 0
-  return activeAppointmentAllievi().some(a => String(a.id) === String(value))
+  return activeAppointmentAllievi().some(a => String(a.id) === String(value) && !allievoSoloGruppo(a))
 }
 
 function selectedAppointmentTarget() {
@@ -2836,7 +2857,7 @@ function selectedAppointmentTarget() {
     }
   }
   const allievo = allievoById(selected)
-  return allievo ? {
+  return allievo && !allievoSoloGruppo(allievo) ? {
     type: 'allievo',
     value: String(allievo.id),
     allievo,
@@ -2860,7 +2881,7 @@ function availabilityTargetOptions(selected = '') {
       </optgroup>` : ''}
     ${gruppi.map(gruppo => `
       <optgroup label="Allievi · ${esc(gruppo)}">
-        ${attivi.filter(a => a.gruppo === gruppo).map(a => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? 'selected' : ''}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join('')}
+        ${attivi.filter(a => a.gruppo === gruppo && !allievoSoloGruppo(a)).map(a => `<option value="${esc(a.id)}" ${String(a.id) === String(selected) ? 'selected' : ''}>${esc(lezioneTargetLabelAllievo(a))}</option>`).join('')}
       </optgroup>`).join('')}
     ${attivi.some(a => !a.gruppo) ? `
       <optgroup label="Senza gruppo">
@@ -2972,6 +2993,7 @@ function allievoHasIndividualLessonHistory(allievo) {
 }
 
 function appointmentIndividualLessonsActiveForAllievo(allievo) {
+  if (allievoSoloGruppo(allievo)) return false
   if (!allievo?.gruppo) return true
   const profilo = allievo.profilo || {}
   if (profilo.appuntamenti_individuali_attivi === false) return false
@@ -3355,14 +3377,14 @@ function renderAppuntamenti() {
   const attivi = activeAppointmentAllievi()
   ensureAppointmentSelectionDefaults()
   if (appuntamentiSelectedAllievoId && !appointmentTargetExists(appuntamentiSelectedAllievoId)) appuntamentiSelectedAllievoId = null
-  if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = attivi[0].id
+  if (!appuntamentiSelectedAllievoId && attivi.length) appuntamentiSelectedAllievoId = allievoSoloGruppo(attivi[0]) ? appointmentGroupTargetValue(attivi[0].gruppo) : attivi[0].id
   const selectedTarget = selectedAppointmentTarget()
   const selectedSlots = availabilitySlotsForAppointmentTarget(selectedTarget)
   const selectedExcludedSlots = availabilityExcludedSlotsForAppointmentTarget(selectedTarget)
   const selectedNote = availabilityNoteForAppointmentTarget(selectedTarget)
   const selectedWeeklyCount = appointmentWeeklyCountForTarget(selectedTarget)
   const selectedConsecutiveMode = appointmentConsecutiveModeForTarget(selectedTarget)
-  const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo
+  const selectedIndividualToggle = selectedTarget?.type === 'allievo' && !!selectedTarget.allievo?.gruppo && !allievoSoloGruppo(selectedTarget.allievo)
   const selectedIndividualActive = selectedIndividualToggle ? appointmentIndividualLessonsActiveForAllievo(selectedTarget.allievo) : false
   const filteredAllievi = filteredAppointmentAllievi()
 
@@ -3894,6 +3916,7 @@ async function saveAllievoAvailabilityExclusions(allievoId, slots, options = {})
 async function saveAllievoAppointmentPreferences(allievoId, preferences) {
   const allievo = allievoById(allievoId)
   if (!allievo) throw new Error('Allievo non trovato.')
+  if (allievoSoloGruppo(allievo) && preferences.individualActive) throw new Error('Questo allievo è solo di gruppo. Cambia la modalità dalla scheda del gruppo.')
   const consecutiveMode = normalizeAppointmentConsecutiveMode(preferences.consecutiveMode, preferences.avoidConsecutive)
   const profilo = {
     ...(allievo.profilo || {}),
@@ -6858,7 +6881,7 @@ function renderAllievi() {
   renderDashboard()
   const listaVisibile = allieviVisibiliGod()
   const gruppiCorrenti = allieviGroupNamesForCurrentMode(listaVisibile)
-  const mostraToggleGruppi = gruppiCorrenti.length > 0 && filtroListaAllievi !== 'tutti'
+  const mostraToggleGruppi = gruppiCorrenti.length > 0
   const tuttiGruppiEspansi = mostraToggleGruppi && gruppiCorrenti.every(g => gruppiEspansi.has(g))
   const chipsHtml = `
     <div class="allievi-filter-bar">
@@ -6896,7 +6919,7 @@ function renderAllievi() {
     <tr class="${extraClass}" onclick="loadScheda('${a.id}')" style="${a.stato === 'archiviato' ? 'opacity:.55' : ''};cursor:pointer">
       <td style="width:42px;text-align:center;white-space:nowrap">${allievoTier(a) === 'VIP' ? '<span class="vip-star">★</span>' : ''}${vacationIconHtml(allievoInVacanza(a))}</td>
       <td>
-        <strong>${esc(a.nome)}</strong>
+        ${studentAvatarHtml(a)}<strong>${esc(a.nome)}</strong>
         ${allievoBadgesHtml(a)}
       </td>
       <td>${a.tipo === 'associazione' ? '' : esc(a.cognome)}</td>
@@ -6921,7 +6944,7 @@ function renderAllievi() {
           <a class="allievi-mobile-card-open" href="#scheda:${esc(a.id)}" onclick="event.preventDefault(); loadScheda('${a.id}')">
             <div class="allievi-mobile-card-title">
               ${allievoTier(a) === 'VIP' ? '<span class="vip-star" aria-label="VIP">★</span>' : ''}
-              <strong>${esc(fullName)}</strong>
+              ${studentAvatarHtml(a)}<strong>${esc(fullName)}</strong>
             </div>
             <div class="allievi-mobile-meta">
               ${age ? `<span>${esc(age)}</span>` : ''}
@@ -6935,14 +6958,15 @@ function renderAllievi() {
 
   const renderGruppoRows = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
       const membri = ordinaAllieviLista(sourceList.filter(a => a.gruppo === gruppo))
-      const expanded = gruppiEspansi.has(gruppo)
+      const soloGruppo = gruppoSoloGruppo(gruppo, membri)
+      const expanded = !soloGruppo && gruppiEspansi.has(gruppo)
       const blocchi = [...new Set(membri.map(a => a.blocco_attuale).filter(Boolean))].join(', ') || '—'
       const gruppoVacanza = groupRowInVacanza(gruppo, membri)
       const actionId = `gruppo-list-actions-${filtroListaAllievi}-${index}`
       return `
         <tr onclick="showView('gruppo',${jsArg(gruppo)})" style="cursor:pointer">
           <td style="width:42px;text-align:center;white-space:nowrap"><span class="group-count">[${membri.length}]</span>${vacationIconHtml(gruppoVacanza)}</td>
-          <td><strong>${esc(gruppo)}</strong>${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}</td>
+          <td><strong>${esc(gruppo)}</strong>${soloGruppo ? ' <span class="chip">Solo gruppo</span>' : ''}${gruppoVacanza ? '<span style="font-size:.7rem;font-weight:700;background:rgba(245,158,11,.13);color:#b45309;padding:1px 5px;border-radius:10px;margin-left:4px">vacanza</span>' : ''}</td>
           <td></td>
           <td></td>
           <td></td>
@@ -6950,7 +6974,7 @@ function renderAllievi() {
           <td>${esc(blocchi)}</td>
           <td style="width:40px;text-align:center">
             <div style="display:flex;justify-content:flex-end;gap:.25rem">
-              <button class="btn btn-ghost btn-sm" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? '▴' : '▾'}</button>
+              ${!soloGruppo ? `<button class="btn btn-ghost btn-sm" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})" style="padding:.2rem .45rem;font-size:.95rem">${expanded ? '▴' : '▾'}</button>` : ''}
               ${renderGruppoActionMenu(gruppo, actionId)}
             </div>
           </td>
@@ -6964,7 +6988,8 @@ function renderAllievi() {
 
   const renderGruppoCards = (gruppi, sourceList) => gruppi.map((gruppo, index) => {
       const membri = ordinaAllieviLista(sourceList.filter(a => a.gruppo === gruppo))
-      const expanded = gruppiEspansi.has(gruppo)
+      const soloGruppo = gruppoSoloGruppo(gruppo, membri)
+      const expanded = !soloGruppo && gruppiEspansi.has(gruppo)
       const actionId = `gruppo-list-mobile-actions-${filtroListaAllievi}-${index}`
       return `
         <article class="allievi-mobile-card is-group">
@@ -6973,10 +6998,10 @@ function renderAllievi() {
               <div class="allievi-mobile-card-title">
                 <strong>${esc(gruppo)}</strong>
               </div>
-              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? 'allievo' : 'allievi'}</span></div>
+              <div class="allievi-mobile-meta"><span>${membri.length} ${membri.length === 1 ? 'allievo' : 'allievi'}${soloGruppo ? ' · Solo gruppo' : ''}</span></div>
             </a>
             <div class="allievi-mobile-group-tools">
-              <button class="btn btn-ghost btn-sm" type="button" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})">${expanded ? '▴' : '▾'}</button>
+              ${!soloGruppo ? `<button class="btn btn-ghost btn-sm" type="button" title="${expanded ? 'Compatta membri' : 'Espandi membri'}" onclick="event.stopPropagation(); toggleGruppoLista(${jsArg(gruppo)})">${expanded ? '▴' : '▾'}</button>` : ''}
               ${renderGruppoActionMenu(gruppo, actionId)}
             </div>
           </div>
@@ -6999,8 +7024,9 @@ function renderAllievi() {
   }
   const contentForCurrentMode = (renderStudent, renderGroups) => {
     if (filtroListaAllievi === 'tutti') {
-      const split = byVacation(listaVisibile)
-      return [...split.presenti, ...split.vacanza].map(a => renderStudent(a)).join('')
+      const split = byVacation(listaVisibile.filter(a => !allievoSoloGruppo(a)))
+      const classi = groupNames(listaVisibile.filter(allievoSoloGruppo))
+      return [...split.presenti, ...split.vacanza].map(a => renderStudent(a)).join('') + renderGroups(classi, listaVisibile)
     }
     if (filtroListaAllievi === 'gruppi') {
       const split = groupsByVacation(listaVisibile)
@@ -7058,7 +7084,7 @@ function groupRowInVacanza(gruppo, membri = []) {
 }
 
 function allieviGroupNamesForCurrentMode(lista = allieviVisibiliGod()) {
-  const names = [...new Set(lista.map(a => a.gruppo).filter(Boolean))]
+  const names = [...new Set(lista.map(a => a.gruppo).filter(Boolean))].filter(g => !gruppoSoloGruppo(g, lista))
     .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }))
   if (filtroListaAllievi === 'tutti') return []
   if (filtroListaAllievi === 'vacanza') return names.filter(g => groupRowInVacanza(g, lista.filter(a => a.gruppo === g)))
@@ -7796,6 +7822,8 @@ async function salvaAllievo() {
     ...(editingAllieviId ? {} : { maestro_id: writeUid }),
   }
 
+  payload.solo_gruppo = !isAss && gruppoSoloGruppo(payload.gruppo)
+
   try {
     let data, error
     if (savedId) {
@@ -7873,6 +7901,7 @@ function initNuovoGruppo(nomeGruppo = null) {
   document.getElementById('btn-salva-gr-top').textContent = editingGruppoNome ? 'Aggiorna gruppo' : 'Salva gruppo'
   document.getElementById('btn-cancella-gr').hidden = !editingGruppoNome
   document.getElementById('gr-nome').value = editingGruppoNome || ''
+  document.getElementById('gr-solo-gruppo').checked = !!profilo.solo_gruppo
   document.getElementById('gr-orario').value = profilo.appuntamento || ''
   document.getElementById('gr-luogo').value = profilo.luogo_incontro || ''
   document.getElementById('gr-durata').value = profilo.durata_lezione || ''
@@ -8138,6 +8167,7 @@ function leggiAllievoGruppo(row) {
 
 async function salvaGruppo() {
   const nomeGruppo = document.getElementById('gr-nome').value.trim()
+  const soloGruppo = !!document.getElementById('gr-solo-gruppo').checked
   const orario = document.getElementById('gr-orario').value.trim()
   const luogo = document.getElementById('gr-luogo').value.trim()
   const durata = parseInt(document.getElementById('gr-durata').value) || null
@@ -8243,6 +8273,7 @@ async function salvaGruppo() {
         }
       }
 
+      await saveGroupOnlyRule(nomeGruppo, soloGruppo)
       filtroGruppo = nomeGruppo
       const nextGroup = nomeGruppo
       const destination = editReturnTarget
@@ -8307,6 +8338,7 @@ async function salvaGruppo() {
       const { error } = await sb.from('allievi').insert(nuovi)
       if (error) throw error
     }
+    await saveGroupOnlyRule(nomeGruppo, soloGruppo)
     filtroGruppo = nomeGruppo
     editReturnTarget = null
     if (archiviato) {
@@ -8352,6 +8384,7 @@ function profiloComuneGruppo(membri) {
     pagamento_stato: firstValue('pagamento_stato'),
     pagamento_note: firstValue('pagamento_note'),
     in_vacanza: firstVacationValue ? vacationValue(firstVacationValue) : false,
+    solo_gruppo: membri.some(allievoSoloGruppo),
   }
 }
 
@@ -8408,7 +8441,7 @@ async function loadGruppo(nomeGruppo) {
   const membriHtml = membri.map(a => `
     <div class="gruppo-member-card" onclick="loadScheda('${a.id}')">
       <div>
-        <div class="gruppo-member-name">${esc([a.nome, a.cognome].filter(Boolean).join(' '))}${a.nickname ? ` · ${esc(a.nickname)}` : ''}${vacationIconHtml(allievoInVacanza(a))}</div>
+        <div class="gruppo-member-name">${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(' '))}${a.nickname ? ` · ${esc(a.nickname)}` : ''}${vacationIconHtml(allievoInVacanza(a))}</div>
         <div class="gruppo-member-meta">Lv ${a.livello_attuale || '—'} · ${esc(a.blocco_attuale || '—')}${allievoInVacanza(a) ? ' · In vacanza' : ''}</div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); showView('nuovo-allievo','${a.id}')">${editIcon()}</button>
@@ -8433,7 +8466,7 @@ async function loadGruppo(nomeGruppo) {
       <div class="lezione-read-head">
         <div>
           <div class="lezione-read-title">${esc(nomeGruppo)}${vacationIconHtml(!!profilo.in_vacanza)}</div>
-          <div class="scheda-meta">${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} ${gruppoArchiviato ? 'archiviat' : 'attiv'}${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
+          <div class="scheda-meta">${profilo.solo_gruppo ? 'Solo gruppo · ' : ''}${membri.length} alliev${membri.length === 1 ? 'o' : 'i'} ${gruppoArchiviato ? 'archiviat' : 'attiv'}${membri.length === 1 ? 'o' : 'i'}${profilo.in_vacanza ? ' · In vacanza' : ''}</div>
         </div>
         <div class="lezione-read-when">
           ${profilo.appuntamento ? `<div class="lezione-read-date">${esc(profilo.appuntamento)}</div>` : '<span>Orario non indicato</span>'}
@@ -8457,6 +8490,7 @@ async function loadGruppo(nomeGruppo) {
             ${info('Compenso', compenso)}
             ${info('Pagamento', [profilo.pagamento_metodo, profilo.pagamento_stato].filter(Boolean).join(' · '))}
             ${info('Note pagamento', profilo.pagamento_note)}
+            ${info('Modalità', profilo.solo_gruppo ? 'Solo lezioni di gruppo' : 'Lezioni di gruppo e individuali')}
             ${info('Stato lezioni', profilo.in_vacanza ? 'In vacanza' : '')}
           </div>
         </div>
@@ -8478,7 +8512,7 @@ async function loadScheda(id) {
   recordAppHistory('scheda', id)
   const prepShortcut = document.getElementById('scheda-prepara-lezione')
   prepShortcut.hidden = false
-  prepShortcut.onclick = () => showView('nuova-lezione', `modo:prep:${id}`)
+  prepShortcut.onclick = () => showView('nuova-lezione', lezionePresetPerAllievo(allAllievi.find(a => a.id === id) || { id }))
   document.getElementById('scheda-content').innerHTML = '<div class="loading">Caricamento…</div>'
 
   const allievo = allAllievi.find(a => a.id === id)
@@ -8618,10 +8652,12 @@ async function loadScheda(id) {
     <div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div>
+          ${studentPhotoControls(allievo)}
           <div class="scheda-nome">
             ${esc(allievo.nome)}${!isAss && allievo.cognome ? ' ' + esc(allievo.cognome) : ''}${allievo.nickname ? ` <span style="font-size:1rem;color:var(--muted);font-weight:400">"${esc(allievo.nickname)}"</span>` : ''}${allievoTier(allievo) === 'VIP' ? ' <span class="vip-star">★</span>' : ''}${vacationIconHtml(!!statoVacanza)}
           </div>
           ${headerExtra}
+          ${allievoSoloGruppo(allievo) ? `<div class="scheda-meta" style="margin-top:.4rem">Solo lezioni di gruppo · <button type="button" class="linkish" onclick="showView('gruppo',${jsArg(allievo.gruppo)})">${esc(allievo.gruppo)}</button></div>` : ''}
           ${renderBirthdayReminders([allievo], { links: false })}
        </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap">
@@ -11255,9 +11291,13 @@ async function initNuovaLezione(presetAllievoId = null) {
   const editId = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('lezione:')
     ? presetAllievoId.slice('lezione:'.length)
     : null
-  const groupPreset = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('gruppo:')
+  let groupPreset = typeof presetAllievoId === 'string' && presetAllievoId.startsWith('gruppo:')
     ? presetAllievoId.slice('gruppo:'.length)
     : null
+  if (!editId && allievoSoloGruppo(allievoById(presetAllievoId))) {
+    groupPreset = allievoById(presetAllievoId).gruppo
+    presetAllievoId = null
+  }
   if (!editId && !groupPreset && !explicitLezioneMode) {
     showView('lezioni')
     return
@@ -11473,6 +11513,10 @@ function renderLezionePartecipanti() {
   }
 
   if (target.startsWith('allievo:')) {
+    if (allievoSoloGruppo(allievoById(target.slice('allievo:'.length)))) {
+      setLezioneFormMessage('Questo allievo è solo di gruppo: seleziona il suo gruppo.')
+      return
+    }
     setLezioneAllievi([target.slice('allievo:'.length)])
   } else if (target.startsWith('gruppo:')) {
     const gruppo = target.slice('gruppo:'.length)
@@ -11575,7 +11619,7 @@ function renderLezioneTargetOptions(selected = '') {
   let attivi = []
   let gruppi = []
   try {
-    attivi = ordinaAllieviLista(allieviSelezionabiliLezione())
+    attivi = ordinaAllieviLista(allieviSelezionabiliLezione().filter(a => !allievoSoloGruppo(a)))
     gruppi = gruppiSelezionabiliLezione()
   } catch (error) {
     console.error('Lista allievi lezione non disponibile', error)
@@ -11686,7 +11730,7 @@ function renderAllieviGruppoLezione(gruppo, presentiSet = null) {
   listEl.innerHTML = membri.map(a => `
     <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.9rem">
       <input type="checkbox" value="${a.id}" ${presentiSet && !presentiSet.has(a.id) ? '' : 'checked'} onchange="toggleAllievo(this,${jsArg([a.nome, a.cognome].filter(Boolean).join(' '))})">
-      ${esc([a.nome, a.cognome].filter(Boolean).join(' '))}
+      ${studentAvatarHtml(a)}${esc([a.nome, a.cognome].filter(Boolean).join(' '))}
     </label>`).join('')
   ;[...listEl.querySelectorAll('input[type=checkbox]:checked')].forEach(cb => {
     const a = membri.find(m => m.id === cb.value)
@@ -11710,7 +11754,7 @@ function renderGroupLessonPanel(gruppo) {
           <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
             <label class="group-presence-name">
               <input type="checkbox" value="${a.id}" ${selected.has(a.id) ? 'checked' : ''} onchange="togglePresenzaGruppoLezione(this)">
-              <span>${esc(allievoDisplayName(a.id))}</span>
+              ${studentAvatarHtml(a)}<span>${esc(allievoDisplayName(a.id))}</span>
             </label>
             ${renderGroupStudentFeedbackControls(a.id, selected.has(a.id))}
           </div>`).join('')}
@@ -11719,7 +11763,7 @@ function renderGroupLessonPanel(gruppo) {
         <div class="lesson-skill-hint">Guest</div>
         ${guests.map(a => `
           <div class="group-presence-row" data-allievo-id="${esc(a.id)}">
-            <div class="group-presence-name"><span>${esc(allievoDisplayName(a.id))}</span></div>
+            <div class="group-presence-name">${studentAvatarHtml(a)}<span>${esc(allievoDisplayName(a.id))}</span></div>
             ${renderGroupStudentFeedbackControls(a.id, true)}
           </div>`).join('')}
       </div>` : ''}
@@ -12062,7 +12106,7 @@ function addIndividualSkillWork(id, rows = null) {
 function renderSpecialGuestPanel() {
   const panel = document.getElementById('lz-special-guest-panel')
   const selectedIds = new Set(selectedLezioneAllieviIds())
-  const options = ordinaAllieviLista(allieviSelezionabiliLezione().filter(a => !selectedIds.has(a.id)))
+  const options = ordinaAllieviLista(allieviSelezionabiliLezione().filter(a => !selectedIds.has(a.id) && (currentLessonTargetIsGroup() || !allievoSoloGruppo(a))))
   panel.hidden = false
   panel.innerHTML = `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem;align-items:end">
@@ -12079,6 +12123,10 @@ function renderSpecialGuestPanel() {
 
 function addSpecialGuestToLesson(id) {
   if (!id || selectedLezioneAllieviIds().includes(id)) return
+  if (!currentLessonTargetIsGroup() && allievoSoloGruppo(allievoById(id))) {
+    setLezioneFormMessage('Questo allievo partecipa solo a lezioni di gruppo.')
+    return
+  }
   const holder = document.getElementById('lz-hidden-checks')
   holder.insertAdjacentHTML('beforeend', `<input type="checkbox" value="${id}" checked>`)
   const a = allieviSelezionabiliLezione().find(x => x.id === id) || allAllievi.find(x => x.id === id)
@@ -13226,6 +13274,10 @@ async function salvaLezione() {
   const checkedAllievi = [...document.querySelectorAll('#lz-hidden-checks input[type=checkbox]:checked')]
   if (!checkedAllievi.length && tipo !== 'campo_libero') { setLezioneFormMessage('Seleziona almeno un allievo.'); return }
   const lezioneAllieviIds = checkedAllievi.map(cb => cb.value)
+  if (tipo !== 'gruppo' && lezioneAllieviIds.some(id => allievoSoloGruppo(allievoById(id)))) {
+    setLezioneFormMessage('Questi allievi partecipano solo a lezioni di gruppo. Seleziona il gruppo prima di salvare.')
+    return
+  }
   const locationEntries = lessonLocationEntries(luogo, lezioneAllieviIds)
   const effectiveLocationId = locationEntries.length === 1 ? selectedLocationId : null
 

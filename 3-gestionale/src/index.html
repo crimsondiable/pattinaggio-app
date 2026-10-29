@@ -1178,6 +1178,7 @@
     }
   </style>
   <link rel="stylesheet" href="./responsive/shell.css?v=20260712-operational-home">
+  <link rel="stylesheet" href="./student-photos.css?v=20261029-photos">
   <link rel="stylesheet" href="./responsive/allievi.css?v=20260711-mobile-compact-students">
   <link rel="stylesheet" href="./responsive/home.css?v=20260712-home-without-quick-actions">
   <script src="./responsive/shell.js?v=20260712-operational-home" defer></script>
@@ -1675,6 +1676,10 @@
         <p class="form-sec">Dati gruppo</p>
         <div class="form-grid">
           <div class="field"><label>Nome gruppo *</label><input type="text" id="gr-nome" placeholder="Es. Sabato mattina"></div>
+          <div class="field" style="grid-column:1/-1">
+            <label style="display:flex;align-items:center;gap:.5rem"><input type="checkbox" id="gr-solo-gruppo" style="width:auto;flex:0 0 auto;margin:0" aria-describedby="gr-solo-gruppo-help"> Solo lezioni di gruppo</label>
+            <p id="gr-solo-gruppo-help" style="font-size:.82rem;color:var(--muted);margin:.25rem 0">I membri compaiono solo dentro il gruppo e non si possono selezionare per lezioni individuali. Lascia disattivato per gruppi che lavorano anche singolarmente.</p>
+          </div>
           <div class="field"><label>Orario</label><input type="text" id="gr-orario" placeholder="Es. Sabato 10:00"></div>
           <div class="field"><label>Luogo di incontro</label><input type="text" id="gr-luogo" placeholder="Es. Pista centrale"></div>
           <div class="field"><label>Durata (min)</label><input type="number" id="gr-durata" placeholder="60" min="1"></div>
@@ -2047,7 +2052,7 @@
 <script src="./student-lesson-reminder.js?v=20261020-inline-reminder"></script>
 <script>
 (function () {
-  var appVersion = '20261021-server-role';
+  var appVersion = '20261029-photos-group-only';
   function localScript(path) {
     if (window.location.protocol === 'file:') return path;
     return path + '?v=' + appVersion;
@@ -2072,6 +2077,7 @@
     localScript('./lesson-radial-planner/LessonTimelineList.js'),
     localScript('./lesson-radial-planner/LessonDetailPanel.js'),
     localScript('./lesson-radial-planner/LessonRadialPlannerPage.js'),
+    localScript('./student-photos.js'),
     localScript('./app.js')
   ];
   var legacyScripts = [
