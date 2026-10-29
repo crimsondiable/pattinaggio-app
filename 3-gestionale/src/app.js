@@ -5970,10 +5970,10 @@ function allieviVisibiliGod() {
 
 function ordinaAllieviLista(lista) {
   return [...lista].sort((a, b) => {
-    const tierDelta = allievoTierRank(a) - allievoTierRank(b)
-    if (tierDelta) return tierDelta
-    return String(a.nome || '').localeCompare(String(b.nome || ''), 'it', { sensitivity: 'base' })
-      || String(a.cognome || '').localeCompare(String(b.cognome || ''), 'it', { sensitivity: 'base' })
+    const vipDelta = Number(allievoTier(b) === 'VIP') - Number(allievoTier(a) === 'VIP')
+    if (vipDelta) return vipDelta
+    return String(a.cognome || '').trim().localeCompare(String(b.cognome || '').trim(), 'it', { sensitivity: 'base' })
+      || String(a.nome || '').trim().localeCompare(String(b.nome || '').trim(), 'it', { sensitivity: 'base' })
       || String(a.nickname || '').localeCompare(String(b.nickname || ''), 'it', { sensitivity: 'base' })
   })
 }
@@ -10308,7 +10308,7 @@ async function importaAllievo(input) {
   if (error) { alert('Errore importazione: ' + error.message); return }
 
   allAllievi.push(data)
-  allAllievi.sort((a, b) => a.nome.localeCompare(b.nome))
+  allAllievi = ordinaAllieviLista(allAllievi)
   renderAllievi()
   alert(`✅ "${data.nome} ${data.cognome}" importato correttamente.`)
 }
@@ -11606,7 +11606,7 @@ function allievoDisplayName(id) {
 
 function allieviSelezionabiliLezione({ includeArchived = false } = {}) {
   const visibili = allieviVisibiliGod()
-  return includeArchived ? visibili : visibili.filter(a => a.stato !== 'archiviato')
+  return ordinaAllieviLista(includeArchived ? visibili : visibili.filter(a => a.stato !== 'archiviato'))
 }
 
 function lezioneTargetLabelAllievo(a) {
